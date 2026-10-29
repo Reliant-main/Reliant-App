@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reliant Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --cloth: #10261f; --cloth-2: #173329; --cloth-3: #21443a;
+  --paper: #efe7d4; --paper-dim: #b9b29f; --gilt: #d2a54a; --rule: #2f5348;
+  --on-accent: #10261f; --bad: #f0b49f;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--cloth); color: var(--paper); font: 16px/1.5 var(--f-ui); }
+.eyebrow { font: 500 12px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { font: 400 clamp(34px, 6vw, 56px)/1.05 var(--f-display); margin: 0; }
+h2 { font: 400 28px/1.1 var(--f-display); margin: 0; }
+.btn { font: 600 15px var(--f-ui); color: var(--paper); background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 16px; cursor: pointer; }
+.btn:hover { border-color: var(--gilt); }
+.btn.primary { background: var(--gilt); color: var(--on-accent); border-color: var(--gilt); }
+.btn:disabled { opacity: .55; cursor: default; }
+.link { all: unset; cursor: pointer; color: var(--gilt); font: 500 14px var(--f-ui); text-decoration: underline; text-underline-offset: 3px; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+
+/* sign-in */
+.gate { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+.card { width: min(420px, 100%); background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+.card p { margin: 0; color: var(--paper-dim); font-size: 15px; }
+.fld { display: flex; flex-direction: column; gap: 6px; }
+.fld label { font: 500 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--paper-dim); }
+.fld input { font: 500 16px var(--f-ui); color: var(--paper); background: var(--cloth); border: 1px solid var(--rule); border-radius: 8px; padding: 11px 12px; }
+.msg { font-size: 14px; color: var(--paper-dim); min-height: 1.2em; }
+.msg.bad { color: var(--bad); }
+.row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+
+/* home */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--rule); background: var(--cloth-2); }
+.top .brand { font: 400 24px var(--f-display); color: var(--gilt); margin-right: auto; }
+.who { font: 500 14px var(--f-ui); color: var(--paper-dim); }
+.who b { color: var(--paper); }
+.home { max-width: 1100px; margin: 0 auto; padding: clamp(20px, 4vw, 48px) clamp(16px, 4vw, 40px) 48px; display: flex; flex-direction: column; gap: 24px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.tile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 18px 18px 20px; border: 1px solid var(--rule); border-radius: 12px; background: var(--cloth-2); min-height: 132px; }
+.tile:hover:not([aria-disabled="true"]) { border-color: var(--gilt); background: var(--cloth-3); }
+.tile .t { font: 400 24px/1.15 var(--f-display); }
+.tile .d { font-size: 14px; color: var(--paper-dim); }
+.tile .s { margin-top: auto; font: 500 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gilt); }
+.tile[aria-disabled="true"] { cursor: default; opacity: .55; }
+.tile[aria-disabled="true"] .s { color: var(--paper-dim); }
+.note { font-size: 14px; color: var(--paper-dim); max-width: 70ch; }
+
+/* a section opened full screen */
+.section { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--cloth); z-index: 10; }
+.section .bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--rule); background: var(--cloth-2); }
+.section .bar .ttl { font: 400 20px var(--f-display); color: var(--gilt); }
+.section iframe { flex: 1; width: 100%; border: 0; background: #0e1915; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<!-- Signed out -->
+<main class="gate" id="signin" hidden>
+  <form class="card" id="signinForm" autocomplete="on">
+    <div><span class="eyebrow">Reliant Distribution</span><h1>Workspace</h1></div>
+    <p id="signinIntro">Sign in with your work email and password.</p>
+    <div class="fld"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required></div>
+    <div class="fld"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" minlength="8" required></div>
+    <div class="msg" id="signinMsg" role="status"></div>
+    <button class="btn primary" type="submit" id="signinBtn">Sign in</button>
+    <div class="row">
+      <button type="button" class="link" id="forgotBtn">Forgot password?</button>
+      <button type="button" class="link" id="modeBtn">First time? Create your account</button>
+    </div>
+  </form>
+</main>
+
+<!-- Setting a new password after a reset email -->
+<main class="gate" id="newpw" hidden>
+  <form class="card" id="newpwForm">
+    <div><span class="eyebrow">Reliant Distribution</span><h2>Choose a new password</h2></div>
+    <div class="fld"><label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div class="msg" id="newpwMsg" role="status"></div>
+    <button class="btn primary" type="submit">Save password</button>
+  </form>
+</main>
+
+<!-- Signed in but not given a role yet -->
+<main class="gate" id="pending" hidden>
+  <div class="card">
+    <div><span class="eyebrow">Reliant Distribution</span><h2>Almost there</h2></div>
+    <p>You're signed in as <b id="pendingEmail"></b>, but this account hasn't been given a role yet. Ask the owner to set it up, then sign in again.</p>
+    <button class="btn" type="button" data-signout>Sign out</button>
+  </div>
+</main>
+
+<!-- Home -->
+<div id="home" hidden>
+  <header class="top">
+    <span class="brand">Reliant Workspace</span>
+    <span class="who" id="who"></span>
+    <button class="btn" type="button" data-signout>Sign out</button>
+  </header>
+  <main class="home">
+    <div><span class="eyebrow" id="today"></span><h1 id="hello">Welcome</h1></div>
+    <div class="tiles" id="tiles"></div>
+    <p class="note">This is the new Workspace, built one section at a time on the Reliant database. Until a section is switched over, keep using the current Workspace for it. Numbers here are copied from the Google Sheets every night.</p>
+  </main>
+</div>
+
+<!-- A section opened full screen -->
+<div class="section" id="section" hidden>
+  <div class="bar"><button class="btn" type="button" id="homeBtn">⌂ Home</button><span class="ttl" id="sectionTitle"></span></div>
+  <iframe id="sectionFrame" title="Section"></iframe>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const cfg = window.RELIANT_CONFIG;
+  if (!window.supabase || !cfg) { document.body.textContent = "The Workspace couldn't load. Check the internet connection and reload."; return; }
+  const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
+  window.RELIANT = { sb, staff: null };
+
+  const MANAGER = ["owner", "manager"];
+  const SECTIONS = [
+    { id: "analytics", title: "Sales Analytics", desc: "Revenue, profit, titles, shows and comparisons.", url: "analytics.html", roles: MANAGER },
+    { id: "orders", title: "Orders & Receiving", desc: "Supplier orders, boxes arriving, shortages.", soon: true },
+    { id: "inventory", title: "Inventory", desc: "On hand, counts, adjustments, damaged stock.", soon: true },
+    { id: "purchasing", title: "Purchasing", desc: "Build buy lists from what sells.", soon: true },
+    { id: "shows", title: "Shows", desc: "Prep playlists, log sales and rejects live.", soon: true },
+    { id: "used", title: "Used Books", desc: "Scan station, loads and check-ins.", soon: true }
+  ];
+  const views = ["signin", "newpw", "pending", "home", "section"];
+  const show = id => views.forEach(v => { $(v).hidden = v !== id && !(id === "section" && v === "home"); });
+
+  // ---------- signed-in state ----------
+  let signup = false;
+  async function refresh(session) {
+    if (!session) { window.RELIANT.staff = null; show("signin"); return; }
+    const { data: me, error } = await sb.rpc("my_staff");
+    if (error) { $("signinMsg").textContent = "Couldn't check your account: " + error.message; $("signinMsg").classList.add("bad"); show("signin"); return; }
+    if (!me) { $("pendingEmail").textContent = session.user.email || ""; show("pending"); return; }
+    window.RELIANT.staff = me;
+    $("who").innerHTML = `<b></b> · ${me.role[0].toUpperCase() + me.role.slice(1)}`;
+    $("who").querySelector("b").textContent = me.name;
+    $("hello").textContent = `Welcome, ${me.name.split(" ")[0]}`;
+    $("today").textContent = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+    drawTiles(me);
+    if ($("section").hidden) show("home");
+  }
+  function drawTiles(me) {
+    const box = $("tiles"); box.innerHTML = "";
+    for (const s of SECTIONS) {
+      const allowed = !s.roles || s.roles.includes(me.role);
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "tile";
+      const off = s.soon || !allowed;
+      if (off) b.setAttribute("aria-disabled", "true");
+      b.innerHTML = `<span class="t"></span><span class="d"></span><span class="s"></span>`;
+      b.querySelector(".t").textContent = s.title;
+      b.querySelector(".d").textContent = s.desc;
+      b.querySelector(".s").textContent = s.soon ? "Coming next" : allowed ? "Open →" : "Owners and managers";
+      if (!off) b.onclick = () => openSection(s);
+      box.appendChild(b);
+    }
+  }
+  function openSection(s) {
+    $("sectionTitle").textContent = s.title;
+    $("sectionFrame").src = s.url;
+    show("section");
+    history.pushState({ section: s.id }, "", "#" + s.id);
+  }
+  function closeSection() {
+    $("sectionFrame").src = "about:blank";
+    show("home");
+  }
+  $("homeBtn").onclick = () => { if (location.hash) history.back(); else closeSection(); };
+  addEventListener("popstate", () => { if (!$("section").hidden) closeSection(); });
+
+  // ---------- sign in / create account / reset ----------
+  const setMsg = (t, bad) => { const m = $("signinMsg"); m.textContent = t; m.classList.toggle("bad", !!bad); };
+  $("modeBtn").onclick = () => {
+    signup = !signup;
+    $("signinBtn").textContent = signup ? "Create account" : "Sign in";
+    $("modeBtn").textContent = signup ? "Already have an account? Sign in" : "First time? Create your account";
+    $("signinIntro").textContent = signup ? "Choose a password of at least 8 characters. The owner gives your account its role afterwards." : "Sign in with your work email and password.";
+    $("password").autocomplete = signup ? "new-password" : "current-password";
+    setMsg("");
+  };
+  $("signinForm").onsubmit = async e => {
+    e.preventDefault();
+    const email = $("email").value.trim(), password = $("password").value;
+    $("signinBtn").disabled = true; setMsg(signup ? "Creating your account…" : "Signing in…");
+    try {
+      if (signup) {
+        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+        if (error) throw error;
+        if (data.session) { setMsg(""); await refresh(data.session); }
+        else setMsg("Account created. If an email arrives, open its link; otherwise the owner will confirm the account. Then sign in here.");
+      } else {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setMsg(""); $("password").value = "";
+        await refresh(data.session);
+      }
+    } catch (err) {
+      const m = String(err && err.message || err);
+      setMsg(/confirm/i.test(m) ? "This account hasn't been confirmed yet. Ask the owner to confirm it, then try again."
+        : /invalid login/i.test(m) ? "That email and password don't match." : m, true);
+    } finally { $("signinBtn").disabled = false; }
+  };
+  $("forgotBtn").onclick = async () => {
+    const email = $("email").value.trim();
+    if (!email) { setMsg("Type your email above first, then press Forgot password.", true); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    setMsg(error ? error.message : "If that email has an account, a reset link is on its way.", !!error);
+  };
+  $("newpwForm").onsubmit = async e => {
+    e.preventDefault();
+    const { error } = await sb.auth.updateUser({ password: $("newPassword").value });
+    $("newpwMsg").textContent = error ? error.message : "Saved. Opening the Workspace…";
+    if (!error) { const { data } = await sb.auth.getSession(); await refresh(data.session); }
+  };
+  async function signOut() {
+    await sb.auth.signOut();
+    try { indexedDB.deleteDatabase("reliant-analytics"); } catch {}   // drop the saved Analytics copy on this device
+    $("sectionFrame").src = "about:blank";
+    show("signin");
+  }
+  document.querySelectorAll("[data-signout]").forEach(b => b.onclick = signOut);
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") { show("newpw"); return; }
+    if (event === "SIGNED_OUT") { window.RELIANT.staff = null; show("signin"); }
+  });
+  sb.auth.getSession().then(({ data }) => refresh(data.session));
+})();
+</script>
+</body>
+</html>
