@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders &amp; Receiving</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+<style>
+.seltop { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar2 { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); min-width: 80px; }
+.bar2 i { display: block; height: 100%; }
+.drawer .card { width: min(720px, 100%); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Orders &amp; Receiving</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+    <button class="btn" id="btnRefresh" type="button">Refresh</button>
+  </header>
+
+  <div class="notice bad" id="err" hidden></div>
+  <p class="notice">View only for now. Orders and boxes are still entered and received in the current Workspace; they show up here after the nightly copy.</p>
+
+  <section class="kpis" id="kpis" aria-label="Orders totals"></section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" data-t="open">Waiting <span class="n" id="nOpen"></span></button>
+    <button type="button" role="tab" data-t="short">Shortages <span class="n" id="nShort"></span></button>
+    <button type="button" role="tab" data-t="all">All orders <span class="n" id="nAll"></span></button>
+  </nav>
+
+  <section class="panel">
+    <div class="ph">
+      <div><h2 id="listTitle">Orders</h2><span class="sub" id="listSub"></span></div>
+      <div class="ctrls">
+        <select class="seltop" id="sup" aria-label="Supplier"></select>
+        <input type="search" class="search" id="q" placeholder="Order #, title or ISBN" aria-label="Search orders" autocomplete="off">
+      </div>
+    </div>
+    <div class="tbl" id="tbl"></div>
+    <div id="more"></div>
+    <p class="how" id="note"></p>
+  </section>
+</div>
+
+<div class="drawer" id="drawer" hidden><div class="card" id="drawerCard" role="dialog" aria-modal="true" aria-label="Order detail"></div></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const money = v => v == null || !isFinite(v) ? "–" : (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dfmt = s => { if (!s) return "–"; const [y, m, d] = s.split("-").map(Number); return `${MON[m - 1]} ${d}, ${y}`; };
+  const daysAgo = s => { if (!s) return NaN; const [y, m, d] = s.split("-").map(Number); return Math.round((Date.now() - Date.UTC(y, m - 1, d)) / 864e5); };
+  const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+
+  let D = null, orders = [];
+  const S = { tab: "open", q: "", sup: "", shown: 50 };
+  const SUPNAME = c => (D && D.suppliers && D.suppliers[c] && D.suppliers[c][0]) || c;
+
+  function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
+  async function load() {
+    const c = sb();
+    if (!c) { setStatus("err", "Not signed in"); $("err").hidden = false; $("err").textContent = "Open Orders & Receiving from the Reliant Workspace home screen."; return; }
+    $("btnRefresh").disabled = true; setStatus("busy", "Loading from the Reliant database…");
+    const { data, error } = await c.rpc("orders_export");
+    $("btnRefresh").disabled = false;
+    if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
+    $("err").hidden = true; D = data;
+    const byId = new Map();
+    for (const [id, num, sup, date, notes, ship] of D.orders) byId.set(id, { id, num, sup, date, notes, ship, lines: [], damaged: [] });
+    for (const l of D.lines) {
+      const o = byId.get(l[0]); if (!o) continue;
+      o.lines.push({ isbn: l[1], title: l[2], ordered: l[3], expected: l[4], received: +l[5] || 0, last: l[6], route: +l[7] || 0,
+        short: +l[8] || 0, shortStatus: l[9], days: l[10], late: !!l[11], cost: l[12], est: !!l[13] });
+    }
+    const byNum = new Map([...byId.values()].map(o => [o.num, o]));
+    for (const [num, isbn, qty, type, on, notes] of (D.damaged || [])) { const o = byNum.get(num); if (o) o.damaged.push({ isbn, qty, type, on, notes }); }
+    orders = [...byId.values()].map(o => {
+      const t = f => o.lines.reduce((a, l) => a + f(l), 0);
+      const units = t(l => +l.ordered || 0), rec = t(l => l.received), route = t(l => l.route), short = t(l => l.short);
+      const shortOpen = o.lines.filter(l => l.short > 0 && (l.shortStatus || "waiting") === "waiting").reduce((a, l) => a + l.short, 0);
+      const value = D.costs ? t(l => (+l.ordered || 0) * (+l.cost || 0)) : null;
+      const last = o.lines.reduce((m, l) => l.last && (!m || l.last > m) ? l.last : m, null);
+      const status = route === 0 ? (short > 0 ? "Received short" : "Received") : rec > 0 ? "Partly received" : "On the way";
+      return { ...o, units, rec, route, short, shortOpen, value, last, status, late: o.lines.some(l => l.late), waiting: route ? daysAgo(o.date) : null, est: o.lines.some(l => l.est) };
+    });
+    const at = D.synced_at ? new Date(D.synced_at) : null;
+    setStatus("live", `${int(orders.length)} orders · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+    const sups = [...new Set(orders.map(o => o.sup))].sort((a, b) => SUPNAME(a).localeCompare(SUPNAME(b)));
+    $("sup").innerHTML = `<option value="">All suppliers</option>` + sups.map(c => `<option value="${esc(c)}">${esc(SUPNAME(c))}</option>`).join("");
+    $("sup").value = sups.includes(S.sup) ? S.sup : "";
+    render();
+  }
+
+  const pillFor = o => o.status === "Received" ? `<span class="pill ok">Received</span>` : o.status === "Received short" ? `<span class="pill">Received short</span>`
+    : `<span class="pill${o.late ? " bad" : ""}">${o.late ? "Late · " : ""}${o.status}</span>`;
+  function inTab(o) { return S.tab === "open" ? o.route > 0 : S.tab === "short" ? o.shortOpen > 0 : true; }
+  function render() {
+    if (!D) return;
+    const open = orders.filter(o => o.route > 0), shorts = orders.filter(o => o.shortOpen > 0);
+    const recent = orders.flatMap(o => o.lines.filter(l => l.last && daysAgo(l.last) <= 30 && !l.est));
+    const k = [
+      ["Orders waiting", int(open.length), `${int(open.reduce((a, o) => a + o.route, 0))} books on the way`, "open"],
+      ["Late", int(open.filter(o => o.late).length), "past the supplier’s usual wait", "open"],
+      ["Short, still expected", int(shorts.reduce((a, o) => a + o.shortOpen, 0)), `books across ${int(shorts.length)} order${shorts.length === 1 ? "" : "s"}`, "short"],
+      ["Received, last 30 days", int(recent.reduce((a, l) => a + l.received, 0)), "books with a received date", "all"],
+      ...(D.costs ? [["On order, cost", money(open.reduce((a, o) => a + o.lines.reduce((b, l) => b + l.route * (+l.cost || 0), 0), 0)), "of books still on the way", "open"]] : [])
+    ];
+    $("kpis").innerHTML = k.map(([kk, v, d, go]) => `<button type="button" class="kpi" data-go="${go}"><span class="k">${kk}</span><span class="v">${v}</span><span class="d">${d}</span></button>`).join("");
+    $("nOpen").textContent = int(open.length); $("nShort").textContent = int(shorts.length); $("nAll").textContent = int(orders.length);
+    document.querySelectorAll("#tabs [data-t]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === S.tab)));
+    const q = S.q.trim().toLowerCase();
+    let list = orders.filter(inTab).filter(o => !S.sup || o.sup === S.sup)
+      .filter(o => !q || o.num.toLowerCase().includes(q) || o.lines.some(l => (l.title + " " + l.isbn).toLowerCase().includes(q)));
+    if (S.tab === "open") list.sort((a, b) => (b.late - a.late) || String(a.date).localeCompare(String(b.date)));
+    $("listTitle").textContent = S.tab === "open" ? "Waiting to arrive" : S.tab === "short" ? "Arrived short" : "All orders";
+    $("listSub").textContent = `${int(list.length)} order${list.length === 1 ? "" : "s"}`;
+    $("note").textContent = S.tab === "open" ? "Oldest first, late orders at the top. Late means waiting longer than that supplier usually takes."
+      : S.tab === "short" ? "Orders where fewer books arrived than were expected, and the rest is still marked as possibly coming."
+      : "Newest first. Click an order to see every title on it.";
+    const page = list.slice(0, S.shown);
+    $("tbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Order</th><th class="plain">Ordered</th><th class="plain">Status</th><th class="plain num hide-sm">Titles</th><th class="plain num">Books</th><th class="plain num">Received</th><th class="plain num">${S.tab === "short" ? "Short" : "On the way"}</th>${D.costs ? '<th class="plain num hide-sm">Cost</th>' : ""}</tr></thead><tbody>${
+      page.map(o => `<tr class="trow" tabindex="0" data-id="${o.id}"><td><div class="t">${esc(o.num)}</div><div class="a">${esc(SUPNAME(o.sup))}</div></td>
+        <td>${dfmt(o.date)}${o.waiting != null ? `<div class="a">${int(o.waiting)} days ago</div>` : o.last ? `<div class="a">received ${dfmt(o.last)}</div>` : ""}</td>
+        <td>${pillFor(o)}</td><td class="num hide-sm">${int(o.lines.length)}</td><td class="num">${int(o.units)}</td><td class="num">${int(o.rec)}</td>
+        <td class="num">${S.tab === "short" ? int(o.shortOpen) : o.route ? `<b>${int(o.route)}</b>` : "–"}</td>${D.costs ? `<td class="num hide-sm">${money(o.value)}</td>` : ""}</tr>`).join("")}</tbody></table>`
+      : `<p class="empty">${q || S.sup ? "No orders match." : S.tab === "open" ? "Nothing is waiting to arrive." : S.tab === "short" ? "No shortages waiting." : "No orders yet."}</p>`;
+    $("more").innerHTML = list.length > S.shown ? `<button type="button" class="btn" id="moreBtn">Show ${int(Math.min(50, list.length - S.shown))} more</button>` : "";
+  }
+  function openOrder(id) {
+    const o = orders.find(x => x.id === +id); if (!o) return;
+    const lines = o.lines.slice().sort((a, b) => (b.route - a.route) || (b.short - a.short) || a.title.localeCompare(b.title));
+    const pct = o.units ? o.rec / o.units * 100 : 0;
+    $("drawerCard").innerHTML = `
+      <div><button type="button" class="btn" id="closeD">✕ Close</button></div>
+      <div><span class="eyebrow">${esc(SUPNAME(o.sup))}</span><h2>${esc(o.num)}</h2><div class="sub">Ordered ${dfmt(o.date)} · ${pillFor(o)}</div></div>
+      <div class="bar2" role="img" aria-label="${int(o.rec)} of ${int(o.units)} received"><i style="width:${pct.toFixed(1)}%;background:var(--accent)"></i></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k">Books</span><span class="v">${int(o.units)}</span><span class="d">${int(o.lines.length)} titles</span></div>
+        <div class="kpi"><span class="k">Received</span><span class="v">${int(o.rec)}</span><span class="d">${o.last ? "last " + dfmt(o.last) : "&nbsp;"}</span></div>
+        <div class="kpi"><span class="k">On the way</span><span class="v">${int(o.route)}</span><span class="d">${o.waiting != null ? int(o.waiting) + " days waiting" : "&nbsp;"}</span></div>
+        ${D.costs ? `<div class="kpi"><span class="k">Cost</span><span class="v">${money(o.value)}</span><span class="d">landed</span></div>` : ""}
+      </div>
+      <div class="tbl"><table><thead><tr><th class="plain">Title</th><th class="plain num">Ordered</th><th class="plain num">Received</th><th class="plain num">Waiting</th>${D.costs ? '<th class="plain num">Each</th>' : ""}</tr></thead><tbody>${
+        lines.map(l => `<tr><td><div class="t">${esc(l.title)}</div><div class="a">${esc(l.isbn)}${l.last ? " · received " + dfmt(l.last) + (l.est ? " (date estimated)" : "") : ""}</div></td>
+          <td class="num">${int(l.expected)}</td><td class="num">${int(l.received)}</td>
+          <td class="num">${l.route ? `<b>${int(l.route)}</b>${l.late ? ' <span class="pill bad">late</span>' : ""}` : l.short ? `<span class="pill">${int(l.short)} short${l.shortStatus && l.shortStatus !== "waiting" ? " · " + esc(l.shortStatus.replace("_", " ")) : ""}</span>` : "–"}</td>
+          ${D.costs ? `<td class="num">${money(l.cost)}</td>` : ""}</tr>`).join("")}</tbody></table></div>
+      ${o.damaged.length ? `<div><h3 style="margin:0 0 6px;font:600 15px var(--f-ui)">Damaged on arrival</h3>${o.damaged.map(d => `<div class="a">${int(d.qty)} × ${esc((o.lines.find(l => l.isbn === d.isbn) || {}).title || d.isbn)} · ${esc(d.type)} · ${dfmt(d.on)}</div>`).join("")}</div>` : ""}
+      ${o.notes && !/^Imported from Purchase Ledger/.test(o.notes) ? `<p class="how">${esc(o.notes)}</p>` : o.est ? `<p class="how">Some received dates on this order were estimated when the records were moved over.</p>` : ""}`;
+    $("drawer").hidden = false; $("closeD").focus();
+  }
+  const closeDrawer = () => { $("drawer").hidden = true; };
+
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S.tab = b.dataset.t; S.shown = 50; render(); });
+  $("kpis").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (!b) return; S.tab = b.dataset.go; S.shown = 50; render(); });
+  $("sup").onchange = e => { S.sup = e.target.value; S.shown = 50; render(); };
+  $("q").addEventListener("input", e => { S.q = e.target.value; S.shown = 50; render(); });
+  $("tbl").addEventListener("click", e => { const r = e.target.closest(".trow"); if (r) openOrder(r.dataset.id); });
+  $("tbl").addEventListener("keydown", e => { if (e.key === "Enter") { const r = e.target.closest(".trow"); if (r) openOrder(r.dataset.id); } });
+  $("more").addEventListener("click", e => { if (e.target.id === "moreBtn") { S.shown += 50; render(); } });
+  $("drawer").addEventListener("click", e => { if (e.target === $("drawer") || e.target.closest("#closeD")) closeDrawer(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+  $("btnRefresh").onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>
