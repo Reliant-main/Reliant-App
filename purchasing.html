@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purchasing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+<style>
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fld > label, .fld > .lab { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.fld input, .fld select { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; }
+.pair { display: flex; gap: 6px; align-items: center; }
+.pair span { color: var(--muted); font-size: 13px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.btn.primary { background: var(--accent); color: #0e1915; border-color: var(--accent); font-weight: 600; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ranks { display: flex; flex-wrap: wrap; gap: 6px; }
+.ranks button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.ranks button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.rankhelp { font-size: 13px; color: var(--ink-2); margin: 0; }
+td.rk { color: var(--muted); font-family: var(--f-mono); }
+tr.off td { opacity: .4; text-decoration: line-through; }
+.x { font: 600 12px var(--f-ui); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; cursor: pointer; }
+.x:hover { color: var(--ink); border-color: var(--accent); }
+.qty { width: 64px; font: 500 14px var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; text-align: right; }
+.sumline { font-size: 14px; color: var(--ink-2); }
+.sumline b { color: var(--ink); }
+.drawer .card { width: min(820px, 100%); }
+details.more summary { cursor: pointer; font: 600 14px var(--f-ui); color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Purchasing</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+  </header>
+  <div class="notice bad" id="err" hidden></div>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" data-t="build">Build a buy list</button>
+    <button type="button" role="tab" data-t="saved">Saved lists <span class="n" id="nSaved"></span></button>
+  </nav>
+
+  <!-- BUILD -->
+  <div data-pane="build" style="display:contents">
+    <section class="panel">
+      <div class="ph"><div><h2>1. Rank titles by</h2></div></div>
+      <div class="ranks" id="ranks"></div>
+      <p class="rankhelp" id="rankHelp"></p>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><div><h2>2. Guidelines</h2><span class="sub">Leave a box empty to skip that guideline</span></div><button type="button" class="btn" id="resetBtn">Clear guidelines</button></div>
+      <div class="grid">
+        <div class="fld"><label for="period">Sales period</label>
+          <select id="period"><option value="30">Last 30 days</option><option value="60">Last 60 days</option><option value="90" selected>Last 90 days</option><option value="180">Last 180 days</option><option value="0">All time</option></select></div>
+        <div class="fld"><label for="topN">How many titles</label><input id="topN" type="number" min="1" step="1" value="50" inputmode="numeric"></div>
+        <div class="fld"><span class="lab">Price paid (last cost)</span><div class="pair"><input id="paidMin" type="number" step="0.01" placeholder="min" aria-label="Price paid, minimum"><span>to</span><input id="paidMax" type="number" step="0.01" placeholder="max" aria-label="Price paid, maximum"></div></div>
+        <div class="fld"><span class="lab">Average sale price</span><div class="pair"><input id="saleMin" type="number" step="0.01" placeholder="min" aria-label="Sale price, minimum"><span>to</span><input id="saleMax" type="number" step="0.01" placeholder="max" aria-label="Sale price, maximum"></div></div>
+        <div class="fld"><label for="grMin">Goodreads score at least</label><input id="grMin" type="number" step="0.01" min="0" max="5" placeholder="e.g. 3.8"></div>
+        <div class="fld"><span class="lab">Spice level</span><div class="pair"><input id="spMin" type="number" step="1" min="0" max="5" placeholder="min" aria-label="Spice, minimum"><span>to</span><input id="spMax" type="number" step="1" min="0" max="5" placeholder="max" aria-label="Spice, maximum"></div></div>
+        <div class="fld"><label for="profMin">Avg profit per book at least</label><input id="profMin" type="number" step="0.01" placeholder="$"></div>
+        <div class="fld"><label for="marMin">Margin at least</label><input id="marMin" type="number" step="1" placeholder="%"></div>
+        <div class="fld"><label for="soldMin">Copies sold at least</label><input id="soldMin" type="number" step="1" min="0" value="3" inputmode="numeric"></div>
+        <div class="fld"><label for="stockMax">On hand + on order at most</label><input id="stockMax" type="number" step="1" min="0" placeholder="e.g. 5" inputmode="numeric"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="skipRecent" checked> Leave out titles already on my last 5 saved lists</label>
+      <label class="check"><input type="checkbox" id="onlyCost" checked> Only titles with a known price paid</label>
+      <details class="more"><summary>Quantities and spending</summary>
+        <div class="grid" style="margin-top:12px">
+          <label class="check" style="align-self:end"><input type="checkbox" id="wantQty"> Suggest how many to buy</label>
+          <div class="fld"><label for="weeks">Buy enough for (weeks)</label><input id="weeks" type="number" step="1" min="1" value="4" inputmode="numeric"></div>
+          <div class="fld"><label for="minQty">At least this many each</label><input id="minQty" type="number" step="1" min="1" value="1" inputmode="numeric"></div>
+          <div class="fld"><label for="cap">Spend no more than ($)</label><input id="cap" type="number" step="1" min="0" placeholder="no limit"></div>
+        </div>
+        <p class="how" style="margin-top:8px">Suggested quantity = sales per week × weeks, minus what’s on hand and on order, never below the minimum. With a spend limit, a title that would push the total over it is skipped and the next one down is tried.</p>
+      </details>
+    </section>
+
+    <section class="panel">
+      <div class="ph">
+        <div><h2>3. Your list</h2><span class="sub" id="resSub"></span></div>
+        <div class="ctrls"><button type="button" class="btn" id="csvBtn">Download CSV</button><button type="button" class="btn primary" id="saveBtn">Save list</button></div>
+      </div>
+      <p class="sumline" id="sumLine"></p>
+      <div class="tbl" id="resTbl"></div>
+      <p class="how">Click ✕ to drop a title from this list; the next one moves up. Hit rate is copies sold out of times shown (sales plus R’s). Requests counts open customer requests for that ISBN.</p>
+    </section>
+  </div>
+
+  <!-- SAVED -->
+  <section class="panel" data-pane="saved" hidden>
+    <div class="ph"><div><h2>Saved lists</h2><span class="sub">Newest first</span></div></div>
+    <div class="tbl" id="savedTbl"></div>
+  </section>
+</div>
+
+<div class="drawer" id="drawer" hidden><div class="card" id="drawerCard" role="dialog" aria-modal="true" aria-label="Buy list"></div></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const money = v => v == null || !isFinite(v) ? "–" : (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct = v => v == null || !isFinite(v) ? "–" : Math.round(v) + "%";
+  const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+  const store = { get: k => { try { return JSON.parse(localStorage.getItem("buy." + k)); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem("buy." + k, JSON.stringify(v)); } catch {} } };
+
+  const RANKS = [
+    ["balanced", "Balanced", "A mix of profit per book, sales speed, hit rate and margin, each scored against the other titles."],
+    ["profit_per_book", "Profit per book", "Highest average profit on each copy sold."],
+    ["total_profit", "Total profit", "Most profit made in the period, all copies together."],
+    ["hit_rate", "Hit rate", "Sells most often when shown (copies sold out of times shown)."],
+    ["sales_speed", "Sales speed", "Most copies sold per 30 days."],
+    ["margin", "Margin", "Highest share of each sale kept as profit after fees and cost."],
+    ["restock_urgency", "Restock urgency", "Will run out soonest at its current pace (fewest days of stock left, counting what’s on order)."]
+  ];
+  const IDS = ["period", "topN", "paidMin", "paidMax", "saleMin", "saleMax", "grMin", "spMin", "spMax", "profMin", "marMin", "soldMin", "stockMax", "weeks", "minQty", "cap"];
+  const CHK = ["skipRecent", "onlyCost", "wantQty"];
+  const S = { tab: "build", rank: store.get("rank") || "balanced", dropped: new Set(), data: [], recent: new Set(), lists: [], period: null };
+
+  function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
+  const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : null; };
+  const isoDaysAgo = n => { const d = new Date(Date.now() - (n - 1) * 864e5); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+
+  async function loadStats() {
+    const c = sb(); if (!c) { setStatus("err", "Not signed in"); return; }
+    const p = +$("period").value;
+    setStatus("busy", "Loading title numbers…");
+    const { data, error } = await c.rpc("title_buy_stats", { p_start: p ? isoDaysAgo(p) : null, p_end: null });
+    if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
+    $("err").hidden = true;
+    S.data = (data || []).map(r => ({ ...r, gr: r.gr_score == null ? null : +r.gr_score, spice: r.spice == null || r.spice === "" ? null : +r.spice,
+      sold: +r.copies_sold || 0, avgSale: r.avg_sale_price == null ? null : +r.avg_sale_price, avgProfit: r.avg_profit == null ? null : +r.avg_profit,
+      totProfit: +r.total_profit || 0, margin: r.margin_pct == null ? null : +r.margin_pct, hit: r.hit_rate_pct == null ? null : +r.hit_rate_pct,
+      speed: r.sold_per_30_days == null ? 0 : +r.sold_per_30_days, hand: +r.on_hand || 0, order: +r.on_order || 0,
+      cost: r.last_cost == null ? null : +r.last_cost, req: +r.open_requests || 0, rej: +r.rejects || 0 }));
+    S.period = p;
+    setStatus("live", `${int(S.data.length)} titles with sales, R’s or stock · ${p ? "last " + p + " days" : "all time"}`);
+    build();
+  }
+  async function loadLists() {
+    const c = sb(); if (!c) return;
+    const { data, error } = await c.from("buy_lists").select("id,name,built_at,built_by,ranked_by,period_start,period_end,spend_cap,status,notes,buy_list_lines(isbn,rank,suggested_qty,est_line_cost)").order("built_at", { ascending: false });
+    if (error) { $("err").hidden = false; $("err").textContent = error.message; return; }
+    S.lists = data || [];
+    S.recent = new Set(S.lists.slice(0, 5).flatMap(l => (l.buy_list_lines || []).map(x => x.isbn)));
+    $("nSaved").textContent = int(S.lists.length);
+    if (S.tab === "saved") renderSaved();
+  }
+
+  // ---------- ranking ----------
+  function pctRank(list, f) { const v = list.map(f).filter(x => x != null && isFinite(x)).sort((a, b) => a - b); return x => { if (x == null || !isFinite(x) || !v.length) return 0; let lo = 0, hi = v.length; while (lo < hi) { const m = (lo + hi) >> 1; if (v[m] <= x) lo = m + 1; else hi = m; } return lo / v.length; }; }
+  function candidates() {
+    const f = {
+      paidMin: num("paidMin"), paidMax: num("paidMax"), saleMin: num("saleMin"), saleMax: num("saleMax"), grMin: num("grMin"),
+      spMin: num("spMin"), spMax: num("spMax"), profMin: num("profMin"), marMin: num("marMin"), soldMin: num("soldMin"), stockMax: num("stockMax")
+    };
+    const skip = $("skipRecent").checked, onlyCost = $("onlyCost").checked;
+    return S.data.filter(r => {
+      if (S.dropped.has(r.isbn)) return false;
+      if (skip && S.recent.has(r.isbn)) return false;
+      if (onlyCost && r.cost == null) return false;
+      if (f.paidMin != null && !(r.cost != null && r.cost >= f.paidMin)) return false;
+      if (f.paidMax != null && !(r.cost != null && r.cost <= f.paidMax)) return false;
+      if (f.saleMin != null && !(r.avgSale != null && r.avgSale >= f.saleMin)) return false;
+      if (f.saleMax != null && !(r.avgSale != null && r.avgSale <= f.saleMax)) return false;
+      if (f.grMin != null && !(r.gr != null && r.gr >= f.grMin)) return false;          // missing rating doesn't qualify
+      if (f.spMin != null && !(r.spice != null && r.spice >= f.spMin)) return false;
+      if (f.spMax != null && !(r.spice != null && r.spice <= f.spMax)) return false;
+      if (f.profMin != null && !(r.avgProfit != null && r.avgProfit >= f.profMin)) return false;
+      if (f.marMin != null && !(r.margin != null && r.margin >= f.marMin)) return false;
+      if (f.soldMin != null && r.sold < f.soldMin) return false;
+      if (f.stockMax != null && r.hand + r.order > f.stockMax) return false;
+      return true;
+    });
+  }
+  function rankList(list) {
+    const k = S.rank;
+    const cover = r => r.speed > 0 ? (r.hand + r.order) / (r.speed / 30) : Infinity;
+    if (k === "balanced") {
+      const pp = pctRank(list, r => r.avgProfit), ps = pctRank(list, r => r.speed), ph = pctRank(list, r => r.hit), pm = pctRank(list, r => r.margin);
+      list.forEach(r => r.score = (pp(r.avgProfit) + ps(r.speed) + ph(r.hit) + pm(r.margin)) / 4);
+      return list.sort((a, b) => b.score - a.score);
+    }
+    const key = { profit_per_book: r => r.avgProfit, total_profit: r => r.totProfit, hit_rate: r => r.hit, sales_speed: r => r.speed, margin: r => r.margin }[k];
+    if (k === "restock_urgency") return list.filter(r => r.speed > 0).sort((a, b) => cover(a) - cover(b) || b.speed - a.speed);
+    return list.sort((a, b) => ((key(b) ?? -Infinity) - (key(a) ?? -Infinity)) || b.sold - a.sold);
+  }
+  let result = [];
+  function build() {
+    if (!S.data.length) { $("resTbl").innerHTML = '<p class="empty">Loading…</p>'; return; }
+    const ranked = rankList(candidates());
+    const n = Math.max(1, Math.round(num("topN") || 50));
+    const wantQty = $("wantQty").checked, weeks = num("weeks") || 4, minQ = Math.max(1, Math.round(num("minQty") || 1)), cap = num("cap");
+    result = []; let spend = 0, capped = 0;
+    for (const r of ranked) {
+      if (result.length >= n) break;
+      const qty = wantQty ? Math.max(minQ, Math.ceil(r.speed / 30 * 7 * weeks - r.hand - r.order)) : null;
+      const line = wantQty && r.cost != null ? qty * r.cost : r.cost;
+      if (cap != null && line != null && spend + line > cap) { capped++; continue; }
+      spend += line || 0;
+      result.push({ ...r, qty, line });
+    }
+    const days = S.period ? `last ${S.period} days` : "all time";
+    $("resSub").textContent = `${int(result.length)} of ${int(ranked.length)} qualifying titles · ranked by ${RANKS.find(x => x[0] === S.rank)[1].toLowerCase()} · ${days}`;
+    $("sumLine").innerHTML = result.length ? `${wantQty ? `<b>${int(result.reduce((a, r) => a + (r.qty || 0), 0))}</b> books · ` : ""}estimated <b>${money(spend)}</b>${wantQty ? "" : " for one of each"}${cap != null ? ` of your ${money(cap)} limit${capped ? ` · ${int(capped)} title${capped === 1 ? "" : "s"} skipped to stay under it` : ""}` : ""}${S.dropped.size ? ` · ${int(S.dropped.size)} dropped <button type="button" class="x" id="undrop">bring back</button>` : ""}` : "";
+    $("resTbl").innerHTML = result.length ? `<table><thead><tr><th class="plain">#</th><th class="plain">Title</th><th class="plain num">Sold</th><th class="plain num">Avg sale</th><th class="plain num">Avg profit</th><th class="plain num hide-sm">Margin</th><th class="plain num hide-sm">Hit rate</th><th class="plain num hide-sm">Per 30 days</th><th class="plain num">On hand</th><th class="plain num hide-sm">On order</th><th class="plain num">Paid</th><th class="plain num hide-sm">GR</th><th class="plain num hide-sm">Spice</th>${wantQty ? '<th class="plain num">Buy</th>' : ""}<th class="plain"></th></tr></thead><tbody>${
+      result.map((r, i) => `<tr data-isbn="${esc(r.isbn)}"><td class="rk">${i + 1}</td><td><div class="t">${esc(r.title)}</div><div class="a">${esc(r.author || r.isbn)}${r.req ? ` · <span class="pill">${int(r.req)} request${r.req === 1 ? "" : "s"}</span>` : ""}</div></td>
+        <td class="num">${int(r.sold)}</td><td class="num">${money(r.avgSale)}</td><td class="num">${money(r.avgProfit)}</td><td class="num hide-sm">${pct(r.margin)}</td>
+        <td class="num hide-sm">${pct(r.hit)}${r.rej ? `<div class="a">${int(r.rej)} R</div>` : ""}</td><td class="num hide-sm">${r.speed.toFixed(1)}</td><td class="num">${int(r.hand)}</td><td class="num hide-sm">${r.order ? int(r.order) : "–"}</td>
+        <td class="num">${money(r.cost)}</td><td class="num hide-sm">${r.gr != null ? r.gr.toFixed(2) : "–"}</td><td class="num hide-sm">${r.spice != null ? r.spice : "–"}</td>
+        ${wantQty ? `<td class="num"><input class="qty" type="number" min="0" step="1" value="${r.qty}" aria-label="Quantity for ${esc(r.title)}" data-q="${esc(r.isbn)}"></td>` : ""}
+        <td><button type="button" class="x" data-drop="${esc(r.isbn)}" aria-label="Drop ${esc(r.title)}">✕</button></td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">No titles meet these guidelines. Try loosening one.</p>`;
+    store.set("rank", S.rank); store.set("f", Object.fromEntries([...IDS.map(id => [id, $(id).value]), ...CHK.map(id => [id, $(id).checked])]));
+  }
+  function renderRanks() {
+    $("ranks").innerHTML = RANKS.map(([k, l]) => `<button type="button" data-r="${k}" aria-pressed="${S.rank === k}">${l}</button>`).join("");
+    $("rankHelp").textContent = RANKS.find(x => x[0] === S.rank)[2];
+  }
+
+  // ---------- save / export ----------
+  function csvOf(rows, withQty) {
+    const head = ["Rank", "ISBN", "Title", "Author", ...(withQty ? ["Quantity"] : []), "Last price paid", "Copies sold", "Avg sale", "Avg profit", "On hand", "On order"];
+    const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    return [head.map(q).join(","), ...rows.map((r, i) => [i + 1, r.isbn, r.title, r.author, ...(withQty ? [r.qty] : []), r.cost ?? "", r.sold, r.avgSale ?? "", r.avgProfit ?? "", r.hand, r.order].map(q).join(","))].join("\r\n");
+  }
+  function download(name, text) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  const syncQty = () => document.querySelectorAll("#resTbl [data-q]").forEach(inp => { const r = result.find(x => x.isbn === inp.dataset.q); if (r) { r.qty = Math.max(0, Math.round(+inp.value || 0)); r.line = r.cost != null ? r.qty * r.cost : null; } });
+  $("csvBtn").onclick = () => { syncQty(); download(`buy-list-${new Date().toISOString().slice(0, 10)}.csv`, csvOf(result, $("wantQty").checked)); };
+  $("saveBtn").onclick = async () => {
+    syncQty();
+    if (!result.length) return;
+    const name = prompt("Name this list", `${RANKS.find(x => x[0] === S.rank)[1]} · ${new Date().toLocaleDateString()}`);
+    if (name == null) return;
+    const c = sb(); $("saveBtn").disabled = true;
+    try {
+      const p = S.period;
+      const { data: list, error } = await c.from("buy_lists").insert({
+        name: name.trim() || "Buy list", ranked_by: S.rank, period_start: p ? isoDaysAgo(p) : null, period_end: null,
+        spend_cap: num("cap"), status: "Draft", settings: store.get("f") || {}
+      }).select("id").single();
+      if (error) throw error;
+      const lines = result.map((r, i) => ({ buy_list_id: list.id, rank: i + 1, isbn: r.isbn, suggested_qty: $("wantQty").checked ? r.qty : null,
+        est_cost_per_book: r.cost, copies_sold: r.sold, avg_sale_price: r.avgSale, avg_profit: r.avgProfit, margin_pct: r.margin,
+        rejects: r.rej, on_hand: r.hand, on_order: r.order, gr_score: r.gr, spice: r.spice == null ? null : String(r.spice) }));
+      const { error: e2 } = await c.from("buy_list_lines").insert(lines);
+      if (e2) { await c.from("buy_lists").delete().eq("id", list.id); throw e2; }
+      $("saveBtn").textContent = "Saved ✓"; setTimeout(() => { $("saveBtn").textContent = "Save list"; }, 2500);
+      await loadLists();
+    } catch (e) { alert("Couldn’t save: " + (e.message || e)); }
+    finally { $("saveBtn").disabled = false; }
+  };
+
+  // ---------- saved lists ----------
+  const STAT = ["Draft", "Sent", "Ordered", "Archived"];
+  function renderSaved() {
+    const L = S.lists;
+    $("savedTbl").innerHTML = L.length ? `<table><thead><tr><th class="plain">List</th><th class="plain">Built</th><th class="plain num">Titles</th><th class="plain num">Books</th><th class="plain num">Est. cost</th><th class="plain">Status</th></tr></thead><tbody>${
+      L.map(l => { const ln = l.buy_list_lines || []; const q = ln.reduce((a, x) => a + (x.suggested_qty || 0), 0); const cost = ln.reduce((a, x) => a + (+x.est_line_cost || 0), 0);
+        return `<tr class="trow" tabindex="0" data-id="${l.id}"><td><div class="t">${esc(l.name)}</div><div class="a">${esc((RANKS.find(x => x[0] === l.ranked_by) || [, l.ranked_by])[1])}${l.built_by ? " · " + esc(l.built_by) : ""}</div></td>
+        <td>${new Date(l.built_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}</td><td class="num">${int(ln.length)}</td><td class="num">${q ? int(q) : "–"}</td><td class="num">${cost ? money(cost) : "–"}</td>
+        <td><span class="pill${l.status === "Ordered" ? " ok" : ""}">${esc(l.status)}</span></td></tr>`; }).join("")}</tbody></table>`
+      : `<p class="empty">No saved lists yet. Build one and press Save list.</p>`;
+  }
+  async function openList(id) {
+    const c = sb();
+    const { data: l, error } = await c.from("buy_lists").select("*, buy_list_lines(*, books(title, author))").eq("id", id).single();
+    if (error) { alert(error.message); return; }
+    const ln = (l.buy_list_lines || []).sort((a, b) => a.rank - b.rank);
+    const withQty = ln.some(x => x.suggested_qty != null);
+    $("drawerCard").innerHTML = `
+      <div class="ctrls"><button type="button" class="btn" id="closeD">✕ Close</button><span style="flex:1"></span>
+        <label class="fld" style="flex-direction:row;align-items:center;gap:8px"><span class="lab">Status</span><select id="lstStatus">${STAT.map(s => `<option${s === l.status ? " selected" : ""}>${s}</option>`).join("")}</select></label>
+        <button type="button" class="btn" id="lstCsv">Download CSV</button><button type="button" class="btn" id="lstDel">Delete</button></div>
+      <div><span class="eyebrow">${esc((RANKS.find(x => x[0] === l.ranked_by) || [, l.ranked_by])[1])} · ${new Date(l.built_at).toLocaleString()}</span><h2>${esc(l.name)}</h2>${l.built_by ? `<div class="sub">Built by ${esc(l.built_by)}</div>` : ""}</div>
+      <div class="tbl"><table><thead><tr><th class="plain">#</th><th class="plain">Title</th>${withQty ? '<th class="plain num">Buy</th>' : ""}<th class="plain num">Paid</th><th class="plain num">Sold</th><th class="plain num">Avg profit</th><th class="plain num">On hand then</th></tr></thead><tbody>${
+        ln.map(x => `<tr><td class="rk">${x.rank}</td><td><div class="t">${esc(x.books ? x.books.title : x.isbn)}</div><div class="a">${esc(x.isbn)}</div></td>${withQty ? `<td class="num">${int(x.suggested_qty)}</td>` : ""}<td class="num">${money(x.est_cost_per_book)}</td><td class="num">${int(x.copies_sold)}</td><td class="num">${money(x.avg_profit)}</td><td class="num">${int(x.on_hand)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="how">Numbers are a snapshot from when the list was built.</p>`;
+    $("drawer").hidden = false;
+    $("closeD").onclick = () => { $("drawer").hidden = true; };
+    $("lstStatus").onchange = async e => { const { error } = await c.from("buy_lists").update({ status: e.target.value }).eq("id", id); if (error) alert(error.message); else loadLists(); };
+    $("lstCsv").onclick = () => download(`${l.name.replace(/[^\w\- ]+/g, "").trim() || "buy-list"}.csv`, csvOf(ln.map(x => ({ isbn: x.isbn, title: x.books ? x.books.title : "", author: x.books ? x.books.author : "",
+      qty: x.suggested_qty, cost: x.est_cost_per_book, sold: x.copies_sold, avgSale: x.avg_sale_price, avgProfit: x.avg_profit, hand: x.on_hand, order: x.on_order })), withQty));
+    $("lstDel").onclick = async () => { if (!confirm(`Delete “${l.name}”? This can’t be undone.`)) return; const { error } = await c.from("buy_lists").delete().eq("id", id); if (error) alert(error.message); else { $("drawer").hidden = true; loadLists(); } };
+  }
+
+  // ---------- wiring ----------
+  const saved = store.get("f");
+  if (saved) { for (const id of IDS) if (saved[id] != null) $(id).value = saved[id]; for (const id of CHK) if (saved[id] != null) $(id).checked = saved[id]; }
+  renderRanks();
+  $("ranks").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; S.rank = b.dataset.r; renderRanks(); build(); });
+  for (const id of IDS) $(id).addEventListener(id === "period" ? "change" : "input", () => id === "period" ? loadStats() : build());
+  for (const id of CHK) $(id).addEventListener("change", build);
+  $("resetBtn").onclick = () => { for (const id of ["paidMin", "paidMax", "saleMin", "saleMax", "grMin", "spMin", "spMax", "profMin", "marMin", "stockMax", "cap"]) $(id).value = ""; $("soldMin").value = 3; S.dropped.clear(); build(); };
+  $("resTbl").addEventListener("click", e => { const b = e.target.closest("[data-drop]"); if (b) { S.dropped.add(b.dataset.drop); build(); } });
+  $("resTbl").addEventListener("change", e => { if (e.target.dataset.q) { syncQty(); } });
+  $("sumLine").addEventListener("click", e => { if (e.target.id === "undrop") { S.dropped.clear(); build(); } });
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S.tab = b.dataset.t;
+    document.querySelectorAll("#tabs [data-t]").forEach(x => x.setAttribute("aria-selected", String(x.dataset.t === S.tab)));
+    document.querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== S.tab); if (S.tab === "saved") renderSaved(); });
+  $("savedTbl").addEventListener("click", e => { const r = e.target.closest(".trow"); if (r) openList(r.dataset.id); });
+  $("drawer").addEventListener("click", e => { if (e.target === $("drawer")) $("drawer").hidden = true; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") $("drawer").hidden = true; });
+  document.querySelectorAll("#tabs [data-t]").forEach(x => x.setAttribute("aria-selected", String(x.dataset.t === S.tab)));
+  loadLists().then(loadStats);
+})();
+</script>
+</body>
+</html>
