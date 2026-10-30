@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Used Books</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+<style>
+.soon { border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; color: var(--ink-2); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px; }
+.loadcard h3 { margin: 0; font: 400 24px/1.15 var(--f-display); }
+.drawer .card { width: min(760px, 100%); }
+.tag { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: rgba(235,104,52,.16); color: #f0a07a; }
+.tag.vintage { background: rgba(210,165,74,.16); color: var(--gilt); }
+.bar3 { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); }
+.bar3 i { display: block; height: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Used Books</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+    <button class="btn" id="btnRefresh" type="button">Refresh</button>
+  </header>
+  <div class="notice bad" id="err" hidden></div>
+  <p class="soon"><b>The scan station</b> (scanning each book into a load and container as it’s routed to live shows) comes as its own step. Until then, loads show results from used and vintage shows only; scanning, labor and back-end check-ins fill in once it’s running.</p>
+
+  <section class="kpis" id="kpis" aria-label="Used book totals"></section>
+
+  <section class="panel">
+    <div class="ph"><div><h2>Loads</h2><span class="sub">What each load of used books cost and has brought back</span></div></div>
+    <div id="loads" class="grid2"></div>
+  </section>
+
+  <section class="panel" id="duePanel">
+    <div class="ph"><div><h2>Check-ins coming due</h2><span class="sub">About 14, 30, 60 and 90 days after a load arrives, record how the back end is doing</span></div></div>
+    <div class="tbl" id="dueTbl"></div>
+  </section>
+
+  <section class="panel">
+    <div class="ph"><div><h2>Used and vintage shows</h2><span class="sub" id="showsSub"></span></div></div>
+    <div class="tbl" id="showsTbl"></div>
+    <p class="how">Click a show for its speed-round and condition breakdown. Sell-through counts books sold out of books shown (sales plus R’s).</p>
+  </section>
+</div>
+
+<div class="drawer" id="drawer" hidden><div class="card" id="drawerCard" role="dialog" aria-modal="true" aria-label="Show breakdown"></div></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const money = v => v == null || !isFinite(+v) ? "–" : (v < 0 ? "-$" : "$") + Math.abs(+v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dfmt = s => { if (!s) return "–"; const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return `${MON[m - 1]} ${d}, ${y}`; };
+  const PLAT = { TT: "TikTok", WN: "Whatnot", EB: "eBay" };
+  const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+  let D = null;
+
+  function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
+  async function load() {
+    const c = sb(); if (!c) { setStatus("err", "Not signed in"); return; }
+    $("btnRefresh").disabled = true; setStatus("busy", "Loading from the Reliant database…");
+    const { data, error } = await c.rpc("used_export");
+    $("btnRefresh").disabled = false;
+    if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
+    $("err").hidden = true; D = data;
+    const at = D.synced_at ? new Date(D.synced_at) : null;
+    setStatus("live", `${int(D.loads.length)} load${D.loads.length === 1 ? "" : "s"} · ${int(D.shows.length)} shows · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+    render();
+  }
+  function render() {
+    const S = D.shows.map(r => ({ id: r[0], name: r[1], date: r[2], plat: r[3], type: r[4], status: r[5], sold: +r[6] || 0, rev: +r[7] || 0, profit: r[8] == null ? null : +r[8], rej: +r[9] || 0, speed: +r[10] || 0 }));
+    const tot = S.reduce((a, s) => ({ sold: a.sold + s.sold, rev: a.rev + s.rev, profit: a.profit + (s.profit || 0), rej: a.rej + s.rej, speed: a.speed + s.speed }), { sold: 0, rev: 0, profit: 0, rej: 0, speed: 0 });
+    const b = D.benchmark || {};
+    $("kpis").innerHTML = [
+      ["Books sold live", int(tot.sold), `${int(S.length)} used and vintage shows`],
+      ["Revenue", money(tot.rev), tot.sold ? money(tot.rev / tot.sold) + " per book" : ""],
+      ["Profit", money(tot.profit), "after fees and cost per book"],
+      ["Avg profit per book", money(b.avg_profit_per_book), `last 90 days · ${int(b.sales_counted)} books`],
+      ["Speed round", int(tot.speed), tot.sold ? Math.round(100 * tot.speed / tot.sold) + "% of books sold" : ""],
+      ["Sell-through", tot.sold + tot.rej ? Math.round(100 * tot.sold / (tot.sold + tot.rej)) + "%" : "–", `${int(tot.rej)} R’s recorded`]
+    ].map(([k, v, d]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="d">${esc(d)}</span></div>`).join("");
+
+    $("loads").innerHTML = D.loads.length ? D.loads.map(l => {
+      const cost = +l.purchase_and_freight || 0, back = +l.total_return_vs_cost || 0, live = +l.live_profit || 0;
+      return `<div class="panel loadcard">
+        <div><span class="eyebrow">${esc(l.source_code)}${l.received_on ? " · arrived " + dfmt(l.received_on) : ""}</span><h3>${esc(l.name)}</h3></div>
+        <div class="kpis">
+          <div class="kpi"><span class="k">Books kept</span><span class="v">${int(l.books_kept)}</span><span class="d">${l.total_scanned ? `of ${int(l.total_scanned)} scanned` : "sold live so far"}</span></div>
+          <div class="kpi"><span class="k">Cost per book</span><span class="v">${money(l.cost_per_kept_book)}</span><span class="d">${l.labor_cost ? `${money(l.true_cost_per_kept_book)} with labor` : "no labor logged yet"}</span></div>
+          <div class="kpi"><span class="k">Sold live</span><span class="v">${int(l.live_sold)}</span><span class="d">${money(l.live_revenue)} revenue</span></div>
+          <div class="kpi"><span class="k">Return so far</span><span class="v">${money(back)}</span><span class="d">after the load’s ${money(cost)} cost</span></div>
+        </div>
+        <p class="how">${l.last_checkin ? `Back end at last check-in (${dfmt(l.last_checkin)}): ${int(l.backend_sold)} sold, ${money(l.backend_revenue)}.` : "No back-end check-ins yet."}${l.books_per_hour ? ` Scanning pace ${l.books_per_hour} books an hour.` : ""} Live profit ${money(live)}.</p>
+      </div>`; }).join("") : `<p class="empty">No loads yet.</p>`;
+
+    const due = D.checkins_due || [];
+    $("duePanel").hidden = false;
+    $("dueTbl").innerHTML = due.length ? `<table><thead><tr><th class="plain">Load</th><th class="plain">Check-in</th><th class="plain">Due</th></tr></thead><tbody>${
+      due.map(c => `<tr><td>${esc(c.name)}</td><td>${int(c.milestone_days)}-day</td><td>${dfmt(c.due_on)} ${c.days_until_due < 0 ? `<span class="pill bad">${-c.days_until_due} days late</span>` : c.days_until_due === 0 ? '<span class="pill">today</span>' : `<span class="a">in ${c.days_until_due} days</span>`}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">None due. Check-ins start once a load has an arrival date. The pre-system load doesn’t have one, so it never comes due.</p>`;
+
+    $("showsSub").textContent = `${int(S.length)} shows`;
+    $("showsTbl").innerHTML = S.length ? `<table><thead><tr><th class="plain">Show</th><th class="plain num">Sold</th><th class="plain num hide-sm">Speed</th><th class="plain num">Revenue</th><th class="plain num hide-sm">Sell-through</th><th class="plain num">Profit</th></tr></thead><tbody>${
+      S.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} <span class="tag ${s.type}">${s.type === "vintage" ? "Vintage" : "Used"}</span>${s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
+        <td class="num">${int(s.sold)}</td><td class="num hide-sm">${s.speed ? int(s.speed) : "–"}</td><td class="num">${money(s.rev)}</td>
+        <td class="num hide-sm">${s.rej ? Math.round(100 * s.sold / (s.sold + s.rej)) + "%" : "–"}</td><td class="num">${money(s.profit)}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">No used or vintage shows yet.</p>`;
+    window.__S = S;
+  }
+  function openShow(id) {
+    const s = window.__S.find(x => x.id === +id); if (!s) return;
+    const M = D.mix.filter(m => m[0] === s.id);
+    const by = (i) => { const g = new Map(); for (const m of M) { const k = m[i] || "Not recorded"; const x = g.get(k) || { n: 0, rev: 0, prof: 0 }; x.n += +m[3]; x.rev += +m[4]; x.prof += +m[5]; g.set(k, x); } return [...g].sort((a, b) => b[1].n - a[1].n); };
+    const tbl = (title, rows) => `<div class="tbl"><table><thead><tr><th class="plain">${title}</th><th class="plain num">Books</th><th class="plain num">Revenue</th><th class="plain num">Avg</th><th class="plain num">Profit</th></tr></thead><tbody>${
+      rows.map(([k, x]) => `<tr><td>${esc(k)}</td><td class="num">${int(x.n)}</td><td class="num">${money(x.rev)}</td><td class="num">${money(x.rev / x.n)}</td><td class="num">${money(x.prof)}</td></tr>`).join("")}</tbody></table></div>`;
+    const main = s.sold - s.speed;
+    $("drawerCard").innerHTML = `
+      <div><button type="button" class="btn" id="closeD">✕ Close</button></div>
+      <div><span class="eyebrow">${esc(PLAT[s.plat] || s.plat)} · ${dfmt(s.date)}</span><h2>${esc(s.name)}</h2></div>
+      <div class="bar3" role="img" aria-label="${int(main)} main round, ${int(s.speed)} speed round, ${int(s.rej)} unsold">
+        <i style="width:${(100 * main / Math.max(1, s.sold + s.rej)).toFixed(1)}%;background:var(--accent)"></i><i style="width:${(100 * s.speed / Math.max(1, s.sold + s.rej)).toFixed(1)}%;background:var(--gilt)"></i></div>
+      <p class="how">${int(main)} sold in the main round · ${int(s.speed)} in the speed round · ${int(s.rej)} R’s</p>
+      ${tbl("Round", by(1))}
+      ${tbl("Condition", by(2))}`;
+    $("drawer").hidden = false; $("closeD").onclick = () => { $("drawer").hidden = true; };
+  }
+  $("showsTbl").addEventListener("click", e => { const r = e.target.closest(".trow"); if (r) openShow(r.dataset.id); });
+  $("showsTbl").addEventListener("keydown", e => { if (e.key === "Enter") { const r = e.target.closest(".trow"); if (r) openShow(r.dataset.id); } });
+  $("drawer").addEventListener("click", e => { if (e.target === $("drawer")) $("drawer").hidden = true; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") $("drawer").hidden = true; });
+  $("btnRefresh").onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+<style>
+.ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seltop { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.drawer .card { width: min(860px, 100%); }
+.tag { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: rgba(42,120,214,.16); color: #7fb2f0; }
+.tag.used { background: rgba(235,104,52,.16); color: #f0a07a; }
+.tag.vintage { background: rgba(210,165,74,.16); color: var(--gilt); }
+.soon { border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Shows</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+    <button class="btn" id="btnRefresh" type="button">Refresh</button>
+  </header>
+  <div class="notice bad" id="err" hidden></div>
+  <p class="soon"><b>Running a live show</b> (playlists, the TV display, logging sales and R’s, table shows and celeb shots) still happens in the current Workspace. It moves here as its own step closer to switch day. Shows logged there appear here after the nightly copy.</p>
+
+  <section class="kpis" id="kpis" aria-label="Show totals"></section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" data-t="shows">Shows <span class="n" id="nShows"></span></button>
+    <button type="button" role="tab" data-t="events">Customer events <span class="n" id="nEvents"></span></button>
+    <button type="button" role="tab" data-t="requests">Requests <span class="n" id="nReq"></span></button>
+  </nav>
+
+  <section class="panel" data-pane="shows">
+    <div class="ph">
+      <div><h2>Shows</h2><span class="sub" id="showsSub"></span></div>
+      <div class="ctrls">
+        <select class="seltop" id="typeSel" aria-label="Show type"><option value="">New, used and vintage</option><option value="new">New books</option><option value="used">Used books</option><option value="vintage">Vintage</option></select>
+        <select class="seltop" id="platSel" aria-label="Platform"><option value="">All platforms</option><option value="TT">TikTok</option><option value="WN">Whatnot</option><option value="EB">eBay</option></select>
+        <input type="search" class="search" id="q" placeholder="Search, e.g. 10.19" aria-label="Search shows" autocomplete="off">
+      </div>
+    </div>
+    <div class="tbl" id="showsTbl"></div>
+    <div id="more"></div>
+  </section>
+
+  <section class="panel" data-pane="events" hidden>
+    <div class="ph"><div><h2>Customer events</h2><span class="sub">Birthdays and other dates from the last week through the next 30 days</span></div></div>
+    <div class="tbl" id="eventsTbl"></div>
+  </section>
+
+  <section class="panel" data-pane="requests" hidden>
+    <div class="ph"><div><h2>Open requests</h2><span class="sub">Books customers asked for during shows</span></div><input type="search" class="search" id="rq" placeholder="Search requests" aria-label="Search requests" autocomplete="off"></div>
+    <div class="tbl" id="reqTbl"></div>
+  </section>
+</div>
+
+<div class="drawer" id="drawer" hidden><div class="card" id="drawerCard" role="dialog" aria-modal="true" aria-label="Show detail"></div></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const money = v => v == null || !isFinite(v) ? "–" : (v < 0 ? "-$" : "$") + Math.abs(+v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const dfmt = s => { if (!s) return "–"; const [y, m, d] = s.split("-").map(Number); return `${WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${MON[m - 1]} ${d}, ${y}`; };
+  const PLAT = { TT: "TikTok", WN: "Whatnot", EB: "eBay" };
+  const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+  let D = null, shows = [];
+  const S = { tab: "shows", q: "", type: "", plat: "", shown: 40, rq: "" };
+
+  function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
+  async function load() {
+    const c = sb(); if (!c) { setStatus("err", "Not signed in"); return; }
+    $("btnRefresh").disabled = true; setStatus("busy", "Loading from the Reliant database…");
+    const { data, error } = await c.rpc("shows_export");
+    $("btnRefresh").disabled = false;
+    if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
+    $("err").hidden = true; D = data;
+    shows = D.shows.map(r => ({ id: r[0], name: r[1], date: r[2], plat: r[3], type: r[4], status: r[5], sold: +r[6] || 0, rev: +r[7] || 0,
+      canceled: +r[8] || 0, rejects: +r[9] || 0, speed: +r[10] || 0, net: r[11], profit: r[12], gcost: r[13], after: r[14] }));
+    const at = D.synced_at ? new Date(D.synced_at) : null;
+    setStatus("live", `${int(shows.length)} shows · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+    render();
+  }
+  const typeTag = t => `<span class="tag ${t === "new" ? "" : t}">${t === "new" ? "New" : t === "used" ? "Used" : "Vintage"}</span>`;
+  function render() {
+    if (!D) return;
+    const last30 = shows.filter(s => { const [y, m, d] = s.date.split("-").map(Number); return (Date.now() - Date.UTC(y, m - 1, d)) / 864e5 <= 30; });
+    const live = shows.filter(s => s.status === "live");
+    const k = [
+      ["Shows, last 30 days", int(last30.length), `${int(last30.reduce((a, s) => a + s.sold, 0))} books sold`],
+      ["Revenue, last 30 days", money(last30.reduce((a, s) => a + s.rev, 0)), last30.length ? money(last30.reduce((a, s) => a + s.rev, 0) / last30.length) + " per show" : ""],
+      ...(D.costs ? [["Profit, last 30 days", money(last30.reduce((a, s) => a + (+s.after || 0), 0)), "after giveaways"]] : []),
+      ["Still in Staging", int(live.length), live.length ? live.map(s => s.name).join(", ") : "every show copied to the Roster"],
+      ["Upcoming events", int(D.events.filter(e => e[5] >= 0 && !e[6]).length), "in the next 30 days"]
+    ];
+    $("kpis").innerHTML = k.map(([kk, v, d]) => `<div class="kpi"><span class="k">${kk}</span><span class="v">${v}</span><span class="d">${esc(d)}</span></div>`).join("");
+    $("nShows").textContent = int(shows.length); $("nEvents").textContent = int(D.events.length); $("nReq").textContent = int(D.requests.length);
+    document.querySelectorAll("#tabs [data-t]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === S.tab)));
+    document.querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== S.tab);
+    if (S.tab === "shows") renderShows(); else if (S.tab === "events") renderEvents(); else renderReq();
+  }
+  function renderShows() {
+    const q = S.q.trim().toLowerCase();
+    const list = shows.filter(s => (!S.type || s.type === S.type) && (!S.plat || s.plat === S.plat) && (!q || (s.name + " " + (PLAT[s.plat] || s.plat) + " " + s.date).toLowerCase().includes(q)));
+    $("showsSub").textContent = `${int(list.length)} show${list.length === 1 ? "" : "s"} · ${int(list.reduce((a, s) => a + s.sold, 0))} books · ${money(list.reduce((a, s) => a + s.rev, 0))}`;
+    const page = list.slice(0, S.shown);
+    $("showsTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Show</th><th class="plain num">Sold</th><th class="plain num">Revenue</th><th class="plain num hide-sm">Avg</th><th class="plain num hide-sm">R’s</th><th class="plain num hide-sm">Canceled</th>${D.costs ? '<th class="plain num">Profit</th>' : ""}</tr></thead><tbody>${
+      page.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} ${typeTag(s.type)}${s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
+        <td class="num">${int(s.sold)}${s.speed ? `<div class="a">${int(s.speed)} speed</div>` : ""}</td><td class="num">${money(s.rev)}</td><td class="num hide-sm">${s.sold ? money(s.rev / s.sold) : "–"}</td>
+        <td class="num hide-sm">${s.rejects ? int(s.rejects) : "–"}</td><td class="num hide-sm">${s.canceled ? int(s.canceled) : "–"}</td>${D.costs ? `<td class="num">${money(s.after)}</td>` : ""}</tr>`).join("")}</tbody></table>`
+      : `<p class="empty">No shows match.</p>`;
+    $("more").innerHTML = list.length > S.shown ? `<button type="button" class="btn" id="moreBtn">Show ${int(Math.min(40, list.length - S.shown))} more</button>` : "";
+  }
+  function renderEvents() {
+    const E = D.events;
+    $("eventsTbl").innerHTML = E.length ? `<table><thead><tr><th class="plain">Customer</th><th class="plain">Event</th><th class="plain">Date</th><th class="plain num">When</th></tr></thead><tbody>${
+      E.map(([u, p, type, note, next, days, done]) => `<tr><td><div class="t">${esc(u)}</div><div class="a">${esc(PLAT[p] || p || "")}</div></td><td>${esc(type)}${note ? `<div class="a">${esc(note)}</div>` : ""}</td><td>${dfmt(next)}</td>
+        <td class="num">${done ? '<span class="pill ok">done</span>' : days === 0 ? '<span class="pill">today</span>' : days < 0 ? `<span class="a">${-days} days ago</span>` : `in ${days} day${days === 1 ? "" : "s"}`}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">No customer events coming up.</p>`;
+  }
+  function renderReq() {
+    const q = S.rq.trim().toLowerCase();
+    const R = D.requests.filter(r => !q || r.join(" ").toLowerCase().includes(q));
+    $("reqTbl").innerHTML = R.length ? `<table><thead><tr><th class="plain">Asked for</th><th class="plain">Show</th><th class="plain hide-sm">Customer</th><th class="plain">Status</th></tr></thead><tbody>${
+      R.map(([on, show, t, a, g, note, who, st]) => `<tr><td><div class="t">${esc(t || a || g)}</div><div class="a">${esc([t && a, g && (t || a) ? g : "", note].filter(Boolean).join(" · "))}</div></td>
+        <td>${esc(show || "–")}<div class="a">${dfmt(on)}</div></td><td class="hide-sm">${esc(who || "–")}</td><td><span class="pill">${esc(st)}</span></td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">${q ? "No requests match." : "No open requests."}</p>`;
+  }
+  async function openShow(id) {
+    const s = shows.find(x => x.id === +id); if (!s) return;
+    $("drawerCard").innerHTML = `<div><button type="button" class="btn" id="closeD">✕ Close</button></div><p class="empty">Loading ${esc(s.name)}…</p>`;
+    $("drawer").hidden = false; $("closeD").onclick = () => { $("drawer").hidden = true; };
+    const { data, error } = await sb().rpc("show_detail", { p_show: s.id });
+    if (error) { $("drawerCard").insertAdjacentHTML("beforeend", `<p class="notice bad">${esc(error.message)}</p>`); return; }
+    const sold = data.sales.filter(x => x[5] === "sold"), canc = data.sales.filter(x => x[5] === "canceled");
+    const isUsed = s.type !== "new";
+    $("drawerCard").innerHTML = `
+      <div><button type="button" class="btn" id="closeD">✕ Close</button></div>
+      <div><span class="eyebrow">${esc(PLAT[s.plat] || s.plat)} · ${dfmt(s.date)}</span><h2>${esc(s.name)} ${typeTag(s.type)}</h2></div>
+      <div class="kpis">
+        <div class="kpi"><span class="k">Books sold</span><span class="v">${int(s.sold)}</span><span class="d">${s.speed ? int(s.speed) + " in the speed round" : "&nbsp;"}</span></div>
+        <div class="kpi"><span class="k">Revenue</span><span class="v">${money(s.rev)}</span><span class="d">${s.sold ? money(s.rev / s.sold) + " average" : "&nbsp;"}</span></div>
+        <div class="kpi"><span class="k">R’s</span><span class="v">${int(s.rejects)}</span><span class="d">${s.sold + s.rejects ? Math.round(100 * s.sold / (s.sold + s.rejects)) + "% sold when shown" : "&nbsp;"}</span></div>
+        ${D.costs ? `<div class="kpi"><span class="k">Profit</span><span class="v">${money(s.after)}</span><span class="d">${s.gcost ? money(s.gcost) + " in giveaways" : "after fees and cost"}</span></div>` : ""}
+      </div>
+      <div class="tbl"><table><thead><tr><th class="plain">#</th><th class="plain">Title</th><th class="plain num">Price</th>${D.costs ? '<th class="plain num">Profit</th>' : ""}</tr></thead><tbody>${
+        sold.map((x, i) => `<tr><td class="a">${x[0] != null ? "#" + x[0] : i + 1}${x[1] ? `<div class="a">${esc(x[1])}</div>` : ""}</td><td><div class="t">${esc(x[2])}${x[7] === "Speed" ? ' <span class="pill">speed</span>' : ""}</div><div class="a">${esc([x[3], x[8], x[6]].filter(Boolean).join(" · "))}${x[9] ? " · bundle" : ""}</div></td>
+          <td class="num">${money(x[4])}</td>${D.costs ? `<td class="num">${x[11] == null ? '<span class="a">no cost</span>' : money(x[11])}</td>` : ""}</tr>`).join("")}</tbody></table></div>
+      ${canc.length ? `<div><h3 style="margin:0 0 6px;font:600 15px var(--f-ui)">Canceled</h3>${canc.map(x => `<div class="a">${esc(x[2])} · ${money(x[4])}${x[6] ? " · " + esc(x[6]) : ""}</div>`).join("")}</div>` : ""}
+      ${data.rejects.length ? `<div class="tbl"><table><thead><tr><th class="plain">R’d (shown, didn’t sell)</th><th class="plain num">${isUsed ? "Speed round" : "Round"}</th><th class="plain num">Time</th></tr></thead><tbody>${
+        data.rejects.map(r => `<tr><td><div class="t">${esc(r[0])}</div><div class="a">${esc(r[1])}${r[6] ? " · " + esc(r[6]) : ""}${r[5] ? " · sold later this show" : ""}</div></td><td class="num">${isUsed ? (r[7] ? "yes" : "no") : esc(r[2] ?? "–")}</td><td class="num">${esc(r[4] || "–")}</td></tr>`).join("")}</tbody></table></div>` : ""}
+      ${data.giveaways.length ? `<div><h3 style="margin:0 0 6px;font:600 15px var(--f-ui)">Given away</h3>${data.giveaways.map(g => `<div class="a">${esc(g[0])} · ${int(g[2])} × ${esc(g[1])}${g[3] ? " · " + esc(g[3]) : ""}${D.costs && g[4] != null ? " · " + money(g[4]) : ""}</div>`).join("")}</div>` : ""}`;
+    $("closeD").onclick = () => { $("drawer").hidden = true; };
+  }
+
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S.tab = b.dataset.t; render(); });
+  $("typeSel").onchange = e => { S.type = e.target.value; S.shown = 40; render(); };
+  $("platSel").onchange = e => { S.plat = e.target.value; S.shown = 40; render(); };
+  $("q").addEventListener("input", e => { S.q = e.target.value; S.shown = 40; render(); });
+  $("rq").addEventListener("input", e => { S.rq = e.target.value; render(); });
+  $("showsTbl").addEventListener("click", e => { const r = e.target.closest(".trow"); if (r) openShow(r.dataset.id); });
+  $("showsTbl").addEventListener("keydown", e => { if (e.key === "Enter") { const r = e.target.closest(".trow"); if (r) openShow(r.dataset.id); } });
+  $("more").addEventListener("click", e => { if (e.target.id === "moreBtn") { S.shown += 40; render(); } });
+  $("drawer").addEventListener("click", e => { if (e.target === $("drawer")) $("drawer").hidden = true; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") $("drawer").hidden = true; });
+  $("btnRefresh").onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>

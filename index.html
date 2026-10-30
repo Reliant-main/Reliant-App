@@ -138,8 +138,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     { id: "orders", title: "Orders & Receiving", desc: "Supplier orders, what’s on the way, shortages.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
     { id: "inventory", title: "Inventory", desc: "On hand by title, damaged, on the way, records to review.", url: "inventory.html" },
     { id: "purchasing", title: "Purchasing", desc: "Build and save buy lists from what sells.", url: "purchasing.html", roles: MANAGER },
-    { id: "shows", title: "Shows", desc: "Prep playlists, log sales and rejects live.", soon: true },
-    { id: "used", title: "Used Books", desc: "Scan station, loads and check-ins.", soon: true }
+    { id: "shows", title: "Shows", desc: "Every show’s results, customer events and requests.", url: "shows.html" },
+    { id: "used", title: "Used Books", desc: "Load results, check-ins and used and vintage shows.", url: "used.html", roles: MANAGER }
   ];
   const views = ["signin", "newpw", "pending", "home", "section"];
   const show = id => views.forEach(v => { $(v).hidden = v !== id && !(id === "section" && v === "home"); });
