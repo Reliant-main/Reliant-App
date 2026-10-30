@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Inventory</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+    <button class="btn" id="btnRefresh" type="button">Refresh</button>
+  </header>
+
+  <div class="notice bad" id="err" hidden></div>
+  <p class="notice">View only for now. Counts, adjustments, damaged books and receiving are still entered in the current Workspace; they show up here after the nightly copy.</p>
+
+  <section class="kpis" id="kpis" aria-label="Inventory totals"></section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" data-t="hand">On hand</button>
+    <button type="button" role="tab" data-t="route">En route <span class="n" id="nRoute"></span></button>
+    <button type="button" role="tab" data-t="review">Records review <span class="n" id="nReview"></span></button>
+  </nav>
+
+  <section class="panel" data-pane="hand">
+    <div class="ph">
+      <div><h2>Titles</h2><span class="sub" id="handSub"></span></div>
+      <input type="search" class="search" id="q" placeholder="Search title, author or ISBN" aria-label="Search titles" autocomplete="off">
+    </div>
+    <div class="chips" id="filters" role="group" aria-label="Filter"></div>
+    <div class="tbl" id="handTbl"></div>
+    <div id="more"></div>
+    <p class="how">On hand = latest count + received since − sold since − given away since ± adjustments and damage. Click a title to see how its number is worked out.</p>
+  </section>
+
+  <section class="panel" data-pane="route" hidden>
+    <div class="ph"><div><h2>On the way</h2><span class="sub" id="routeSub"></span></div></div>
+    <div class="tbl" id="routeTbl"></div>
+  </section>
+
+  <section class="panel" data-pane="review" hidden>
+    <div class="ph"><div><h2>Records review</h2><span class="sub">Things in the records that don’t add up yet</span></div></div>
+    <div class="tbl" id="reviewTbl"></div>
+  </section>
+</div>
+
+<div class="drawer" id="drawer" hidden><div class="card" id="drawerCard" role="dialog" aria-modal="true" aria-label="Title detail"></div></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const money = v => v == null || !isFinite(v) ? "–" : (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dfmt = s => { if (!s) return "–"; const [y, m, d] = s.split("-").map(Number); return `${MON[m - 1]} ${d}, ${y}`; };
+  const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+
+  let D = null, rows = [];
+  const S = { tab: "hand", q: "", f: "stock", sort: "on_hand", dir: -1, shown: 100 };
+
+  function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
+  async function load() {
+    const c = sb();
+    if (!c) { setStatus("err", "Not signed in"); $("err").hidden = false; $("err").textContent = "Open Inventory from the Reliant Workspace home screen."; return; }
+    $("btnRefresh").disabled = true; setStatus("busy", "Loading from the Reliant database…");
+    const { data, error } = await c.rpc("inventory_export");
+    $("btnRefresh").disabled = false;
+    if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
+    $("err").hidden = true;
+    D = data;
+    rows = (D.titles || []).map(r => ({ isbn: r[0], title: r[1], author: r[2], counted: r[3], count_date: r[4], counted_qty: r[5],
+      received: r[6], sold: r[7], given: r[8], adjusted: r[9], damage: r[10], on_hand: r[11], damaged: r[12], good: r[13],
+      en_route: r[14], coming: +r[15] || 0, written_off: r[16], cost: r[17], value: r[18], sold30: r[19], last_sold: r[20] }));
+    const at = D.synced_at ? new Date(D.synced_at) : null;
+    setStatus("live", `${int(rows.length)} titles · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"} · full count ${dfmt(D.full_count_date)}`);
+    render();
+  }
+
+  const FILTERS = [
+    ["stock", "In stock", r => r.on_hand > 0],
+    ["all", "All titles", () => true],
+    ["out", "Out of stock", r => r.on_hand === 0],
+    ["neg", "Below zero", r => r.on_hand < 0],
+    ["low", "Low (1–2)", r => r.on_hand > 0 && r.on_hand <= 2],
+    ["damaged", "Damaged", r => r.damaged > 0],
+    ["route", "On the way", r => r.en_route > 0 || r.coming > 0],
+    ["slow", "Not selling (30 days)", r => r.on_hand > 0 && !r.sold30],
+    ["uncounted", "Not counted", r => !r.counted]
+  ];
+  function cols() {
+    const c = [
+      { k: "title", h: "Title", txt: 1 }, { k: "on_hand", h: "On hand" }, { k: "good", h: "Good" }, { k: "damaged", h: "Damaged", sm: 1 },
+      { k: "en_route", h: "En route", sm: 1 }, { k: "sold30", h: "Sold 30 days" }, { k: "last_sold", h: "Last sold", txt: 1, sm: 1 }
+    ];
+    if (D.costs) c.push({ k: "cost", h: "Cost each", sm: 1 }, { k: "value", h: "Value" });
+    return c;
+  }
+  function render() {
+    if (!D) return;
+    // totals
+    const sum = (f, p) => rows.filter(p || (() => true)).reduce((a, r) => a + (+f(r) || 0), 0);
+    const reviewN = (D.review || []).length;
+    const k = [
+      ["Books on hand", int(sum(r => r.on_hand, r => r.on_hand > 0)), `${int(rows.filter(r => r.on_hand > 0).length)} titles in stock`, "stock"],
+      ["Damaged", int(sum(r => r.damaged, r => r.damaged > 0)), "included in on hand", "damaged"],
+      ["En route", int(sum(r => r.en_route)), "ordered, not yet received", "route"],
+      ["Possibly coming", int(sum(r => r.coming)), "short on arrival, still expected", "route"],
+      ["Below zero", int(rows.filter(r => r.on_hand < 0).length), "titles to check", "neg"],
+      ...(D.costs ? [["Inventory value", money(sum(r => r.value, r => r.on_hand > 0)), "at average landed cost", null]] : []),
+      ["Records review", int(reviewN), "items to look at", "@review"]
+    ];
+    $("kpis").innerHTML = k.map(([kk, v, d, go]) => go ? `<button type="button" class="kpi" data-go="${go}"><span class="k">${kk}</span><span class="v">${v}</span><span class="d">${d}</span></button>`
+      : `<div class="kpi"><span class="k">${kk}</span><span class="v">${v}</span><span class="d">${d}</span></div>`).join("");
+    $("nRoute").textContent = int((D.en_route || []).length ? new Set(D.en_route.map(e => e[1])).size : 0);
+    $("nReview").textContent = int(reviewN);
+    document.querySelectorAll("#tabs [data-t]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === S.tab)));
+    document.querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== S.tab);
+    if (S.tab === "hand") renderHand(); else if (S.tab === "route") renderRoute(); else renderReview();
+  }
+  function renderHand() {
+    $("filters").innerHTML = FILTERS.map(([key, lab, fn]) => `<button type="button" data-f="${key}" aria-pressed="${S.f === key}">${lab}<span class="n">${int(rows.filter(fn).length)}</span></button>`).join("");
+    const fn = FILTERS.find(f => f[0] === S.f)[2];
+    const q = S.q.trim().toLowerCase();
+    let list = rows.filter(fn).filter(r => !q || (r.title + " " + r.author + " " + r.isbn).toLowerCase().includes(q));
+    const key = S.sort;
+    list.sort((a, b) => {
+      const x = a[key], y = b[key];
+      if (key === "title") return S.dir * String(x).localeCompare(String(y));
+      const fx = x != null && x !== "", fy = y != null && y !== "";
+      if (fx !== fy) return fx ? -1 : 1;
+      if (key === "last_sold") return S.dir * String(x).localeCompare(String(y));
+      return S.dir * ((+x || 0) - (+y || 0)) || a.title.localeCompare(b.title);
+    });
+    const C = cols();
+    $("handSub").textContent = `${int(list.length)} title${list.length === 1 ? "" : "s"} · ${int(list.reduce((a, r) => a + Math.max(0, r.on_hand), 0))} books`;
+    const cell = (r, c) => {
+      switch (c.k) {
+        case "title": return `<div class="t">${esc(r.title)}</div><div class="a">${esc(r.author || r.isbn)}</div>`;
+        case "on_hand": return r.on_hand < 0 ? `<span class="pill bad">${int(r.on_hand)}</span>` : `<b>${int(r.on_hand)}</b>`;
+        case "damaged": return r.damaged ? `<span class="pill">${int(r.damaged)}</span>` : "–";
+        case "en_route": return r.en_route ? int(r.en_route) + (r.coming ? ` <span class="a">+${int(r.coming)}?</span>` : "") : r.coming ? `<span class="a">${int(r.coming)}?</span>` : "–";
+        case "sold30": return r.sold30 ? int(r.sold30) : "–";
+        case "last_sold": return r.last_sold ? dfmt(r.last_sold) : "Never";
+        case "cost": return money(r.cost);
+        case "value": return r.on_hand > 0 ? money(r.value) : "–";
+        default: return int(r[c.k]);
+      }
+    };
+    const page = list.slice(0, S.shown);
+    $("handTbl").innerHTML = list.length ? `<table><thead><tr>${C.map(c => `<th class="${c.txt ? "" : "num"} ${c.sm ? "hide-sm" : ""}"><button type="button" class="sorth${S.sort === c.k ? " on" : ""}" data-s="${c.k}">${c.h}${S.sort === c.k ? (S.dir > 0 ? " ↑" : " ↓") : ""}</button></th>`).join("")}</tr></thead><tbody>${
+      page.map(r => `<tr class="trow" tabindex="0" data-isbn="${esc(r.isbn)}">${C.map(c => `<td class="${c.txt ? "" : "num"} ${c.sm ? "hide-sm" : ""}">${cell(r, c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`
+      : `<p class="empty">${q ? "No titles match that search." : "No titles in this list."}</p>`;
+    $("more").innerHTML = list.length > S.shown ? `<button type="button" class="btn" id="moreBtn">Show ${int(Math.min(100, list.length - S.shown))} more</button>` : "";
+  }
+  function renderRoute() {
+    const byOrder = new Map(), titleOf = new Map(rows.map(r => [r.isbn, r]));
+    for (const [isbn, ord, sup, date, qty, days, late] of (D.en_route || [])) {
+      const g = byOrder.get(ord) || { ord, sup, date, days, late, units: 0, lines: [] };
+      g.units += qty; g.late = g.late || late; g.lines.push({ isbn, qty }); byOrder.set(ord, g);
+    }
+    const list = [...byOrder.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    $("routeSub").textContent = `${int(list.length)} order${list.length === 1 ? "" : "s"} · ${int(list.reduce((a, g) => a + g.units, 0))} books`;
+    $("routeTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Order</th><th class="plain">Ordered</th><th class="plain num">Books</th><th class="plain num">Waiting</th><th class="plain">Titles</th></tr></thead><tbody>${
+      list.map(g => `<tr><td><div class="t">${esc(g.ord)}</div><div class="a">${esc(g.sup)}</div></td><td>${dfmt(g.date)}</td><td class="num">${int(g.units)}</td>
+        <td class="num">${int(g.days)} days ${g.late ? '<span class="pill bad">late</span>' : ""}</td>
+        <td>${g.lines.slice(0, 4).map(l => `<div class="a">${int(l.qty)} × ${esc((titleOf.get(l.isbn) || {}).title || l.isbn)}</div>`).join("")}${g.lines.length > 4 ? `<div class="a">and ${g.lines.length - 4} more titles</div>` : ""}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">Nothing is on the way.</p>`;
+  }
+  function renderReview() {
+    const list = D.review || [];
+    $("reviewTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Issue</th><th class="plain">What</th><th class="plain">Details</th><th class="plain">Where to fix</th></tr></thead><tbody>${
+      list.map(([issue, ref, source, detail, fix]) => `<tr><td><span class="pill">${esc(issue)}</span></td><td><div class="t">${esc(ref)}</div><div class="a">${esc(source)}</div></td><td>${esc(detail)}</td><td class="a">${esc(fix)}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">Nothing to review. The records add up.</p>`;
+  }
+  function openTitle(isbn) {
+    const r = rows.find(x => x.isbn === isbn); if (!r) return;
+    const routes = (D.en_route || []).filter(e => e[0] === isbn);
+    const sign = v => (v > 0 ? "+" : v < 0 ? "−" : "") + int(Math.abs(v));
+    $("drawerCard").innerHTML = `
+      <div><button type="button" class="btn" id="closeD">✕ Close</button></div>
+      <div><span class="eyebrow">${esc(r.isbn)}</span><h2>${esc(r.title)}</h2><div class="sub">${esc(r.author)}</div></div>
+      <table class="calc"><tbody>
+        <tr><td>${r.counted ? `Counted ${dfmt(r.count_date)}` : `Not counted (starts from ${dfmt(r.count_date)})`}</td><td class="num">${int(r.counted_qty)}</td></tr>
+        <tr><td>Received since</td><td class="num">${sign(r.received)}</td></tr>
+        <tr><td>Sold since</td><td class="num">${sign(-r.sold)}</td></tr>
+        <tr><td>Given away since</td><td class="num">${sign(-r.given)}</td></tr>
+        <tr><td>Adjustments since</td><td class="num">${sign(r.adjusted)}</td></tr>
+        <tr><td>Damage changes since</td><td class="num">${sign(r.damage)}</td></tr>
+        <tr class="tot"><td>On hand</td><td class="num">${int(r.on_hand)}</td></tr>
+        <tr><td class="a">of which damaged</td><td class="num a">${int(r.damaged)}</td></tr>
+      </tbody></table>
+      <div class="kpis">
+        <div class="kpi"><span class="k">Sold 30 days</span><span class="v">${int(r.sold30)}</span><span class="d">last sold ${r.last_sold ? dfmt(r.last_sold) : "never"}</span></div>
+        <div class="kpi"><span class="k">On the way</span><span class="v">${int(r.en_route)}</span><span class="d">${r.coming ? int(r.coming) + " more possibly coming" : "&nbsp;"}</span></div>
+        ${D.costs ? `<div class="kpi"><span class="k">Cost each</span><span class="v">${money(r.cost)}</span><span class="d">value ${r.on_hand > 0 ? money(r.value) : "–"}</span></div>` : ""}
+      </div>
+      ${routes.length ? `<table><thead><tr><th class="plain">Order</th><th class="plain">Ordered</th><th class="plain num">Books</th></tr></thead><tbody>${routes.map(e => `<tr><td>${esc(e[1])} <span class="a">${esc(e[2])}</span></td><td>${dfmt(e[3])}</td><td class="num">${int(e[4])}${e[6] ? ' <span class="pill bad">late</span>' : ""}</td></tr>`).join("")}</tbody></table>` : ""}
+      ${r.written_off ? `<p class="how">${int(r.written_off)} cop${r.written_off === 1 ? "y has" : "ies have"} been written off in total.</p>` : ""}`;
+    $("drawer").hidden = false; $("closeD").focus();
+  }
+  const closeDrawer = () => { $("drawer").hidden = true; };
+
+  // interactions
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S.tab = b.dataset.t; render(); });
+  $("kpis").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (!b) return; const g = b.dataset.go;
+    if (g === "@review") S.tab = "review"; else { S.tab = "hand"; S.f = g; S.shown = 100; } render(); });
+  $("filters").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; S.f = b.dataset.f; S.shown = 100; render(); });
+  $("q").addEventListener("input", e => { S.q = e.target.value; S.shown = 100; render(); });
+  $("handTbl").addEventListener("click", e => {
+    const h = e.target.closest("[data-s]");
+    if (h) { const k = h.dataset.s; if (S.sort === k) S.dir = -S.dir; else { S.sort = k; S.dir = k === "title" ? 1 : -1; } render(); return; }
+    const r = e.target.closest(".trow"); if (r) openTitle(r.dataset.isbn);
+  });
+  $("handTbl").addEventListener("keydown", e => { if (e.key === "Enter") { const r = e.target.closest(".trow"); if (r) openTitle(r.dataset.isbn); } });
+  $("more").addEventListener("click", e => { if (e.target.id === "moreBtn") { S.shown += 100; render(); } });
+  $("drawer").addEventListener("click", e => { if (e.target === $("drawer") || e.target.closest("#closeD")) closeDrawer(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+  $("btnRefresh").onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>
