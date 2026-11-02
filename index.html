@@ -133,13 +133,16 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   window.RELIANT = { sb, staff: null };
 
   const MANAGER = ["owner", "manager"];
+  const SHOW_CREW = ["owner", "manager", "operator"];
   const SECTIONS = [
     { id: "analytics", title: "Sales Analytics", desc: "Revenue, profit, titles, shows and comparisons.", url: "analytics.html", roles: MANAGER },
     { id: "orders", title: "Orders & Receiving", desc: "Supplier orders, what’s on the way, shortages.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
     { id: "inventory", title: "Inventory", desc: "On hand by title, damaged, on the way, records to review.", url: "inventory.html" },
     { id: "purchasing", title: "Purchasing", desc: "Build and save buy lists from what sells.", url: "purchasing.html", roles: MANAGER },
     { id: "shows", title: "Shows", desc: "Every show’s results, customer events and requests.", url: "shows.html" },
-    { id: "used", title: "Used Books", desc: "Load results, check-ins and used and vintage shows.", url: "used.html", roles: MANAGER }
+    { id: "used", title: "Used Books", desc: "Load results, check-ins and used and vintage shows.", url: "used.html", roles: MANAGER },
+    { id: "live", title: "Live Show · Rehearsal", desc: "Book Spotlight, the TV screen and sales logging. Practice shows only for now.", page: "live.html", roles: SHOW_CREW },
+    { id: "prep", title: "Show Prep", desc: "Build a show’s playlist ahead of time, on a tablet or computer.", page: "prep.html", roles: SHOW_CREW }
   ];
   const views = ["signin", "newpw", "pending", "home", "section"];
   const show = id => views.forEach(v => { $(v).hidden = v !== id && !(id === "section" && v === "home"); });
@@ -171,7 +174,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
       b.querySelector(".t").textContent = s.title;
       b.querySelector(".d").textContent = s.desc;
       b.querySelector(".s").textContent = s.soon ? "Coming next" : allowed ? "Open →" : "Not for your role";
-      if (!off) b.onclick = () => openSection(s);
+      if (!off) b.onclick = () => { if (s.page) location.href = s.page; else openSection(s); };
       box.appendChild(b);
     }
   }

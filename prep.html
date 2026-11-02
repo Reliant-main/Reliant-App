@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Show Prep · Reliant Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--f-ui); -webkit-text-size-adjust: 100%; }
+.wrap { max-width: 900px; margin: 0 auto; padding: 16px 16px 80px; display: flex; flex-direction: column; gap: 16px; }
+.topbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.topbar .sp { flex: 1; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 2px 0 0; font: 400 clamp(28px, 6vw, 40px)/1.05 var(--f-display); }
+.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font: 600 15px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-height: 44px; cursor: pointer; touch-action: manipulation; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: #0e1915; border-color: var(--accent); }
+.btn.warn { color: var(--bad); }
+.btn:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sub { color: var(--muted); font-size: 14px; margin: 0; }
+.lists { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.lists button { all: unset; box-sizing: border-box; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-height: 76px; display: flex; flex-direction: column; gap: 4px; }
+.lists button:hover, .lists button:focus-visible { border-color: var(--accent); }
+.lists .n { font: 600 17px var(--f-ui); }
+.lists .c { font: 13px var(--f-mono); color: var(--muted); }
+.newrow, .scanrow { display: flex; gap: 8px; }
+input[type=text] { flex: 1; min-width: 0; font: 18px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 48px; }
+.scanrow input { font: 20px var(--f-mono); letter-spacing: .04em; }
+.head { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.head h2 { margin: 0; font: 400 clamp(24px, 5vw, 32px)/1.1 var(--f-display); flex: 1; min-width: 200px; }
+.count { font: 13px var(--f-mono); color: var(--muted); }
+.msg { min-height: 1.4em; font-size: 15px; }
+.msg.ok { color: var(--accent); } .msg.bad { color: var(--bad); }
+ol.items { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+ol.items li { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line); background: var(--surface); }
+ol.items li:first-child { border-top: 0; }
+ol.items li.new { background: var(--surface-2); }
+ol.items .k { font: 13px var(--f-mono); color: var(--muted); text-align: right; }
+ol.items .t { font-weight: 600; overflow-wrap: anywhere; }
+ol.items .a { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+ol.items .miss .t { color: var(--warnfg); }
+ol.items .acts { display: flex; gap: 4px; }
+ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; font-size: 16px; }
+.empty { padding: 18px; color: var(--muted); text-align: center; }
+.cam { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
+.cam video { display: block; width: 100%; max-height: 50vh; object-fit: cover; }
+.cam .line { position: absolute; left: 10%; right: 10%; top: 50%; height: 2px; background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+.bridgeFail { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: var(--bg); padding: 16px; }
+.bridgeFail > div { max-width: 460px; }
+.bridgeFail h2 { font: 400 32px var(--f-display); margin: 0 0 8px; }
+.bridgeFail a { color: var(--gilt); }
+@media (max-width: 520px) { .head .btn { flex: 1; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="live-bridge.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="btn" href="index.html">⌂ Home</a>
+    <span class="sp"></span>
+    <a class="btn" href="live.html">Open the live show →</a>
+  </div>
+
+  <!-- all lists -->
+  <section id="vLists">
+    <div><span class="eyebrow">Shows · prep</span><h1>Show Prep</h1></div>
+    <p class="sub" style="margin:8px 0 14px">Build a show's playlist ahead of time: make a list, then scan the books in the order they'll go on. On the live show screen, <b>Load from Show Prep</b> picks the list up.</p>
+    <form class="newrow" id="newForm" autocomplete="off">
+      <input type="text" id="newName" placeholder="Show name, e.g. Tuesday romance" maxlength="60" aria-label="New list name">
+      <button class="btn primary" type="submit">New list</button>
+    </form>
+    <p class="msg" id="listsMsg"></p>
+    <div class="lists" id="lists"></div>
+  </section>
+
+  <!-- one list -->
+  <section id="vList" hidden>
+    <div class="head">
+      <button class="btn" type="button" id="back">← All lists</button>
+      <h2 id="lName"></h2>
+      <span class="count" id="lCount"></span>
+    </div>
+    <form class="scanrow" id="scanForm" autocomplete="off" style="margin-top:12px">
+      <input type="text" id="scan" inputmode="numeric" enterkeyhint="done" placeholder="Scan or type an ISBN" aria-label="ISBN">
+      <button class="btn primary" type="submit">Add</button>
+    </form>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn" type="button" id="camBtn" hidden>Scan with camera</button>
+      <button class="btn" type="button" id="rename">Rename</button>
+      <button class="btn warn" type="button" id="del">Delete list</button>
+    </div>
+    <div class="cam" id="cam" hidden><video id="video" playsinline muted></video><span class="line"></span></div>
+    <p class="msg" id="msg"></p>
+    <ol class="items" id="items"></ol>
+  </section>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const digits = s => String(s || "").toUpperCase().replace(/[^0-9X]/g, "");
+  let db = null, lists = [], openId = null, books = new Map(), lastAdded = -1;
+
+  // ISBN-10 → ISBN-13, so either barcode finds the book
+  function isbn13(d) {
+    if (d.length === 9) d = "0" + d;
+    if (d.length !== 10) return d;
+    const core = "978" + d.slice(0, 9); let s = 0;
+    for (let i = 0; i < 12; i++) s += (+core[i]) * (i % 2 ? 3 : 1);
+    return core + ((10 - (s % 10)) % 10);
+  }
+  const bookOf = isbn => books.get(isbn13(digits(isbn)));
+
+  const cur = () => lists.find(l => l.id === openId);
+  function drawLists() {
+    const box = $("lists");
+    if (!lists.length) { box.innerHTML = `<p class="sub">No lists yet. Type a show name above and press New list.</p>`; return; }
+    box.innerHTML = lists.map(l => { const n = (l.isbns || []).length;
+      return `<button type="button" data-id="${esc(l.id)}"><span class="n">${esc(l.name || "Show")}</span><span class="c">${n} book${n === 1 ? "" : "s"}${l.by ? " · " + esc(l.by) : ""}</span></button>`; }).join("");
+  }
+  function drawList() {
+    const l = cur();
+    if (!l) { openId = null; show(); return; }
+    $("lName").textContent = l.name || "Show";
+    const isbns = l.isbns || [];
+    $("lCount").textContent = `${isbns.length} book${isbns.length === 1 ? "" : "s"}`;
+    if (!isbns.length) { $("items").innerHTML = `<li class="empty" style="display:block">Scan the first book.</li>`; return; }
+    $("items").innerHTML = isbns.map((x, i) => {
+      const b = bookOf(x);
+      return `<li data-i="${i}" class="${b ? "" : "miss"} ${i === lastAdded ? "new" : ""}"><span class="k">${i + 1}</span>
+        <span><span class="t">${esc(b ? b.title : "ISBN " + x)}</span><br><span class="a">${esc(b ? [b.author, x].filter(Boolean).join(" · ") : "Not in the book list yet")}</span></span>
+        <span class="acts"><button class="btn" type="button" data-a="up" aria-label="Move up" ${i ? "" : "disabled"}>▲</button><button class="btn" type="button" data-a="down" aria-label="Move down" ${i < isbns.length - 1 ? "" : "disabled"}>▼</button><button class="btn warn" type="button" data-a="rm" aria-label="Remove">✕</button></span></li>`;
+    }).join("");
+    const nl = $("items").querySelector("li.new"); if (nl) nl.scrollIntoView({ block: "nearest" });
+  }
+  function show() {
+    $("vLists").hidden = !!openId; $("vList").hidden = !openId;
+    if (openId) { drawList(); setTimeout(() => $("scan").focus(), 0); } else { stopCam(); drawLists(); }
+  }
+  const setMsg = (id, t, kind) => { const m = $(id); m.textContent = t; m.className = "msg" + (kind ? " " + kind : ""); };
+  async function save(l, fields) {
+    try { await db.doc("prep/" + l.id).update({ ...fields, updatedAt: Date.now() }); }
+    catch { setMsg("msg", "Couldn't save that. Check the connection and try again.", "bad"); }
+  }
+
+  $("newForm").onsubmit = async e => {
+    e.preventDefault();
+    const name = $("newName").value.trim();
+    if (!name) { setMsg("listsMsg", "Type a show name first.", "bad"); $("newName").focus(); return; }
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const me = (window.RELIANT && window.RELIANT.staff) || {};
+    try { await db.doc("prep/" + id).set({ name, isbns: [], createdAt: Date.now(), updatedAt: Date.now(), by: me.name || "" }); }
+    catch { setMsg("listsMsg", "Couldn't make the list. Check the connection and try again.", "bad"); return; }
+    $("newName").value = ""; setMsg("listsMsg", "");
+    openId = id; lastAdded = -1; show();
+  };
+  $("lists").addEventListener("click", e => { const b = e.target.closest("button[data-id]"); if (!b) return; openId = b.dataset.id; lastAdded = -1; setMsg("msg", ""); show(); });
+  $("back").onclick = () => { openId = null; show(); };
+
+  function addIsbn(raw) {
+    const l = cur(); if (!l) return;
+    const d = digits(raw);
+    if (d.length < 10) { setMsg("msg", `"${raw}" isn't an ISBN. Scan the barcode, or type all 10 or 13 digits.`, "bad"); return; }
+    const isbn = d.length === 10 ? isbn13(d) : d;
+    const isbns = [...(l.isbns || []), isbn];
+    const b = bookOf(isbn);
+    const again = (l.isbns || []).includes(isbn);
+    lastAdded = isbns.length - 1;
+    l.isbns = isbns; drawList();
+    setMsg("msg", `#${isbns.length} ${b ? b.title : "ISBN " + isbn}${b ? "" : " · not in the book list yet"}${again ? " · already in this list once (kept both)" : ""}`, b ? "ok" : "bad");
+    save(l, { isbns });
+  }
+  $("scanForm").onsubmit = e => { e.preventDefault(); const v = $("scan").value.trim(); $("scan").value = ""; if (v) addIsbn(v); $("scan").focus(); };
+  $("items").addEventListener("click", e => {
+    const b = e.target.closest("button[data-a]"); if (!b) return;
+    const l = cur(), i = +b.closest("li").dataset.i, isbns = [...(l.isbns || [])];
+    if (b.dataset.a === "rm") { isbns.splice(i, 1); setMsg("msg", ""); lastAdded = -1; }
+    else { const j = b.dataset.a === "up" ? i - 1 : i + 1; if (j < 0 || j >= isbns.length) return; [isbns[i], isbns[j]] = [isbns[j], isbns[i]]; lastAdded = j; }
+    l.isbns = isbns; drawList(); save(l, { isbns });
+  });
+  $("rename").onclick = () => {
+    const l = cur(); if (!l) return;
+    const name = (prompt("New name for this list", l.name || "") || "").trim().slice(0, 60);
+    if (name) { l.name = name; drawList(); save(l, { name }); }
+  };
+  let delArm = 0;
+  $("del").onclick = async () => {
+    const l = cur(); if (!l) return;
+    if (Date.now() - delArm > 4000) { delArm = Date.now(); $("del").textContent = "Tap again to delete"; setTimeout(() => { $("del").textContent = "Delete list"; }, 4000); return; }
+    delArm = 0; $("del").textContent = "Delete list";
+    try { await db.doc("prep/" + l.id).delete(); openId = null; show(); }
+    catch { setMsg("msg", "Couldn't delete it. Try again.", "bad"); }
+  };
+
+  // ---- camera scanning, where the browser can read barcodes (Chrome on Android, most laptops) ----
+  let stream = null, camLoop = 0, lastCode = "", lastAt = 0;
+  if ("BarcodeDetector" in window) $("camBtn").hidden = false;
+  function stopCam() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; cancelAnimationFrame(camLoop); $("cam").hidden = true; $("camBtn").textContent = "Scan with camera"; }
+  $("camBtn").onclick = async () => {
+    if (stream) { stopCam(); return; }
+    let det;
+    try { det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a"] }); } catch { setMsg("msg", "This browser can't read barcodes with the camera. Use a scanner or type the ISBN.", "bad"); return; }
+    try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); }
+    catch { setMsg("msg", "The camera didn't open. Allow camera access for this page, then try again.", "bad"); return; }
+    const v = $("video"); v.srcObject = stream; await v.play(); $("cam").hidden = false; $("camBtn").textContent = "Stop camera";
+    const tick = async () => {
+      if (!stream) return;
+      try {
+        const codes = await det.detect(v);
+        const c = codes.map(x => x.rawValue).find(x => /^97[89]\d{10}$/.test(x));
+        if (c && (c !== lastCode || Date.now() - lastAt > 3000)) { lastCode = c; lastAt = Date.now(); addIsbn(c); try { navigator.vibrate && navigator.vibrate(60); } catch {} }
+      } catch {}
+      camLoop = requestAnimationFrame(tick);
+    };
+    tick();
+  };
+
+  // ---- start ----
+  (async () => {
+    db = await window.claude.use("db");
+    if (!db) return;   // the sign-in message is already on screen
+    db.collection("prep").onSnapshot(snap => {
+      lists = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      if (openId) drawList(); else drawLists();
+    }, () => setMsg("listsMsg", "Couldn't load the lists. Reload the page.", "bad"));
+    const { data } = await window.RELIANT.sb.rpc("show_book_list");
+    (data || []).forEach(b => books.set(isbn13(digits(b.isbn)), b));
+    if (openId) drawList();
+  })();
+})();
+</script>
+</body>
+</html>
