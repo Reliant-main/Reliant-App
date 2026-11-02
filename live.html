@@ -3232,28 +3232,29 @@ body.mode-display #btnHome2 { display: none !important; }
     const today = events.filter(e => isoDay(e.loggedAt) === isoDay(Date.now()));
     $("evCount").textContent = today.length;
     const pending = events.filter(e => !e.sentAt).length;
-    $("evRetry").hidden = !pending || !!(window.RELIANT && window.RELIANT.rehearsal);
+    $("evRetry").hidden = !pending;
     $("evRetry").textContent = `Send ${pending} unsent event${pending === 1 ? "" : "s"}`;
     const ul = $("evList");
     if (!events.length) { ul.innerHTML = `<li class="empty" style="display:block">No events yet. Type the customer's username, the date and what's happening, then press Enter.</li>`; return; }
     ul.innerHTML = events.slice().reverse().slice(0, 60).map(e => `<li data-id="${esc(e.id)}" class="${e.sentAt ? "" : "unsynced"}"><span class="n"></span><span class="tm">${timeOf(e.loggedAt)}</span>
-      <span class="ttl">${esc(e.user)} · ${esc(niceDate(e.date))}<span class="sub">${esc(e.note)}${e.platform ? " · " + esc(e.platform) : ""} · ${e.sentAt ? "in the sheet" : "rehearsal, not sent"}</span></span><span></span>
+      <span class="ttl">${esc(e.user)} · ${esc(niceDate(e.date))}<span class="sub">${esc(e.note)}${e.platform ? " · " + esc(e.platform) : ""} · ${e.sentAt ? "saved (rehearsal)" : "not saved yet"}</span></span><span></span>
       <span class="acts">${e.sentAt ? "" : `<button class="btn warn" type="button" data-a="del">${S.delArm === e.id ? "Confirm delete" : "Delete"}</button>`}</span></li>`).join("");
   }
   let evBusy = false;
   async function sendEvents() {
-    if (window.RELIANT && window.RELIANT.rehearsal) { $("evMsg").textContent = "Rehearsal: events stay on this screen and aren't sent to the Customer Events tab."; drawEvents(); return; }
     if (evBusy) return; const pend = events.filter(e => !e.sentAt); if (!pend.length) { drawEvents(); return; }
     evBusy = true;
-    const mcp = await getSheetsMcp();
-    if (!mcp) { evBusy = false; $("evMsg").textContent = "This window can't reach Google Sheets, so events are kept here until it can. Press Send unsent events later."; drawEvents(); return; }
-    try {
-      await writeRows(mcp, EV_PART, pend.map(e => [e.user, e.date || "", e.note, e.platform || "", isoDay(e.loggedAt), false]));
-      const now = Date.now(); pend.forEach(e => e.sentAt = now); saveEvents();
-      $("evMsg").textContent = `Saved to the Customer Events tab (${pend.length} row${pend.length === 1 ? "" : "s"}).`;
-    } catch (err) {
-      $("evMsg").textContent = `Couldn't reach the Customer Events tab${err && (err.code === "server_not_connected" || err.code === "needs_reauth") ? " (Google Sheets needs reconnecting)" : ""}. The event is kept here; press Send unsent events to try again.`;
+    let ok = 0, failMsg = "";
+    for (const e of pend) {
+      try {
+        const { error } = await window.RELIANT.sb.rpc("log_customer_event", { p_user: e.user, p_date: e.date || null, p_note: e.note || "", p_platform: e.platform || "", p_rehearsal: true });
+        if (error) throw error;
+        e.sentAt = Date.now(); ok++; saveEvents();
+      } catch (err) { failMsg = String(err && err.message || err); }
     }
+    $("evMsg").textContent = failMsg
+      ? `Couldn't save ${pend.length - ok} event${pend.length - ok === 1 ? "" : "s"} to the database (${failMsg}). They're kept here; press Send unsent events to try again.`
+      : `Saved to the database's customer events (${ok} event${ok === 1 ? "" : "s"}, tagged rehearsal while you test).`;
     evBusy = false; drawEvents();
   }
   function addEvent() {
