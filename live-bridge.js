@@ -176,6 +176,12 @@
       if (tool === "get_values") {
         const tab = rangeTab(input && input.range);
         if (tab === "Show Prep") return { payload: { values: await prepValues() } };
+        if (tab === "Inventory") {   // books on hand, in the Inventory tab's column order (ISBN, Title, Author, -, On hand)
+          await ready;
+          const { data, error } = await sb.from("stock_on_hand").select("isbn,title,author,on_hand").gt("on_hand", 0).order("title").limit(5000);
+          if (error) throw { code: "tool_error", message: error.message };
+          return { payload: { values: data.map(r => [r.isbn, r.title || "", r.author || "", "", String(r.on_hand)]) } };
+        }
         return { payload: { values: [] } };   // naming, costs, used sources: nothing needed for a rehearsal
       }
       if (tool === "update_values" && rangeTab(input && input.range) === "Show Prep") {

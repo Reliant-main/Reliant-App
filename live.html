@@ -607,6 +607,15 @@ body.usedShow.speedOn .speedflag { display: block; }
 .modal .card.wide { max-width: 760px; max-height: 90vh; overflow-y: auto; }
 .radios { display: flex; gap: 10px; }
 .radios label { flex: 1; display: flex; gap: 8px; align-items: center; justify-content: center; border: 1px solid var(--rule); border-radius: 8px; padding: 12px; font: 600 18px var(--f-ui); cursor: pointer; }
+.invlist { list-style: none; margin: 0; padding: 0; max-height: 52vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.invlist li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 2px 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--cloth); }
+.invlist li.sel { border-color: var(--gilt); background: var(--cloth-3); }
+.invlist .t { font-family: var(--f-text); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invlist .m { grid-column: 1; font: 11px var(--f-mono); color: var(--paper-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invlist .oh { grid-row: 1 / span 2; grid-column: 2; font: 600 13px var(--f-mono); color: var(--gilt); white-space: nowrap; }
+.invlist .btn { grid-row: 1 / span 2; padding: 5px 10px; font-size: 13px; }
+.invlist li.empty { display: block; border: 0; background: transparent; }
+.radios.three label { font-size: 16px; }
 .radios input { accent-color: var(--gilt); }
 .radios label:has(input:checked) { border-color: var(--gilt); color: var(--gilt); }
 .exsum { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
@@ -728,6 +737,24 @@ body.mode-display #btnHome2 { display: none !important; }
 .bridgeFail > div { max-width: 460px; }
 .bridgeFail h2 { font: 400 32px "Libre Caslon Display", serif; margin: 0 0 8px; }
 .bridgeFail a { color: var(--gilt, #d2a54a); }
+.pace-head, .pace-grid, .pace-chart { flex: none; }
+.pace-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.pace-head .lbl { font: 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--paper-dim); }
+.pace-head .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.pace-head .seg .btn { padding: 6px 12px; font-size: 13px; }
+.pace-sub { font: 12px var(--f-mono); color: var(--paper-dim); }
+.pace-grid { display: grid; grid-template-columns: minmax(130px, auto) repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.pace-grid > div { background: var(--cloth-2); padding: 8px 12px; min-width: 0; }
+.pace-grid .h { font: 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--paper-dim); }
+.pace-grid .k { font: 600 14px var(--f-ui); }
+.pace-grid .v { font: 600 20px var(--f-mono); color: var(--gilt); font-variant-numeric: tabular-nums; }
+.pace-grid .v small { display: block; font: 12px var(--f-mono); color: var(--paper-dim); font-weight: 400; }
+.pace-chart { background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.pace-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 12px var(--f-ui); color: var(--paper-dim); margin-bottom: 6px; }
+.pace-legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; }
+.sw.rev { background: var(--gilt); opacity: .75; } .sw.avg { background: var(--paper); height: 3px; vertical-align: 3px; } .sw.lots { background: var(--stem); }
+#paceChart svg { display: block; width: 100%; height: auto; }
+#paceChart text { font: 11px "IBM Plex Mono", monospace; fill: var(--paper-dim); }
 .rehTag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font: 600 11px Figtree, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; background: #d2a54a; color: #10261f; vertical-align: middle; }
 </style>
 
@@ -740,6 +767,7 @@ body.mode-display #btnHome2 { display: none !important; }
 <div class="bar" id="bar">
   <button class="btn" id="btnHome2" type="button">⌂ Home</button>
   <button class="btn" id="btnSearch" type="button" data-hide="bSearch">Search</button>
+  <button class="btn" id="btnInv" type="button" data-hide="bInv">Search inventory</button>
   <button class="btn" id="btnFlag" type="button" data-hide="bFlag">Flag book</button>
   <button class="btn" id="btnList" type="button">List: Auto</button>
   <button class="btn" id="btnRefresh" type="button" hidden data-hide="bRefresh">Refresh book list</button>
@@ -874,12 +902,14 @@ body.mode-display #btnHome2 { display: none !important; }
         <button class="btn" id="btnBundle" type="button">Bundle</button>
       </div>
       <div class="pending" id="pending">Start a show to begin logging sales.</div>
+      <label class="check" data-hide="tvSell"><input type="checkbox" id="tvSell"> A price with no scanned book goes to the book on the TV <span id="tvSellNote" style="color:var(--paper-dim)"></span></label>
       <label class="check" data-hide="autoNext"><input type="checkbox" id="autoNext"> After logging the book on the TV, move to the next playlist book</label>
     </div>
     <div class="saletabs" role="tablist">
       <button class="tab on" id="tabSales" type="button" role="tab" aria-selected="true">Sales <span id="salesCount">0</span></button>
       <button class="tab" id="tabReqs" type="button" role="tab" aria-selected="false" data-hide="reqs">Customer requests <span id="reqCount">0</span></button>
       <button class="tab" id="tabEvents" type="button" role="tab" aria-selected="false" data-hide="events">Life events <span id="evCount">0</span></button>
+      <button class="tab" id="tabPace" type="button" role="tab" aria-selected="false" data-hide="pace">Pace</button>
     </div>
     <ol class="slist" id="saleList"></ol>
     <div id="reqPane" hidden style="display:flex;flex-direction:column;gap:8px;min-height:0;flex:1">
@@ -891,6 +921,11 @@ body.mode-display #btnHome2 { display: none !important; }
         <button class="btn primary" id="rqAdd" type="button">Add request</button>
       </div>
       <ol class="slist" id="reqList"></ol>
+    </div>
+    <div id="pacePane" hidden style="display:none;flex-direction:column;gap:10px;min-height:0;flex:1;overflow-y:auto">
+      <div class="pace-head"><span class="lbl">Time frame</span><span class="seg" id="paceSeg"><button class="btn" type="button" data-m="1">1 min</button><button class="btn" type="button" data-m="5">5 min</button><button class="btn" type="button" data-m="15">15 min</button><button class="btn" type="button" data-m="30">30 min</button><button class="btn" type="button" data-m="60">60 min</button></span><span class="pace-sub" id="paceSub"></span></div>
+      <div class="pace-grid" id="paceGrid"></div>
+      <div class="pace-chart"><div class="pace-legend"><span><i class="sw rev"></i>Revenue per period</span><span><i class="sw avg"></i>Average price per book</span><span><i class="sw lots"></i>Lots shown (sold + R)</span></div><div id="paceChart"></div></div>
     </div>
     <div id="evPane" hidden style="display:none;flex-direction:column;gap:8px;min-height:0;flex:1">
       <div class="reqform" id="evForm">
@@ -911,9 +946,10 @@ body.mode-display #btnHome2 { display: none !important; }
 <div class="modal" id="showModal" hidden>
   <div class="card" role="dialog" aria-labelledby="showModalTitle">
     <h2 id="showModalTitle">Start a show</h2>
-    <div class="radios" id="kindRadios">
+    <div class="radios three" id="kindRadios">
       <label><input type="radio" name="kind" value="new"> New books</label>
       <label><input type="radio" name="kind" value="used"> Used books</label>
+      <label><input type="radio" name="kind" value="vintage"> Vintage</label>
     </div>
     <div class="radios" id="platRadios">
       <label><input type="radio" name="plat" value="TT"> TT</label>
@@ -991,7 +1027,7 @@ body.mode-display #btnHome2 { display: none !important; }
       <div id="plAddBox" class="pladd">
         <label class="lbl" for="plScan">Scan or paste ISBNs · each adds to the end</label>
         <textarea id="plScan" rows="2" spellcheck="false" placeholder="Click here, then scan books"></textarea>
-        <div class="qrow"><button class="btn" id="btnPrep2" type="button">Load from Show Prep tab…</button></div>
+        <div class="qrow"><button class="btn" id="btnPrep2" type="button">Load from Show Prep tab…</button><button class="btn" id="btnInv2" type="button">Search inventory…</button></div>
       </div>
       <span class="msg" id="plMsg"></span>
       <label class="check" data-hide="upnext"><input type="checkbox" id="showNext"> Show "Up next" on the TV</label>
@@ -1012,6 +1048,18 @@ body.mode-display #btnHome2 { display: none !important; }
     <h2 id="endTitle">You've reached the end of the playlist</h2>
     <p class="sub" id="endSub"></p>
     <button class="btn" id="endClose" type="button">Close</button>
+  </div>
+</div>
+
+<div class="modal" id="invModal" hidden>
+  <div class="card wide" role="dialog" aria-labelledby="invTitle">
+    <h2 id="invTitle">Add from inventory</h2>
+    <p class="sub" id="invSub">Books on hand right now. Play next puts the book right after the one on the TV; Add to end puts it last.</p>
+    <input type="text" id="invQ" autocomplete="off" spellcheck="false" placeholder="Title, author or ISBN" aria-label="Search inventory">
+    <ol class="invlist" id="invList"></ol>
+    <p class="sub" id="invMsg" style="min-height:1.2em"></p>
+    <p class="sub" style="margin:0;font-size:13px">↑ ↓ pick · Enter plays next · Shift+Enter adds to the end · Esc closes</p>
+    <div class="qrow"><button class="btn" id="invRefresh" type="button">Refresh stock</button><button class="btn" id="invClose" type="button">Close</button></div>
   </div>
 </div>
 
@@ -1755,6 +1803,57 @@ body.mode-display #btnHome2 { display: none !important; }
   $("btnSearch").onclick = openSearch;
   $("qClose").onclick = closeSearch;
 
+  // ---------- add books from inventory (books on hand) to the playlist ----------
+  let invItems = null, invAt = 0, invSel = 0, invHits = [];
+  async function loadInventory(force) {
+    if (invItems && !force && Date.now() - invAt < 5 * 60000) return invItems;
+    const mcp = await getSheetsMcp();
+    if (!mcp) throw { message: "This window can't reach the inventory." };
+    const res = await mcp.callTool("Google Sheets", "get_values", { spreadsheetId: WORKBOOK_ID, range: "'Inventory'!A5:E2504" }, { cache: false });
+    const rows = (res && res.payload && res.payload.values) || [];
+    invItems = rows.map(r => ({ isbn: String(r[0] || "").trim(), title: String(r[1] || "").trim(), author: String(r[2] || "").trim(), onHand: parseFloat(String(r[4] || "").replace(/[,\s]/g, "")) }))
+      .filter(it => it.isbn && it.onHand > 0);
+    invItems.forEach(it => { it.hay = norm(it.title + " " + it.author) + " " + digits(it.isbn); it.d = digits(it.isbn); });
+    invAt = Date.now();
+    return invItems;
+  }
+  const invKey = it => { const d = it.d.toLowerCase(); const bi = books.findIndex(b => b._ids.some(id => id === d)); return { bi, key: bi >= 0 ? keyOf(books[bi]) : d }; };
+  function drawInv() {
+    const qv = norm($("invQ").value), dq = digits($("invQ").value), words = qv.split(" ").filter(Boolean);
+    invHits = !invItems ? [] : invItems.filter(it => !words.length || words.every(w => it.hay.includes(w)) || (dq.length >= 4 && it.d.includes(dq))).slice(0, 40);
+    if (invSel >= invHits.length) invSel = Math.max(0, invHits.length - 1);
+    $("invList").innerHTML = !invItems ? `<li class="empty">Loading inventory…</li>` : !invHits.length ? `<li class="empty">No book on hand matches.</li>` : invHits.map((it, n) => {
+      const { key } = invKey(it), inPl = playlist.filter(e => e.key === key).length;
+      return `<li data-n="${n}" class="${n === invSel ? "sel" : ""}"><span class="t">${esc(splitTitle(it.title).main || "ISBN " + it.isbn)}</span><span class="m">${esc([fixAuthor(it.author), it.isbn].filter(Boolean).join(" · "))}${inPl ? ` · in playlist ×${inPl}` : ""}</span><span class="oh">${it.onHand} on hand</span><button class="btn" type="button" data-a="next">Play next</button><button class="btn" type="button" data-a="end">Add to end</button></li>`;
+    }).join("");
+    const sel = $("invList").querySelector("li.sel"); if (sel) sel.scrollIntoView({ block: "nearest" });
+  }
+  function invAdd(n, where) {
+    const it = invHits[n]; if (!it) return;
+    const { bi, key } = invKey(it), name = bi >= 0 ? splitTitle(books[bi].title).main : (it.title || "ISBN " + it.isbn);
+    if (where === "next") { const at = anchorIndex() + 1; playlist.splice(at, 0, newEntry(key)); plChanged(); $("invMsg").textContent = `Plays next as #${at + 1}: ${name}`; }
+    else { playlist.push(newEntry(key)); plChanged(); $("invMsg").textContent = `Added to the end as #${playlist.length}: ${name}`; }
+    if (bi < 0) $("invMsg").textContent += " (not in the book list yet, so the TV shows its ISBN)";
+    drawInv(); $("invQ").focus(); $("invQ").select();
+  }
+  async function openInv() {
+    $("invModal").hidden = false; $("invMsg").textContent = ""; $("invQ").value = ""; invSel = 0; drawInv(); $("invQ").focus();
+    try { await loadInventory(); drawInv(); $("invSub").textContent = `${invItems.length} titles on hand right now. Play next puts the book right after the one on the TV; Add to end puts it last.`; }
+    catch (err) { $("invList").innerHTML = `<li class="empty">Couldn't load the inventory: ${esc(err && err.message || "no connection")}. Press Refresh stock to try again.</li>`; }
+  }
+  $("btnInv").onclick = openInv;
+  $("btnInv2").onclick = openInv;
+  $("invClose").onclick = () => { $("invModal").hidden = true; };
+  $("invRefresh").onclick = async () => { invItems = null; drawInv(); try { await loadInventory(true); } catch {} drawInv(); };
+  $("invQ").addEventListener("input", () => { invSel = 0; drawInv(); });
+  $("invQ").addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { e.preventDefault(); if (invHits.length) { invSel = (invSel + 1) % invHits.length; drawInv(); } }
+    else if (e.key === "ArrowUp") { e.preventDefault(); if (invHits.length) { invSel = (invSel - 1 + invHits.length) % invHits.length; drawInv(); } }
+    else if (e.key === "Enter") { e.preventDefault(); invAdd(invSel, e.shiftKey ? "end" : "next"); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); $("invModal").hidden = true; }
+  });
+  $("invList").addEventListener("click", e => { const b = e.target.closest("button[data-a]"); if (!b) return; invAdd(+b.closest("li").dataset.n, b.dataset.a); });
+
   // ---------- flags ----------
   const FLAG_DAYS = 30, DAY = 86400000;
   let flags = [], flagDb = null, flagMode = "local";
@@ -1869,7 +1968,7 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   document.addEventListener("keydown", e => {
     if (MODE === "display") return;
-    for (const m of ["showModal", "endShowModal", "exportModal", "prepModal"]) {
+    for (const m of ["showModal", "endShowModal", "exportModal", "prepModal", "invModal"]) {
       if (!$(m).hidden) { if (e.key === "Escape") { e.preventDefault(); $(m).hidden = true; } return; }
     }
     if (!$("help").hidden) {
@@ -1925,8 +2024,23 @@ body.mode-display #btnHome2 { display: none !important; }
   // ---------- live link to the Google Sheet ----------
   function decodeCsv(payload) {
     let p = payload;
-    if (typeof p === "string") { try { p = JSON.parse(p); } catch { return p; } }
-    const c = p && typeof p === "object" ? (p.content ?? p.data ?? "") : "";
+    if (typeof p === "string") { try { p = JSON.parse(p); } catch { return /[,\n]/.test(p.slice(0, 400)) ? p : ""; } }
+    let c = p && typeof p === "object" ? (p.content ?? p.data ?? "") : "";
+    // Newer Google Drive replies put the file in an attachment block in result.content.
+    if (Array.isArray(c)) {
+      const blocks = c; c = "";
+      for (const b of blocks) {
+        const r = b && b.resource;
+        if (r && typeof r.text === "string" && r.text) return r.text;
+        if (r && typeof r.blob === "string" && r.blob) { c = r.blob; break; }
+      }
+      if (!c) for (const b of blocks) {
+        if (b && b.type === "text" && typeof b.text === "string") {
+          try { const j = JSON.parse(b.text); if (j && typeof (j.content ?? j.data) === "string") { c = j.content ?? j.data; break; } }
+          catch { if (/[,\n]/.test(b.text.slice(0, 200)) && /title/i.test(b.text.slice(0, 400))) return b.text; }
+        }
+      }
+    }
     if (typeof c !== "string" || !c) return "";
     if (/[,\n]/.test(c.slice(0, 200)) && /title/i.test(c.slice(0, 400))) return c; // already plain CSV
     try {
@@ -1936,7 +2050,7 @@ body.mode-display #btnHome2 { display: none !important; }
     } catch { return ""; }
   }
   function onSheetData(result) {
-    const csv = decodeCsv(result && result.payload !== undefined ? result.payload : result);
+    const csv = (result && decodeCsv(result.payload)) || decodeCsv(result);
     const when = (result && result.cache && result.cache.storedAt) || Date.now();
     onSheetCsv(csv, when);
   }
@@ -2482,14 +2596,15 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   function drawShow() {
     const on = !!S.show;
-    $("showName").innerHTML = on ? esc(S.show.sourceTab + (S.show.kind === "used" ? " · Used" : "")) + '<span class="rehTag">Rehearsal</span>' : "No show running";
-    document.body.classList.toggle("usedShow", on && S.show.kind === "used");
-    if (on && S.show.kind === "used") { if (saleMode === "table") setSaleMode("single"); loadUsedSources(); drawUsedBar(); }
+    $("showName").innerHTML = on ? esc(S.show.sourceTab + (S.show.kind === "used" ? " · Used" : S.show.kind === "vintage" ? " · Vintage" : "")) + '<span class="rehTag">Rehearsal</span>' : "No show running";
+    document.body.classList.toggle("usedShow", on && isUsedKind(S.show.kind));
+    if (on && isUsedKind(S.show.kind)) { if (saleMode === "table") setSaleMode("single"); loadUsedSources(); drawUsedBar(); }
     else document.body.classList.remove("speedOn");
     $("showName").classList.toggle("off", !on);
     $("btnStartShow").hidden = on; $("btnPlatform").hidden = !on; $("btnEndShow").hidden = !on;
     $("entry").classList.toggle("locked", !on);
     $("saleScan").disabled = !on; $("salePrice").disabled = !on; $("btnBundle").disabled = !on;
+    drawTvSell();
     if (!on) setPending("Start a show to begin logging sales.");
     else if (!S.pending && !S.bundle) drawPendingLine();
   }
@@ -2505,7 +2620,7 @@ body.mode-display #btnHome2 { display: none !important; }
     $("showDate").closest(".fld").hidden = mode !== "start";
     document.querySelectorAll('#platRadios input').forEach(r => r.checked = mode !== "start" && r.value === S.show.platform);
     $("kindRadios").hidden = mode !== "start";
-    const lastKind = store.get("spotlight.lastKind") === "used" ? "used" : "new";
+    const lastKind = ["used", "vintage"].includes(store.get("spotlight.lastKind")) ? store.get("spotlight.lastKind") : "new";
     document.querySelectorAll('#kindRadios input').forEach(r => r.checked = r.value === lastKind);
     $("showModalSub").textContent = mode === "start" ? "Rehearsal: practice sales stay on this screen and never reach Analytics, Inventory or the sheets." : `Every sale in this show will be relabeled. Currently ${S.show.platform}.`;
     $("showErr").textContent = "";
@@ -2519,7 +2634,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!plat) { $("showErr").textContent = "Pick TT, WN or EB."; return; }
     if (platMode === "start") {
       const iso = $("showDate").value || todayISO();
-      const kind = document.querySelector('#kindRadios input:checked')?.value === "used" ? "used" : "new";
+      const kindPick = document.querySelector('#kindRadios input:checked')?.value, kind = kindPick === "used" || kindPick === "vintage" ? kindPick : "new";
       store.set("spotlight.lastKind", kind);
       const id = `${iso}-${plat}-${Date.now().toString(36)}`;
       $("showGo").disabled = true; $("showErr").textContent = "Naming the show…";
@@ -2576,7 +2691,13 @@ body.mode-display #btnHome2 { display: none !important; }
   function itemLabel(it) { return it.found ? splitTitle(it.title).main : `ISBN ${it.isbn}${it.used ? "" : " (not in sheet)"}`; }
   // ---- selling straight from the playlist: the book on the TV is the default book for a price ----
   const itemOfBook = b => ({ isbn: b.isbn || digits(b.sku || ""), title: b.title || "", author: b.author || "", gr: b.goodreads || "", cost: costOf(b), found: true });
-  function tvItem() {
+  // Off: a price only goes to a book that was scanned or typed first (the TV is ignored). Remembered per show category.
+  const tvSellKey = () => "spotlight.tvSell." + (S.show ? S.show.kind || "new" : "new");
+  const tvSellOn = () => { const v = store.get(tvSellKey()); return v === null || v === undefined || v === "" ? !(S.show && isUsedKind(S.show.kind)) : v === "1"; };
+  function drawTvSell() { $("tvSell").checked = tvSellOn(); $("tvSellNote").textContent = tvSellOn() ? "" : "· off: scan or type the sold book first"; }
+  $("tvSell").onchange = e => { store.set(tvSellKey(), e.target.checked ? "1" : "0"); S.confirmAgain = false; drawTvSell(); if (!S.pending && !S.bundle) drawPendingLine(); };
+  function tvItem() { return tvSellOn() ? tvItemRaw() : null; }
+  function tvItemRaw() {
     if (curId != null) {
       const i = idxOf(curId); if (i < 0) return null;
       const e = playlist[i], bi = byKey.get(e.key);
@@ -2617,7 +2738,7 @@ body.mode-display #btnHome2 { display: none !important; }
 
   // ---- Table rounds: lots under the camera (a lot is 1+ books); each winner picks a lot (or several) ----
   let saleMode = store.get("spotlight.saleMode") === "table" ? "table" : "single";
-  const T = { round: 0, lots: [], sel: new Set(), lastEid: null, firstEid: null, tabled: new Set(), fresh: new Set(), awaitPick: null, nextLot: 1 };
+  const T = { multi: false, round: 0, lots: [], sel: new Set(), lastEid: null, firstEid: null, tabled: new Set(), fresh: new Set(), awaitPick: null, nextLot: 1 };
   const tKey = () => S.show ? "spotlight.table." + S.show.id : "";
   const newLot = books => ({ id: "L" + (T.nextLot++), books });
   const tBooks = () => T.lots.reduce((n, l) => n + l.books.length, 0);
@@ -2644,7 +2765,7 @@ body.mode-display #btnHome2 { display: none !important; }
     $("salePrice").placeholder = m === "table" ? "Winning bid, or R" : "0.00 or R";
     $("salePriceLbl").textContent = m === "table" ? "Winning bid · R = end round" : "Price · R = no sale";
     if (S.bundle) { S.bundle = null; updateBundleBtn(); }
-    S.pending = null; T.awaitPick = null; S.confirmAgain = false;
+    S.pending = null; T.awaitPick = null; T.multi = false; T.sel.clear(); S.confirmAgain = false;
     drawTable(); drawPendingLine();
   }
   $("modeSingle").onclick = () => setSaleMode("single");
@@ -2691,7 +2812,7 @@ body.mode-display #btnHome2 { display: none !important; }
     const start = nextRoundStart();
     const n = tbSizeVal(), add = [];
     for (let i = 0; i < playlist.length && add.length < n; i++) { if (!inLine(i, start) || usedOnTable(playlist[i])) continue; const it = entryItem(playlist[i], i); if (it) add.push(it); }
-    T.lots = add.map(it => newLot([it])); T.round += 1; T.sel.clear(); T.awaitPick = null;
+    T.lots = add.map(it => newLot([it])); T.round += 1; T.sel.clear(); T.multi = false; T.awaitPick = null;
     T.lastEid = add.length ? add[add.length - 1].eid : T.lastEid;
     if (add.length) T.firstEid = add[0].eid;
     add.forEach(it => T.tabled.add(it.eid));
@@ -2719,7 +2840,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!T.lots.length) { if (!silent) toast("The table is already empty"); return; }
     const left = T.lots.slice(), nb = tBooks();
     left.forEach(l => logSale(l.books.map(it => ({ ...it, round: T.round, lg: l.id })), 0, true));
-    T.lots = []; T.sel.clear(); T.awaitPick = null; tSave();
+    T.lots = []; T.sel.clear(); T.multi = false; T.awaitPick = null; tSave();
     if (!silent) toast(`Round ${T.round} ended · ${nb} book${nb === 1 ? "" : "s"} marked R`);
     drawTable(); drawPendingLine();
   }
@@ -2738,7 +2859,7 @@ body.mode-display #btnHome2 { display: none !important; }
     const at = keys[0];
     T.lots = T.lots.filter((_, i) => !keys.includes(i));
     T.lots.splice(at, 0, merged);
-    T.sel.clear(); tSave(); drawTable(); drawPendingLine(); $("salePrice").focus();
+    T.sel.clear(); T.multi = false; tSave(); drawTable(); drawPendingLine(); $("salePrice").focus();
     toast(`Lot ${at + 1} now holds ${merged.books.length} books`);
   }
   function splitLot(k) {
@@ -2776,7 +2897,9 @@ body.mode-display #btnHome2 { display: none !important; }
     if (a && a.dataset.ta === "flag") { const it = l.books[+a.dataset.j || 0]; if (it) openFlag({ isbn: it.isbn || "", title: it.found && it.title ? it.title : "ISBN " + (it.isbn || ""), author: it.found ? (it.author || "") : "", missing: !it.found }); return; }
     if (a && a.dataset.ta === "split") { splitLot(k); return; }
     if (T.awaitPick != null) { pickAndLog([k], T.awaitPick); return; }
-    if (T.sel.has(k)) T.sel.delete(k); else T.sel.add(k);
+    if (T.multi) { if (T.sel.has(k)) T.sel.delete(k); else T.sel.add(k); }
+    else if (T.sel.has(k)) T.sel.clear();
+    else { T.sel.clear(); T.sel.add(k); }
     drawTable(); drawPendingLine(); $("salePrice").focus();
   });
   async function pickAndLog(keys, total) {
@@ -2784,7 +2907,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!keys.length) return;
     const items = keys.flatMap(k => T.lots[k].books.map(it => ({ ...it, round: T.round, lg: T.lots[k].id })));
     T.lots = T.lots.filter((_, i) => !keys.includes(i));
-    T.sel.clear(); T.awaitPick = null; $("salePrice").value = ""; tSave();
+    T.sel.clear(); T.multi = false; T.awaitPick = null; $("salePrice").value = ""; tSave();
     drawTable(); drawPendingLine(); $("salePrice").focus();
     const id = await logSale(items, total, false);
     const label = keys.length > 1 ? `lots ${keys.map(k => k + 1).join(" + ")} (${items.length} books)` : items.length > 1 ? `lot ${keys[0] + 1} (${items.length} books)` : `lot ${keys[0] + 1} · ${itemLabel(items[0])}`;
@@ -2824,15 +2947,23 @@ body.mode-display #btnHome2 { display: none !important; }
     const nl = T.lots.length;
     if (T.awaitPick != null) return `<span class="pick">${money(T.awaitPick)} · which lot? Press its number${nl > 9 ? " (1–9) or click it" : ` (1–${nl}) or click it`}.</span> Esc cancels.`;
     if (!nl) return T.round ? "Round finished. Click Load next round." : "Click Load next round to start.";
-    if (T.sel.size) {
+    const bundleBtn = nl >= 2 ? ` <button class="btn" type="button" id="tbBundle">Bundle lots</button>` : "";
+    if (T.multi) {
       const ks = [...T.sel].sort((a, b) => a - b).map(k => k + 1).join(", ");
-      return T.sel.size === 1
-        ? `<b>Lot ${ks}</b> selected · type the price and press Enter.`
-        : `<b>Lots ${ks}</b> selected · type one price and press Enter to sell them together (split evenly), or <button class="btn" type="button" id="tbCombine">Combine into one lot</button> to put those books together under the camera.`;
+      const n = T.sel.size;
+      return `<b>Bundling:</b> click each lot to put together${n ? ` (<b>lot${n === 1 ? "" : "s"} ${ks}</b>)` : ""}. ${n >= 2 ? "Type one price and press Enter to sell them together (split evenly), or " : ""}<button class="btn" type="button" id="tbCombine"${n >= 2 ? "" : " disabled"}>Combine lots</button> <button class="btn" type="button" id="tbBundleCancel">Cancel</button>`;
     }
-    return `Type the winning bid and press Enter, then press the lot's number. Select lots first to sell several together or to combine them into one lot. <b>R</b> + Enter ends the round (the rest are no sale).`;
+    if (T.sel.size) {
+      const ks = [...T.sel].map(k => k + 1).join(", ");
+      return `<b>Lot ${ks}</b> selected · type the price and press Enter. Click it again to unselect.${bundleBtn}`;
+    }
+    return `Type the winning bid and press Enter, then press the lot's number. To sell or combine several lots together, click Bundle lots first. <b>R</b> + Enter ends the round (the rest are no sale).${bundleBtn}`;
   }
-  $("pending").addEventListener("click", e => { if (e.target.id === "tbCombine") combineSelected(); });
+  $("pending").addEventListener("click", e => {
+    if (e.target.id === "tbCombine") combineSelected();
+    else if (e.target.id === "tbBundle") { T.multi = true; drawTable(); drawPendingLine(); $("salePrice").focus(); }
+    else if (e.target.id === "tbBundleCancel") { T.multi = false; T.sel.clear(); drawTable(); drawPendingLine(); $("salePrice").focus(); }
+  });
   // keyboard for table mode, ahead of the single-book handlers
   $("entry").addEventListener("keydown", e => {
     if (saleMode !== "table" || !S.show) return;
@@ -2842,7 +2973,7 @@ body.mode-display #btnHome2 { display: none !important; }
         if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); T.awaitPick = null; drawPendingLine(); return; }
         e.preventDefault(); e.stopPropagation(); return;
       }
-      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); $("salePrice").value = ""; T.sel.clear(); drawTable(); drawPendingLine(); return; }
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); $("salePrice").value = ""; T.sel.clear(); T.multi = false; drawTable(); drawPendingLine(); return; }
       if (e.key !== "Enter") return;
       e.preventDefault(); e.stopPropagation();
       const raw = $("salePrice").value.trim(); if (!raw) return;
@@ -2869,7 +3000,7 @@ body.mode-display #btnHome2 { display: none !important; }
         for (let i = 0; i < playlist.length && at < 0; i++) if (!usedOnTable(playlist[i]) && same(playlist[i], i)) at = i;
         if (at >= 0) it = entryItem(playlist[at], at);
       }
-      if (T.sel.size === 1) {   // a lot is selected: the scanned book joins it
+      if (T.sel.size === 1 && !T.multi) {   // a lot is selected: the scanned book joins it
         const k = [...T.sel][0]; T.lots[k].books.push(it); tSave(); drawTable(); drawPendingLine();
         toast(`Added to lot ${k + 1}: ${itemLabel(it)}`); return;
       }
@@ -2937,7 +3068,7 @@ body.mode-display #btnHome2 { display: none !important; }
     let items = S.bundle || S.pending, fromTv = false;
     if (!items || !items.length) {
       const tv = tvItem();
-      if (!tv) { setPending(`<span class="warn">Scan a book first, then type its price.</span>`); $("saleScan").focus(); return; }
+      if (!tv) { setPending(`<span class="warn">Scan or type the sold book first, then its price.</span>`); $("saleScan").focus(); return; }
       items = [tv]; fromTv = true;
     }
     if (S.bundle && S.bundle.length < 2) { setPending(`<span class="warn">A bundle needs at least 2 books. Scan or add another, or click Cancel.</span>`); return; }
@@ -2966,7 +3097,8 @@ body.mode-display #btnHome2 { display: none !important; }
   // ---- Used-book shows: books are scanned live; condition and source stay set, genre is per book ----
   const USED_ID = "1ao9jMIgayKPlpQ1nXqqOI7bUXo6SJ9hZOk2WYpUzuIk";
   const USED_NAME = "Reliant Used Books Information";
-  function isUsedShow() { return !!(S.show && S.show.kind === "used"); }
+  function isUsedKind(k) { return k === "used" || k === "vintage"; }
+  function isUsedShow() { return !!(S.show && isUsedKind(S.show.kind)); }
   let usedSources = [{ name: "HPB", cost: 0.49 }];
   try { const v = JSON.parse(store.get("spotlight.usedSources") || "null"); if (Array.isArray(v) && v.length) usedSources = v; } catch {}
   let usedSrcLoaded = 0;
@@ -3137,6 +3269,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (isUsedShow()) drawUsedStats();
     if (S.show && !S.pending && !S.bundle && !S.dup && !S.confirmAgain) drawPendingLine();
     if (saleMode === "table") drawTable();
+    try { drawPace(); } catch {}
     const ul = $("saleList");
     if (!S.show) { ul.innerHTML = `<li class="empty" style="display:block">No show running. Click Start show, pick TT, WN or EB, and sales you scan will list here.</li>`; return; }
     if (!all.length) { ul.innerHTML = `<li class="empty" style="display:block">No sales yet this show.</li>`; return; }
@@ -3220,7 +3353,9 @@ body.mode-display #btnHome2 { display: none !important; }
     else { S.reqs = S.reqs.filter(x => x !== r); backup(); drawReqs(); }
   });
   function setSalesTab(t) {
-    $("saleList").hidden = t !== "sales"; $("reqPane").hidden = t !== "reqs"; $("evPane").hidden = t !== "events";
+    $("saleList").hidden = t !== "sales"; $("reqPane").hidden = t !== "reqs"; $("evPane").hidden = t !== "events"; $("pacePane").hidden = t !== "pace";
+    $("pacePane").style.display = t === "pace" ? "flex" : "none"; $("tabPace").classList.toggle("on", t === "pace"); $("tabPace").setAttribute("aria-selected", t === "pace");
+    if (t === "pace") drawPace();
     $("reqPane").style.display = t === "reqs" ? "flex" : "none";
     $("evPane").style.display = t === "events" ? "flex" : "none";
     $("tabSales").classList.toggle("on", t === "sales"); $("tabReqs").classList.toggle("on", t === "reqs"); $("tabEvents").classList.toggle("on", t === "events");
@@ -3283,6 +3418,56 @@ body.mode-display #btnHome2 { display: none !important; }
   drawEvents();
   setTimeout(() => { if (events.some(e => !e.sentAt)) sendEvents(); }, 4000);
   $("tabSales").onclick = () => setSalesTab("sales");
+  $("tabPace").onclick = () => setSalesTab("pace");
+
+  // ---------- Pace: how the show is going, by time frame ----------
+  // A lot = one sale record (one book, a bundle, or a table lot) or one R. Rejected (struck-out) sales are left out.
+  let paceMin = +(store.get("spotlight.paceMin") || 5);
+  document.querySelectorAll("#paceSeg [data-m]").forEach(b => b.onclick = () => { paceMin = +b.dataset.m; store.set("spotlight.paceMin", String(paceMin)); drawPace(); });
+  const paceStats = list => {
+    const sold = list.filter(s => !s.noSale), books = sold.reduce((n, s) => n + (s.items || []).length, 0), rev = sold.reduce((n, s) => n + (+s.total || 0), 0);
+    return { sold: sold.length, r: list.length - sold.length, lots: list.length, books, rev, avg: books ? rev / books : NaN };
+  };
+  function drawPace() {
+    if ($("pacePane").hidden) return;
+    document.querySelectorAll("#paceSeg [data-m]").forEach(b => b.classList.toggle("on", +b.dataset.m === paceMin));
+    const recs = S.sales.filter(s => s.noSale || !s.rejected).slice().sort((a, b) => a.loggedAt - b.loggedAt);
+    if (!S.show || !recs.length) { $("paceSub").textContent = S.show ? "No sales or R's logged yet." : "Start a show to see its pace."; $("paceGrid").innerHTML = ""; $("paceChart").innerHTML = ""; return; }
+    const W = paceMin * 60000, now = Date.now();
+    const start = Math.min(S.show.startedAt || recs[0].loggedAt, recs[0].loggedAt), end = Math.max(now, recs[recs.length - 1].loggedAt);
+    const n = Math.max(1, Math.ceil((end - start) / W));
+    const buckets = Array.from({ length: n }, (_, i) => paceStats(recs.filter(s => s.loggedAt >= start + i * W && (i === n - 1 ? s.loggedAt <= end : s.loggedAt < start + (i + 1) * W))));
+    const last = paceStats(recs.filter(s => s.loggedAt > now - W));
+    const all = paceStats(recs), periods = Math.max(1, (end - start) / W), per = x => x / periods;
+    const fmtN = v => (Math.round(v * 10) / 10).toString();
+    $("paceSub").textContent = `Show running ${Math.max(1, Math.round((end - start) / 60000))} min · averages are per ${paceMin} min of show time · chart shows the last ${Math.min(24, n)} periods`;
+    const row = (k, a, b) => `<div class="k">${k}</div><div class="v">${a}</div><div class="v">${b}</div>`;
+    $("paceGrid").innerHTML = `<div class="h"></div><div class="h">Last ${paceMin} min</div><div class="h">Average per ${paceMin} min this show</div>`
+      + row("Average price per book", isFinite(last.avg) ? money(last.avg) : "–", isFinite(all.avg) ? money(all.avg) : "–")
+      + row("Revenue", money(last.rev), money(per(all.rev)))
+      + row("Lots shown", `${last.lots}<small>${last.sold} sold · ${last.r} R</small>`, `${fmtN(per(all.lots))}<small>${fmtN(per(all.sold))} sold · ${fmtN(per(all.r))} R</small>`)
+      + row("Books sold", String(last.books), fmtN(per(all.books)));
+    // chart: one group per period, oldest on the left (the last 24 periods)
+    const B = buckets.slice(-24), off = buckets.length - B.length;
+    const cw = 640, ch = 220, pl = 46, pr = 64, pt = 10, pb = 26, iw = cw - pl - pr, ih = ch - pt - pb, gw = iw / B.length;
+    const maxRev = Math.max(1, ...B.map(b => b.rev)), maxAvg = Math.max(1, ...B.map(b => isFinite(b.avg) ? b.avg : 0)), maxLots = Math.max(1, ...B.map(b => b.lots));
+    const y = (v, m) => pt + ih - (v / m) * ih;
+    let g = "";
+    for (let t = 0; t <= 4; t++) { const v = maxRev * t / 4, yy = y(v, maxRev); g += `<line x1="${pl}" x2="${cw - pr}" y1="${yy}" y2="${yy}" stroke="currentColor" stroke-opacity=".12"/><text x="${pl - 6}" y="${yy + 4}" text-anchor="end">$${Math.round(v)}</text>`; }
+    B.forEach((b, i) => {
+      const x = pl + i * gw, bw = Math.max(2, gw * 0.42);
+      g += `<rect x="${x + gw * 0.08}" y="${y(b.rev, maxRev)}" width="${bw}" height="${pt + ih - y(b.rev, maxRev)}" fill="var(--gilt)" fill-opacity=".75"><title>${money(b.rev)} revenue</title></rect>`;
+      g += `<rect x="${x + gw * 0.08 + bw + 2}" y="${y(b.lots, maxLots)}" width="${Math.max(2, gw * 0.22)}" height="${pt + ih - y(b.lots, maxLots)}" fill="var(--stem)"><title>${b.lots} lots (${b.sold} sold, ${b.r} R)</title></rect>`;
+      const lbl = new Date(start + (off + i) * W).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      if (B.length <= 8 || i % Math.ceil(B.length / 8) === 0) g += `<text x="${x + gw / 2}" y="${ch - 8}" text-anchor="middle">${lbl}</text>`;
+    });
+    const pts = B.map((b, i) => isFinite(b.avg) ? `${pl + i * gw + gw / 2},${y(b.avg, maxAvg)}` : null).filter(Boolean);
+    if (pts.length > 1) g += `<polyline points="${pts.join(" ")}" fill="none" stroke="var(--paper)" stroke-width="2"/>`;
+    B.forEach((b, i) => { if (isFinite(b.avg)) g += `<circle cx="${pl + i * gw + gw / 2}" cy="${y(b.avg, maxAvg)}" r="3" fill="var(--paper)"><title>${money(b.avg)} per book</title></circle>`; });
+    g += `<text x="${cw - pr + 6}" y="${pt + 8}">${money(maxAvg)}</text><text x="${cw - pr + 6}" y="${pt + ih}">$0</text>`;
+    $("paceChart").innerHTML = `<svg viewBox="0 0 ${cw} ${ch}" role="img" aria-label="Revenue, average price per book and lots shown per ${paceMin}-minute period">${g}</svg>`;
+  }
+  setInterval(drawPace, 20000);
   $("tabReqs").onclick = () => setSalesTab("reqs");
 
   // ---------- export ----------
@@ -3332,13 +3517,13 @@ body.mode-display #btnHome2 { display: none !important; }
     });
     return rows;
   }
-  const isUsedData = d => !!(d && d.show && d.show.kind === "used");
+  const isUsedData = d => !!(d && d.show && isUsedKind(d.show.kind));
   // Used workbook rows. null cells are skipped by the sheet write, so formula columns stay untouched.
   function usedStagingRows(d) {
     const rows = [];
     d.sales.filter(s => !s.rejected).sort((a, b) => a.loggedAt - b.loggedAt).forEach((s, k) => {
       const items = s.items || [], cents = splitCents(Math.round(s.total * 100), items.length);
-      const note = [items.length > 1 ? `Bundle sale: ${money(s.total)} split across ${items.length} books` : "", s.note].filter(Boolean).join("; ");
+      const note = [d.show.kind === "vintage" ? "Vintage show" : "Used show", items.length > 1 ? `Bundle sale: ${money(s.total)} split across ${items.length} books` : "", s.note].filter(Boolean).join("; ");
       items.forEach((it, i) => rows.push([mdY(d.show.date), it.isbn || "", it.found ? it.title : "", it.found ? it.author : "", it.cost || "", (cents[i] / 100).toFixed(2), "",
         d.show.platform, d.show.sourceTab, note, null, null, null, it.cond || "", it.genre || "", it.src || "", it.rnd || "Main", k + 1, timeOf(s.loggedAt), false]));
     });
@@ -3353,7 +3538,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!u.shown) return [];
     const r2 = v => Math.round(v * 100) / 100;
     return [[mdY(d.show.date), d.show.platform, d.show.sourceTab, u.shown, u.soldMain, u.soldSpeed, u.unsold.length, null, null,
-      r2(u.rev), u.soldMain ? r2(u.revMain / u.soldMain) : "", u.soldSpeed ? r2(u.revSpeed / u.soldSpeed) : "", "Sent from Reliant Workspace"]];
+      r2(u.rev), u.soldMain ? r2(u.revMain / u.soldMain) : "", u.soldSpeed ? r2(u.revSpeed / u.soldSpeed) : "", "Sent from Reliant Workspace · " + (d.show.kind === "vintage" ? "Vintage show" : "Used show")]];
   }
   function buildExport(kind) {
     const d = exData;
@@ -3470,7 +3655,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (isUsedData(exData)) {
       const u = usedStats(exData.sales), st = statsOf(exData.sales);
       $("exSum").innerHTML = `<div><b>${u.soldMain + u.soldSpeed}</b>books sold</div><div><b>${money(u.rev)}</b>revenue</div><div><b>${u.shown}</b>books shown</div><div><b>${u.unsold.length}</b>not sold (R)</div><div><b>${pctTxt(u.main)}</b>sell-through${u.soldSpeed ? ` · ${pctTxt(u.fin)} final` : ""}</div><div><b>${u.soldSpeed}</b>speed round · ${money(u.revSpeed)}</div>`;
-      const notes = [`Used show: rows go to “${USED_NAME}”. Cost per Unit comes from each book's source on the Sources tab.`];
+      const notes = [`${exData.show.kind === "vintage" ? "Vintage" : "Used"} show: rows go to “${USED_NAME}”. Cost per Unit comes from each book's source on the Sources tab.`];
       if (st.rejects) notes.push(`${st.rejects} rejected sale${st.rejects === 1 ? " is" : "s are"} left out.`);
       if (exData.reqs.length) notes.push(`${exData.reqs.length} customer request${exData.reqs.length === 1 ? "" : "s"} won't be sent (the used workbook has no requests tab); copy them by hand if needed.`);
       if (show.exportedAt) notes.push(`Already sent on ${new Date(show.exportedAt).toLocaleString()}.`);
@@ -3505,7 +3690,7 @@ body.mode-display #btnHome2 { display: none !important; }
     { key: "rejects", tab: "Show Rejects", label: "Rejects", sheetId: 910200, cols: 9, wb: USED_ID, rows: usedRejectRows },
     { key: "summary", tab: "Show Summary", label: "Summary", sheetId: 910300, cols: 13, wb: USED_ID, rows: usedSummaryRows }
   ];
-  const partsFor = show => show && show.kind === "used" ? USED_PARTS : SEND_PARTS;
+  const partsFor = show => show && isUsedKind(show.kind) ? USED_PARTS : SEND_PARTS;
   // Rows go into the tab's next empty, pre-formatted rows (found from column A), so they keep the
   // tab's fonts and date format. If the tab runs out of rows, 1,000 more formatted rows are added first.
   async function writeRows(mcp, part, rows) {
