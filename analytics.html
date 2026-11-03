@@ -1791,7 +1791,7 @@ tr.inr td { background: var(--accent-wash); }
 
   // ---------- saved copy: last good data kept in this browser so Analytics opens instantly ----------
   const SNAP = (() => {
-    const DB = "reliant-analytics", ST = "snap", VER = 1; // bump VER when the saved shape changes
+    const DB = "reliant-analytics", ST = "snap", VER = 2; // bump VER when the saved shape changes
     let dbp = null;
     const openDb = () => dbp || (dbp = new Promise((res, rej) => {
       try {
@@ -1902,7 +1902,7 @@ tr.inr td { background: var(--accent-wash); }
     const codeLike = t => /^[0-9xX]{9,13}$/.test(t) || /^[A-Z0-9]{8,}$/.test(t);
     const out = { new: { sales: [], rej: [] }, used: { sales: [], rej: [] } };
     for (const r of rows) {
-      const [id, sid, isbn, item, price, net, cost, profit, cond, speed, src] = r;
+      const [id, sid, isbn, item, price, net, cost, profit, cond, speed, src, at, bundle] = r;
       const sh = showOf(sid), bk = isbn ? books[isbn] : null;
       const key = isbn || item || "";
       const title = bk ? bk[0] : (item && !codeLike(item) ? item : "");
@@ -1912,14 +1912,15 @@ tr.inr td { background: var(--accent-wash); }
         hasCost: isFinite(c) && c > 0, isbn: key,
         title: title || (key ? "ISBN " + key : "(no ISBN listed)"), untitled: !title,
         tab: sh[0], author: (bk && bk[1]) || "(no author)", gr: bk && bk[2] != null ? +bk[2] : NaN,
-        plat: sh[2] || "Other", cond: cond || "", genre: "", srcName: src || "", speed: !!speed
+        plat: sh[2] || "Other", cond: cond || "", genre: "", srcName: src || "", speed: !!speed,
+        at: at == null ? NaN : +at, bundle: bundle == null ? null : bundle
       });
     }
     for (const r of (meta.rej || [])) {
-      const [sid, code, soldLater, round, pl, at] = r;
+      const [sid, code, soldLater, round, pl, at, ts] = r;
       const sh = showOf(sid), bk = books[code];
       out[kindOf(sid)].rej.push({ d: sh[1], isbn: code || "", title: bk ? bk[0] : "", tab: sh[0], plat: sh[2] || "Other",
-        soldLater: !!soldLater, round: round || "", pl: pl || "", at: at || "" });
+        soldLater: !!soldLater, round: round || "", pl: pl || "", at: at || "", ts: ts == null ? NaN : +ts });
     }
     const inv = (meta.inv || []).map(([isbn, qty, cost, value]) => {
       const bk = books[isbn] || [];
@@ -2384,7 +2385,7 @@ tr.inr td { background: var(--accent-wash); }
 
   // ---------- Shows tab: list + per-show detail ----------
   const SV = { sort: store.get("sa.ss") || "d", dir: store.get("sa.sd") === "asc" ? "asc" : "desc", q: "", shown: 25, open: null,
-    base: ["range", "all", "plat"].includes(store.get("sa.sb")) ? store.get("sa.sb") : "range", metric: store.get("sa.sm") || "rev" };
+    base: ["range", "all", "plat"].includes(store.get("sa.sb")) ? store.get("sa.sb") : "range", metric: store.get("sa.sm") || "rev", pace: +(store.get("sa.pace") || 15) };
   const showKey = s => (s.src || "") + "|" + (s.tab || dstr(s.d) + " " + s.plat);
   // ---------- cancellations & giveaways ----------
   // Each entry is tied to its show by the show's Source Tab name. A cancellation is dated by its show
@@ -2517,6 +2518,72 @@ tr.inr td { background: var(--accent-wash); }
       </div>` : `<p class="how">Nothing logged for this show. Cancellations and giveaways are logged in the Inventory section, on the Fulfillment tab.</p>`}
     </section>`;
   }
+  // ---------- Pace: how a show went over time (needs the time each sale and R was logged) ----------
+  // A lot = one sale (a bundle counts once) or one R. Times are kept for shows that went through Show Sales – Staging.
+  function paceLots(S) {
+    const lots = [], seen = new Map();
+    for (const s of S.sales) {
+      if (!isFinite(s.at)) continue;
+      if (s.bundle != null) { const g = seen.get(s.bundle); if (g) { g.rev += s.price; g.books++; g.at = Math.min(g.at, s.at); continue; } const n = { at: s.at, rev: s.price, books: 1, sold: true }; seen.set(s.bundle, n); lots.push(n); continue; }
+      lots.push({ at: s.at, rev: s.price, books: 1, sold: true });
+    }
+    for (const r of (S.rej || [])) if (isFinite(r.ts)) lots.push({ at: r.ts, rev: 0, books: 0, sold: false });
+    return lots.sort((a, b) => a.at - b.at);
+  }
+  function paceOf(S, mins) {
+    const lots = paceLots(S); if (lots.length < 2) return null;
+    const W = mins * 60000, t0 = lots[0].at, t1 = lots[lots.length - 1].at, span = Math.max(W, t1 - t0 + 60000);
+    const n = Math.max(1, Math.ceil(span / W)), periods = span / W;
+    const sum = list => { const sold = list.filter(l => l.sold); const books = sold.reduce((a, l) => a + l.books, 0), rev = sold.reduce((a, l) => a + l.rev, 0);
+      return { lots: list.length, sold: sold.length, r: list.length - sold.length, books, rev, avg: books ? rev / books : NaN }; };
+    const buckets = Array.from({ length: n }, (_, i) => ({ from: t0 + i * W, ...sum(lots.filter(l => l.at >= t0 + i * W && l.at < t0 + (i + 1) * W)) }));
+    const all = sum(lots);
+    return { lots, t0, t1, span, periods, buckets, all, perHour: all.rev / (span / 3600000), lotsPerHour: all.lots / (span / 3600000), timedShare: S.sales.length ? S.sales.filter(s => isFinite(s.at)).length / S.sales.length : 0 };
+  }
+  function pacePanel(S, others) {
+    const mins = [1, 5, 15, 30, 60].includes(SV.pace) ? SV.pace : 15;
+    const P = paceOf(S, mins);
+    const head = `<div class="ph"><div><h2>Pace</h2><span class="sub">${P ? `${Math.round(P.span / 60000)} minutes from the first logged sale or R to the last` : "How the show went over time"}</span></div>
+      <div class="seg" role="group" aria-label="Time frame">${[1, 5, 15, 30, 60].map(m => `<button type="button" data-pace="${m}" aria-pressed="${m === mins}">${m} min</button>`).join("")}</div></div>`;
+    if (!P) return `<section class="panel">${head}<p class="how">No sale times were recorded for this show. Times come from the Logged At column of Show Sales – Staging, so they're kept for shows sent through the Workspace, from Nov 3, 2026 on (and a few earlier ones).</p></section>`;
+    const per = x => x / P.periods, f1 = v => (Math.round(v * 10) / 10).toString();
+    const full = P.buckets.slice(0, -1).length ? P.buckets.slice(0, -1) : P.buckets;
+    const best = P.buckets.reduce((a, b) => b.rev > a.rev ? b : a), slow = full.reduce((a, b) => b.rev < a.rev ? b : a);
+    const tm = t => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const oth = others.map(o => paceOf(o, mins)).filter(Boolean), othHour = avgOf(oth, p => p.perHour), othLots = avgOf(oth, p => p.lotsPerHour);
+    const kp = kpiHtml([
+      [`Revenue per ${mins} min`, money(per(P.all.rev)), `${money(P.perHour, 0)} an hour${isFinite(othHour) ? ` · others ${money(othHour, 0)}` : ""}`],
+      ["Average price per book", isFinite(P.all.avg) ? money(P.all.avg) : "–", `${int(P.all.books)} books sold`],
+      [`Lots shown per ${mins} min`, f1(per(P.all.lots)), `${f1(per(P.all.sold))} sold · ${f1(per(P.all.r))} R${isFinite(othLots) ? ` · others ${f1(othLots * mins / 60)}` : ""}`],
+      [`Books sold per ${mins} min`, f1(per(P.all.books)), ""],
+      [`Best ${mins} min`, money(best.rev), `from ${tm(best.from)} · ${int(best.lots)} lots`],
+      [`Slowest ${mins} min`, money(slow.rev), `from ${tm(slow.from)} · ${int(slow.lots)} lots`]
+    ]);
+    // chart: revenue bars, lots bars, average price line, one group per period
+    const B = P.buckets, cw = 900, ch = 240, pl = 52, pr = 70, pt = 12, pb = 28, iw = cw - pl - pr, ih = ch - pt - pb, gw = iw / B.length;
+    const maxRev = Math.max(1, ...B.map(b => b.rev)), maxAvg = Math.max(1, ...B.map(b => isFinite(b.avg) ? b.avg : 0)), maxLots = Math.max(1, ...B.map(b => b.lots));
+    const y = (v, m) => pt + ih - (v / m) * ih;
+    let g = "";
+    for (let t = 0; t <= 4; t++) { const v = maxRev * t / 4, yy = y(v, maxRev); g += `<line x1="${pl}" x2="${cw - pr}" y1="${yy}" y2="${yy}" stroke="currentColor" stroke-opacity=".12"/><text x="${pl - 6}" y="${yy + 4}" text-anchor="end">$${Math.round(v)}</text>`; }
+    const every = Math.ceil(B.length / 10);
+    B.forEach((b, i) => {
+      const x = pl + i * gw, bw = Math.max(1.5, gw * 0.45);
+      g += `<rect x="${x + gw * 0.06}" y="${y(b.rev, maxRev)}" width="${bw}" height="${pt + ih - y(b.rev, maxRev)}" fill="var(--s1)"><title>${tm(b.from)}: ${money(b.rev)} · ${b.books} books</title></rect>`;
+      g += `<rect x="${x + gw * 0.06 + bw + 1}" y="${y(b.lots, maxLots)}" width="${Math.max(1.5, gw * 0.25)}" height="${pt + ih - y(b.lots, maxLots)}" fill="var(--s3)"><title>${tm(b.from)}: ${b.lots} lots (${b.sold} sold, ${b.r} R)</title></rect>`;
+      if (i % every === 0) g += `<text x="${x + gw / 2}" y="${ch - 8}" text-anchor="middle">${tm(b.from)}</text>`;
+    });
+    const pts = B.map((b, i) => isFinite(b.avg) ? `${pl + i * gw + gw / 2},${y(b.avg, maxAvg)}` : null).filter(Boolean);
+    if (pts.length > 1) g += `<polyline points="${pts.join(" ")}" fill="none" stroke="var(--s2)" stroke-width="2"/>`;
+    B.forEach((b, i) => { if (isFinite(b.avg)) g += `<circle cx="${pl + i * gw + gw / 2}" cy="${y(b.avg, maxAvg)}" r="3" fill="var(--s2)"><title>${tm(b.from)}: ${money(b.avg)} per book</title></circle>`; });
+    g += `<text x="${cw - pr + 6}" y="${pt + 8}">${money(maxAvg)}/bk</text><text x="${cw - pr + 6}" y="${pt + ih}">$0</text>`;
+    const rows = B.length <= 60 ? `<div class="tbl" style="margin-top:12px"><table><thead><tr><th>From</th><th class="num">Books</th><th class="num">Revenue</th><th class="num">Avg / book</th><th class="num">Lots</th><th class="num">Sold</th><th class="num">R</th></tr></thead><tbody>${
+      B.map(b => `<tr><td>${tm(b.from)}</td><td class="num">${int(b.books)}</td><td class="num">${money(b.rev)}</td><td class="num">${isFinite(b.avg) ? money(b.avg) : "–"}</td><td class="num">${int(b.lots)}</td><td class="num">${int(b.sold)}</td><td class="num">${int(b.r)}</td></tr>`).join("")}</tbody></table></div>` : "";
+    return `<section class="panel">${head}<div class="kpis">${kp}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin:12px 0 4px"><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--s1);vertical-align:-2px;margin-right:6px"></i>Revenue</span><span><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--s3);vertical-align:-2px;margin-right:6px"></i>Lots shown</span><span><i style="display:inline-block;width:14px;height:3px;background:var(--s2);vertical-align:3px;margin-right:6px"></i>Average price per book</span></div>
+      <svg viewBox="0 0 ${cw} ${ch}" style="width:100%;height:auto;display:block;font:11px var(--f-mono);fill:var(--muted)" role="img" aria-label="Revenue, lots shown and average price per ${mins}-minute period">${g}</svg>
+      ${rows}
+      <p class="how">A lot is one sale (a bundle counts once) or one R; R's are counted per book. Times are to the minute.${P.timedShare < 0.98 ? ` Only ${pct(P.timedShare, 0)} of this show's sales have a time, so these figures are partial.` : ""}${oth.length ? ` “Others” is the average of ${int(oth.length)} other show${oth.length === 1 ? "" : "s"} with times.` : ""}</p></section>`;
+  }
   function renderShowDetail(M, A, isUsed, isComb, rangeName) {
     $("sListWrap").hidden = true; const box = $("sDetail"); box.hidden = false;
     const everything = buildShows(M, -Infinity, Infinity);
@@ -2582,6 +2649,7 @@ tr.inr td { background: var(--accent-wash); }
         ])}</div>
         <p class="how">Rankings are among ${esc(baseName)} plus this one.</p>
       </section>
+      ${pacePanel(S, others)}
       <section class="panel">
         <div class="ph"><div><h2>Against your other shows</h2><span class="sub">${int(others.length)} show${others.length === 1 ? "" : "s"} in the average</span></div>
           <div class="seg" role="group" aria-label="Compare against" id="sBase">
@@ -2647,6 +2715,7 @@ tr.inr td { background: var(--accent-wash); }
     if (e.target.closest("#sAll")) { $("sDetail").dataset.all = "1"; render(); return; }
     const b = e.target.closest("[data-b]"); if (b) { SV.base = b.dataset.b; store.set("sa.sb", SV.base); render(); return; }
     const m = e.target.closest("[data-sm]"); if (m) { SV.metric = m.dataset.sm; store.set("sa.sm", SV.metric); render(); return; }
+    const pc = e.target.closest("[data-pace]"); if (pc) { SV.pace = +pc.dataset.pace; store.set("sa.pace", String(SV.pace)); render(); return; }
     const t = e.target.closest("[data-title]"); if (t) { TV.open = t.dataset.title; setTab("titles"); render(); window.scrollTo(0, 0); }
   });
 
