@@ -176,6 +176,12 @@
       if (tool === "get_values") {
         const tab = rangeTab(input && input.range);
         if (tab === "Show Prep") return { payload: { values: await prepValues() } };
+        if (tab === "Sources") {   // used-book sources and their cost per book, like the Used Books workbook's Sources tab
+          await ready;
+          const { data, error } = await sb.from("used_sources").select("code,cost_per_book,active").eq("active", true).order("code");
+          if (error) throw { code: "tool_error", message: error.message };
+          return { payload: { values: data.filter(r => r.cost_per_book != null).map(r => [r.code, String(r.cost_per_book)]) } };
+        }
         if (tab === "Inventory") {   // books on hand, in the Inventory tab's column order (ISBN, Title, Author, -, On hand)
           await ready;
           const { data, error } = await sb.from("stock_on_hand").select("isbn,title,author,on_hand").gt("on_hand", 0).order("title").limit(5000);
