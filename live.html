@@ -2247,11 +2247,12 @@ body.mode-display #btnHome2 { display: none !important; }
     liveWriting = false;
   }
   async function sendNav(dir) {
-    post({ type: "nav", dir });
+    const nid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    post({ type: "nav", dir, nid });
     const room = await getRoom();
-    if (room) { try { await room.emit("nav", { dir }); return; } catch {} }
+    if (room) { try { await room.emit("nav", { dir, nid }); return; } catch {} }
     const db = await getDb();
-    if (db) { try { await db.doc("live/cmd").set({ dir, seq: Date.now(), at: Date.now() }); } catch {} }
+    if (db) { try { await db.doc("live/cmd").set({ dir, nid, seq: Date.now(), at: Date.now() }); } catch {} }
   }
 
   // ---------- window-to-window link (same computer) ----------
@@ -2363,19 +2364,23 @@ body.mode-display #btnHome2 { display: none !important; }
     $("tvLink").href = ARTIFACT_URL + "#display";
     $("oaPrev").onclick = () => goBack();
     $("oaNextBtn").onclick = () => goNext();
-    const navFrom = dir => { if (dir < 0) goBack(); else goNext(); };
+    const navSeen = new Set();
+    const navFrom = (dir, nid) => {
+      if (nid) { if (navSeen.has(nid)) return; navSeen.add(nid); if (navSeen.size > 300) navSeen.delete(navSeen.values().next().value); }
+      if (dir < 0) goBack(); else goNext();
+    };
     onMsg(m => {
       if (m.type === "hello") broadcastState();
-      else if (m.type === "nav") navFrom(m.dir);
+      else if (m.type === "nav") navFrom(m.dir, m.nid);
     });
-    getRoom().then(room => { if (room) room.on("nav", m => { if (!m.sameTab && m.data) navFrom(m.data.dir); }); });
+    getRoom().then(room => { if (room) room.on("nav", m => { if (!m.sameTab && m.data) navFrom(m.data.dir, m.data.nid); }); });
     getDb().then(db => {
       if (!db) return;
       let first = true, lastSeq = 0;
       db.doc("live/cmd").onSnapshot(snap => {
         const d = snap.exists ? snap.data() : null;
         if (first) { first = false; lastSeq = d ? d.seq : 0; return; }
-        if (d && d.seq > lastSeq) { lastSeq = d.seq; if (Date.now() - d.at < 15000) navFrom(d.dir); }
+        if (d && d.seq > lastSeq) { lastSeq = d.seq; if (Date.now() - d.at < 15000) navFrom(d.dir, d.nid); }
       }, () => {});
       broadcastState();
     });
