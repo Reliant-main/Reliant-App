@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --grid: #24342d; --axis: #33463d; --line: rgba(255,255,255,.10);
+  --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+:root { --c-new: var(--s1); --c-used: var(--s2); --c-vintage: var(--s5); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+[hidden] { display: none !important; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 20px clamp(16px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; justify-content: space-between; }
+h1 { margin: 0; font: 400 34px/1.05 var(--f-display); }
+.sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 3px; gap: 2px; }
+.seg button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 0; border-radius: 6px; padding: 6px 11px; cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--accent-wash); color: var(--ink); }
+.lbl { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+.ctl { display: inline-flex; align-items: center; gap: 6px; }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible, .seg button:focus-visible, .day:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); font-variant-numeric: tabular-nums; }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.split { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px; font-size: 12.5px; color: var(--ink-2); }
+.split span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.new { background: var(--c-new); } .dot.used { background: var(--c-used); } .dot.vintage { background: var(--c-vintage); }
+
+.monthbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.monthbar h2 { margin: 0; font: 400 26px var(--f-display); min-width: 9ch; }
+.monthbar .grow { flex: 1; }
+.filternote { font-size: 13px; color: var(--ink-2); display: inline-flex; gap: 8px; align-items: center; background: var(--accent-wash); border-radius: 999px; padding: 4px 6px 4px 12px; }
+.filternote button { font: 600 12px var(--f-ui); border: 0; background: var(--surface); color: var(--ink); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+
+.body { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.body.both { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 16px; min-width: 0; }
+
+/* calendar */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal .wd { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: center; padding: 2px 0 6px; }
+.day { min-height: 96px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 7px; display: flex; flex-direction: column; gap: 3px; background: transparent; color: var(--ink); text-align: left; font: inherit; cursor: pointer; min-width: 0; }
+.body.both .day { min-height: 78px; }
+.day.out { opacity: .35; }
+.day.empty { cursor: default; }
+.day:not(.empty):hover { border-color: var(--accent); }
+.day.today { border-color: var(--gilt); box-shadow: inset 0 0 0 1px var(--gilt); }
+.day.sel { background: var(--accent-wash); border-color: var(--accent); }
+.day .n { font: 500 12px var(--f-mono); color: var(--muted); display: flex; justify-content: space-between; }
+.day.today .n { color: var(--gilt); }
+.day .amt { font: 600 15px var(--f-ui); font-variant-numeric: tabular-nums; }
+.day .pf { font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.day .chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; }
+.chip { font: 500 10.5px var(--f-mono); padding: 1px 5px; border-radius: 4px; color: #fff; white-space: nowrap; }
+.chip.new { background: var(--c-new); } .chip.used { background: var(--c-used); } .chip.vintage { background: var(--c-vintage); }
+.day.past .amt { color: var(--ink-2); }
+
+/* list */
+.grp { margin-top: 14px; }
+.grp:first-child { margin-top: 0; }
+.gh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 5px; margin-bottom: 4px; }
+.gh .t { font: 600 14px var(--f-ui); }
+.gh .t small { font: 500 12px var(--f-ui); color: var(--muted); margin-left: 6px; }
+.gh .s { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { font: 500 10.5px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); text-align: right; padding: 4px 6px; white-space: nowrap; }
+td { padding: 7px 6px; text-align: right; border-top: 1px solid var(--line); white-space: nowrap; font-size: 14px; }
+th:first-child, td:first-child { text-align: left; }
+td.nm { white-space: normal; }
+td.nm .s1 { font-weight: 600; }
+td.nm .s2 { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tag { font: 500 10.5px var(--f-mono); letter-spacing: .04em; border-radius: 4px; padding: 0 5px; border: 1px solid var(--line); color: var(--ink-2); }
+.tag.new { border-color: var(--c-new); color: var(--c-new); } .tag.used { border-color: var(--c-used); color: var(--c-used); } .tag.vintage { border-color: var(--c-vintage); color: var(--c-vintage); }
+td .net { font-weight: 600; }
+td .ag { display: block; font-size: 11.5px; color: var(--muted); }
+.neg { color: var(--bad); }
+.st { font-size: 12px; color: var(--muted); }
+.st.soon { color: var(--gilt); font-weight: 600; }
+.st.today { color: var(--good); font-weight: 600; }
+.st.unset { color: var(--warnfg); }
+tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
+.body.both .hide-both { display: none; }
+.none { color: var(--muted); padding: 24px 4px; text-align: center; }
+
+.msg { border-radius: 10px; padding: 12px 14px; font-size: 14px; background: var(--warnbg); color: var(--warnfg); }
+.msg.bad { background: var(--badbg); color: var(--bad); }
+.loading { color: var(--muted); padding: 40px 0; text-align: center; }
+.foot { font-size: 12px; color: var(--muted); }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.sdot.live { background: #2fa84f; } .sdot.err { background: var(--bad); } .sdot.busy { background: var(--gilt); }
+
+@media (max-width: 1000px) { .body.both { grid-template-columns: minmax(0, 1fr); } .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .wrap { padding: 12px 14px 40px; gap: 14px; }
+  h1 { font-size: 26px; }
+  .controls { width: 100%; }
+  .ctl { width: 100%; }
+  .ctl .seg { flex: 1; }
+  .ctl .seg button { flex: 1; padding: 8px 4px; }
+  .btn { min-height: 40px; }
+  .seg button { min-height: 36px; }
+  .monthbar h2 { font-size: 22px; }
+  .day, .body.both .day { min-height: 54px; padding: 4px; }
+  .day .pf, .day .chips { display: none; }
+  .day .amt { font-size: 11px; }
+  .day .n { font-size: 11px; }
+  .cal { gap: 2px; }
+  .panel { padding: 12px; }
+  /* list rows become cards */
+  table thead { display: none; }
+  table, tbody, tr, td, tfoot { display: block; width: 100%; }
+  tr { border-top: 1px solid var(--line); padding: 8px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
+  td { border: 0; padding: 0; text-align: left; font-size: 13.5px; }
+  td.nm { grid-column: 1 / -1; margin-bottom: 4px; }
+  td[data-k]::before { content: attr(data-k); display: block; font: 500 10px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  tfoot tr { border-top: 2px solid var(--line); }
+}
+</style></head><body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Payouts</h1>
+      <div class="status"><span class="sdot" id="dot"></span><span id="statusText">Loading…</span></div>
+      <div class="sub">Net sales after platform fees, profit, and when each show's money should land. <span id="timing"></span></div>
+    </div>
+    <div class="controls">
+      <span class="ctl"><span class="lbl">View</span><span class="seg" id="segView"><button data-v="list" type="button">List</button><button data-v="cal" type="button">Calendar</button><button data-v="both" type="button">Side by side</button></span></span>
+      <button class="btn" id="btnRefresh" type="button">Refresh</button>
+    </div>
+  </header>
+  <div class="controls">
+    <span class="ctl"><span class="lbl">Category</span><span class="seg" id="segCat"><button data-v="all" type="button">All</button><button data-v="new" type="button">New</button><button data-v="used" type="button">Used</button><button data-v="vintage" type="button" hidden>Vintage</button></span></span>
+    <span class="ctl"><span class="lbl">Platform</span><span class="seg" id="segPlat"><button data-v="all" type="button">All</button></span></span>
+    <span class="ctl"><span class="lbl">Dates by</span><span class="seg" id="segBasis"><button data-v="pay" type="button">Payout date</button><button data-v="show" type="button">Show date</button></span></span>
+  </div>
+
+  <div id="msg" hidden></div>
+  <div class="loading" id="loading">Loading shows…</div>
+
+  <div id="main" hidden>
+    <div class="kpis" id="kpis"></div>
+    <div class="monthbar" style="margin-top:18px">
+      <button class="btn" id="mPrev" type="button" aria-label="Previous month">‹</button>
+      <h2 id="mName"></h2>
+      <button class="btn" id="mNext" type="button" aria-label="Next month">›</button>
+      <button class="btn" id="mToday" type="button">This month</button>
+      <span class="grow"></span>
+      <span class="filternote" id="dayNote" hidden><span id="dayNoteT"></span><button id="dayClear" type="button">Show whole month</button></span>
+    </div>
+    <div class="body" id="body" style="margin-top:12px">
+      <div class="panel" id="calPanel"><div class="cal" id="cal"></div></div>
+      <div class="panel" id="listPanel"><div id="list"></div></div>
+    </div>
+    <div class="foot" id="foot" style="margin-top:12px"></div>
+  </div>
+</div>
+<script>
+(() => {
+  const PROJECT = "vmpysxfmfyvwheqbuicj";
+  const SQL = "select json_agg(x order by x.show_date desc, x.show_id desc) as rows from (select show_id, name, show_date, platform_code, platform_name, show_type, books_sold, revenue, fees, net_proceeds, profit, giveaway_cost, profit_after_giveaways, payout_days, payout_date from public.show_payouts) x";
+  const $ = id => document.getElementById(id);
+  const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+  const CATS = { new: "New", used: "Used", vintage: "Vintage" };
+
+  let rows = [], loadedAt = 0;
+  const today = ymd(new Date());
+  const st = {
+    view: ls.get("pay.view") || (innerWidth < 700 ? "list" : "both"),
+    cat: ls.get("pay.cat") || "all",
+    plat: "all",
+    basis: ls.get("pay.basis") || "pay",
+    month: today.slice(0, 7),
+    day: null
+  };
+
+  // ---------- helpers ----------
+  function ymd(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function parse(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+  function addDays(s, n) { const d = parse(s); d.setDate(d.getDate() + n); return ymd(d); }
+  function daysBetween(a, b) { return Math.round((parse(b) - parse(a)) / 864e5); }
+  const money = n => (n < 0 ? "−$" : "$") + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const money0 = n => (n < 0 ? "−$" : "$") + Math.round(Math.abs(n)).toLocaleString("en-US");
+  const short = s => parse(s).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const longDay = s => parse(s).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const num = v => Number(v) || 0;
+  const dateOf = r => st.basis === "pay" ? r.payout_date : r.show_date;
+  function sum(list) {
+    const t = { n: list.length, sales: 0, fees: 0, net: 0, profit: 0, after: 0, books: 0 };
+    list.forEach(r => { t.sales += r.revenue; t.fees += r.fees; t.net += r.net_proceeds; t.profit += r.profit; t.after += r.profit_after_giveaways; t.books += r.books_sold; });
+    return t;
+  }
+  function payStatus(r) {
+    if (!r.payout_date) return `<span class="st unset">Payout timing not set for ${esc(r.platform_name)}</span>`;
+    const d = daysBetween(today, r.payout_date);
+    if (d < 0) return `<span class="st">Expected ${short(r.payout_date)} · should be in</span>`;
+    if (d === 0) return `<span class="st today">Expected today</span>`;
+    return `<span class="st ${d <= 3 ? "soon" : ""}">Expected ${short(r.payout_date)} · in ${d} day${d === 1 ? "" : "s"}</span>`;
+  }
+
+  // ---------- data ----------
+  const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+  let syncedAt = null, PLATS = [];
+  function setStatus(kind, t) { $("dot").className = "sdot " + kind; $("statusText").textContent = t; }
+  function showMsg(text, bad) { const m = $("msg"); m.hidden = !text; m.className = "msg" + (bad ? " bad" : ""); m.textContent = text || ""; }
+  async function load() {
+    const c = sb();
+    if (!c) { $("loading").hidden = true; setStatus("err", "Not signed in"); showMsg("Open Payouts from the Workspace home screen after signing in.", true); return; }
+    $("btnRefresh").disabled = true; setStatus("busy", "Loading from the Reliant database…");
+    const { data, error } = await c.rpc("payouts_export");
+    $("btnRefresh").disabled = false;
+    if (error) {
+      $("loading").hidden = true; setStatus("err", "Couldn’t load");
+      showMsg(error.message + (rows.length ? " Showing the last numbers loaded." : ""), true); return;
+    }
+    showMsg("");
+    PLATS = data.platforms || [];
+    rows = (data.rows || []).map(r => ({ ...r, revenue: num(r.revenue), fees: num(r.fees), net_proceeds: num(r.net_proceeds), profit: num(r.profit), giveaway_cost: num(r.giveaway_cost), profit_after_giveaways: num(r.profit_after_giveaways), books_sold: num(r.books_sold) }));
+    loadedAt = Date.now(); syncedAt = data.synced_at ? new Date(data.synced_at) : null;
+    setStatus("live", `${rows.length} shows · copied from the sheets ${syncedAt ? syncedAt.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+    const timing = PLATS.map(p => p.payout_days == null ? `${p.name}: not set` : `${p.name} ${p.payout_days} day${p.payout_days === 1 ? "" : "s"}`).join(" · ");
+    $("timing").textContent = "Payout timing after the show: " + timing + ".";
+    $("loading").hidden = true; $("main").hidden = false;
+    buildPlatforms(); render();
+  }
+
+  // ---------- controls ----------
+  function seg(id, key, store) {
+    const el = $(id);
+    el.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === st[key]));
+    el.onclick = e => {
+      const b = e.target.closest("button"); if (!b) return;
+      st[key] = b.dataset.v; if (store) ls.set("pay." + key, st[key]);
+      el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+      if (key === "basis") st.day = null;
+      render();
+    };
+  }
+  function buildPlatforms() {
+    const seen = new Map(); rows.forEach(r => seen.set(r.platform_code, r.platform_name));
+    const el = $("segPlat");
+    el.innerHTML = `<button data-v="all" type="button">All</button>` + [...seen].map(([c, n]) => `<button data-v="${esc(c)}" type="button">${esc(n)}</button>`).join("");
+    if (st.plat !== "all" && !seen.has(st.plat)) st.plat = "all";
+    seg("segPlat", "plat");
+    const hasV = rows.some(r => r.show_type === "vintage");
+    $("segCat").querySelector('[data-v="vintage"]').hidden = !hasV;
+    if (!hasV && st.cat === "vintage") st.cat = "all";
+    seg("segCat", "cat", true);
+  }
+  seg("segView", "view", true); seg("segBasis", "basis", true);
+  $("btnRefresh").onclick = () => load();
+  function shiftMonth(n) { const d = parse(st.month + "-01"); d.setMonth(d.getMonth() + n); st.month = ymd(d).slice(0, 7); st.day = null; render(); }
+  $("mPrev").onclick = () => shiftMonth(-1);
+  $("mNext").onclick = () => shiftMonth(1);
+  $("mToday").onclick = () => { st.month = today.slice(0, 7); st.day = null; render(); };
+  $("dayClear").onclick = () => { st.day = null; render(); };
+
+  // ---------- render ----------
+  function filtered() { return rows.filter(r => (st.cat === "all" || r.show_type === st.cat) && (st.plat === "all" || r.platform_code === st.plat)); }
+
+  function catSplit(list, field) {
+    const by = {}; list.forEach(r => { by[r.show_type] = (by[r.show_type] || 0) + r[field]; });
+    return Object.keys(CATS).filter(k => by[k] != null).map(k => `<span><i class="dot ${k}"></i>${CATS[k]} ${money0(by[k])}</span>`).join("");
+  }
+
+  function renderKpis(all) {
+    const end7 = addDays(today, 7);
+    const upcoming = all.filter(r => r.payout_date && r.payout_date >= today);
+    const next7 = upcoming.filter(r => r.payout_date <= end7);
+    const inMonth = all.filter(r => (dateOf(r) || "").slice(0, 7) === st.month);
+    const U = sum(upcoming), N7 = sum(next7), M = sum(inMonth);
+    const showSplit = st.cat === "all";
+    const mName = parse(st.month + "-01").toLocaleDateString("en-US", { month: "long" });
+    const basisWord = st.basis === "pay" ? "paying out in" : "shows in";
+    const card = (k, v, d, split) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="d">${d}</span>${showSplit && split ? `<div class="split">${split}</div>` : ""}</div>`;
+    $("kpis").innerHTML =
+      card("Still to come", money(U.net), `${U.n} show${U.n === 1 ? "" : "s"} not paid out yet · profit ${money(U.profit)}`, catSplit(upcoming, "net_proceeds")) +
+      card("Next 7 days", money(N7.net), `${N7.n} payout${N7.n === 1 ? "" : "s"} by ${short(end7)}`, catSplit(next7, "net_proceeds")) +
+      card(`Net sales · ${mName}`, money(M.net), `${M.n} show${M.n === 1 ? "" : "s"} ${basisWord} ${mName} · ${money(M.sales)} before fees`, catSplit(inMonth, "net_proceeds")) +
+      card(`Profit · ${mName}`, money(M.profit), `${money(M.after)} after giveaways`, catSplit(inMonth, "profit"));
+  }
+
+  function renderCal(all) {
+    const first = parse(st.month + "-01");
+    const start = new Date(first); start.setDate(1 - first.getDay());
+    const byDay = {};
+    all.forEach(r => { const d = dateOf(r); if (d) (byDay[d] = byDay[d] || []).push(r); });
+    let html = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(w => `<div class="wd">${w}</div>`).join("");
+    const cells = (first.getDay() + new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()) > 35 ? 42 : 35;
+    for (let i = 0; i < cells; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const k = ymd(d), list = byDay[k] || [], t = sum(list);
+      const out = k.slice(0, 7) !== st.month;
+      const cls = ["day", out && "out", !list.length && "empty", k === today && "today", st.day === k && "sel", k < today && "past"].filter(Boolean).join(" ");
+      const chips = list.slice(0, 4).map(r => `<span class="chip ${esc(r.show_type)}" title="${esc(r.name)} · ${esc(r.platform_name)}">${esc(r.platform_code)} ${money0(r.net_proceeds)}</span>`).join("") + (list.length > 4 ? `<span class="chip" style="background:var(--muted)">+${list.length - 4}</span>` : "");
+      const label = `${longDay(k)}${list.length ? `: ${list.length} show${list.length === 1 ? "" : "s"}, ${money(t.net)} net, ${money(t.profit)} profit` : ""}`;
+      html += `<button class="${cls}" type="button" data-d="${k}" aria-label="${esc(label)}" ${list.length ? "" : 'tabindex="-1"'}>
+        <span class="n"><span>${d.getDate()}</span>${list.length > 1 ? `<span>${list.length}</span>` : ""}</span>
+        ${list.length ? `<span class="amt">${money0(t.net)}</span><span class="pf">profit ${money0(t.profit)}</span><span class="chips">${chips}</span>` : ""}
+      </button>`;
+    }
+    $("cal").innerHTML = html;
+  }
+  $("cal").onclick = e => {
+    const b = e.target.closest(".day"); if (!b || b.classList.contains("empty")) return;
+    const k = b.dataset.d;
+    if (st.view === "cal") { st.view = "both"; ls.set("pay.view", "both"); $("segView").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === "both")); }
+    st.day = st.day === k ? null : k;
+    if (k.slice(0, 7) !== st.month) st.month = k.slice(0, 7);
+    render();
+    if (innerWidth < 1000) $("listPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  function renderList(all) {
+    let list = all.filter(r => (dateOf(r) || "").slice(0, 7) === st.month);
+    const unset = st.basis === "pay" ? all.filter(r => !r.payout_date && r.show_date.slice(0, 7) === st.month) : [];
+    if (st.day) list = list.filter(r => dateOf(r) === st.day);
+    const groups = new Map();
+    list.sort((a, b) => dateOf(a) < dateOf(b) ? -1 : dateOf(a) > dateOf(b) ? 1 : a.show_id - b.show_id).forEach(r => { const k = dateOf(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+    if (!st.day && unset.length) groups.set("unset", unset);
+    if (!groups.size) { $("list").innerHTML = `<div class="none">${st.day ? "No shows on this day." : `No shows ${st.basis === "pay" ? "paying out" : "run"} this month${st.cat !== "all" || st.plat !== "all" ? " for this filter" : ""}.`}</div>`; return; }
+    const head = `<thead><tr><th>Show</th><th class="hide-both">Books</th><th class="hide-both">Sales</th><th class="hide-both">Fees</th><th>Net sales</th><th>Profit</th></tr></thead>`;
+    const row = r => `<tr>
+      <td class="nm"><div class="s1">${esc(r.name)}</div><div class="s2"><span class="tag">${esc(r.platform_name)}</span><span class="tag ${esc(r.show_type)}">${esc(CATS[r.show_type] || r.show_type)}</span>${st.basis === "pay" ? `<span>show ${short(r.show_date)}</span>` : ""}</div><div>${payStatus(r)}</div></td>
+      <td class="hide-both" data-k="Books">${r.books_sold}</td>
+      <td class="hide-both" data-k="Sales">${money(r.revenue)}</td>
+      <td class="hide-both" data-k="Fees">${money(r.fees)}</td>
+      <td data-k="Net sales"><span class="net">${money(r.net_proceeds)}</span></td>
+      <td data-k="Profit"><span class="${r.profit < 0 ? "neg" : ""}">${money(r.profit)}</span>${r.giveaway_cost ? `<span class="ag">${money(r.profit_after_giveaways)} after giveaways</span>` : ""}</td>
+    </tr>`;
+    let html = "";
+    for (const [k, g] of groups) {
+      const t = sum(g);
+      const title = k === "unset" ? "Payout date not set" : (st.basis === "pay" ? "Payout " : "Shows on ") + longDay(k);
+      const note = k === "unset" ? "<small>platform payout timing isn't set yet</small>" : (k === today ? "<small>today</small>" : "");
+      html += `<div class="grp"><div class="gh"><span class="t">${title}${note}</span><span class="s">${money(t.net)} net · ${money(t.profit)} profit</span></div><table>${head}<tbody>${g.map(row).join("")}</tbody></table></div>`;
+    }
+    const T = sum(list.concat(st.day ? [] : unset));
+    if (groups.size > 1) html += `<table style="margin-top:12px"><tfoot><tr><td class="nm">${st.day ? "Day" : "Month"} total · ${T.n} show${T.n === 1 ? "" : "s"}${st.cat === "all" ? `<div class="split">${catSplit(list.concat(st.day ? [] : unset), "net_proceeds")}</div>` : ""}</td><td class="hide-both" data-k="Books">${T.books}</td><td class="hide-both" data-k="Sales">${money(T.sales)}</td><td class="hide-both" data-k="Fees">${money(T.fees)}</td><td data-k="Net sales">${money(T.net)}</td><td data-k="Profit">${money(T.profit)}${T.profit !== T.after ? `<span class="ag">${money(T.after)} after giveaways</span>` : ""}</td></tr></tfoot></table>`;
+    $("list").innerHTML = html;
+  }
+
+  function render() {
+    const all = filtered();
+    document.body.dataset.view = st.view;
+    $("body").className = "body" + (st.view === "both" ? " both" : "");
+    $("calPanel").hidden = st.view === "list";
+    $("listPanel").hidden = st.view === "cal";
+    $("mName").textContent = parse(st.month + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    $("dayNote").hidden = !st.day || st.view === "cal";
+    if (st.day) $("dayNoteT").textContent = (st.basis === "pay" ? "Payouts on " : "Shows on ") + longDay(st.day);
+    renderKpis(all);
+    if (st.view !== "list") renderCal(all);
+    if (st.view !== "cal") renderList(all);
+    const unsetN = rows.filter(r => !r.payout_date).length;
+    $("foot").textContent = `Net sales = sales minus platform fees. Profit = net sales minus book cost. Payout dates are estimates from the show date.` + (unsetN ? ` ${unsetN} show${unsetN === 1 ? "" : "s"} on a platform with no payout timing set yet.` : "");
+  }
+
+  load();
+})();
+</script>
+</body></html>
