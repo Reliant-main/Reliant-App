@@ -18,7 +18,8 @@
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   color-scheme: dark;
 }
-:root { --c-new: var(--s1); --c-used: var(--s2); --c-vintage: var(--s5); }
+:root { --c-new: var(--s1); --c-used: var(--s2); --c-vintage: var(--s5); --c-final: #3ccf6e; }
+html:root[data-wstheme="blush"], html:root[data-wstheme="paper"] { --c-final: #138a3d; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
 [hidden] { display: none !important; }
@@ -74,6 +75,10 @@ h1 { margin: 0; font: 400 34px/1.05 var(--f-display); }
 .day .chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; }
 .chip { font: 500 10.5px var(--f-mono); padding: 1px 5px; border-radius: 4px; color: #fff; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .body.both .chip { font-size: 9.5px; padding: 1px 3px; }
+.chip.final { background: var(--c-final); color: #06210f; font-weight: 600; }
+.payfinal { color: var(--c-final); font-weight: 600; }
+tr.isfinal td:first-child { box-shadow: inset 3px 0 0 var(--c-final); }
+tr.isfinal .net { color: var(--c-final); }
 .chip.new { background: var(--c-new); } .chip.used { background: var(--c-used); } .chip.vintage { background: var(--c-vintage); }
 .day.past .amt { color: var(--ink-2); }
 
@@ -317,7 +322,7 @@ tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
   }
   function payLines(r) {
     if (!r.payout_date) return `<span class="st unset">Payout timing not set for ${esc(r.platform_name)}</span>`;
-    if (r.first_payout_date) return `<div>1st ${money(r.first_payout_amount)} ${when(r.first_payout_date)}</div><div>Final ${money(r.final_payout_amount)} ${when(r.payout_date)}</div>`;
+    if (r.first_payout_date) return `<div>1st ${money(r.first_payout_amount)} ${when(r.first_payout_date)}</div><div><span class="payfinal">Final ${money(r.final_payout_amount)}</span> ${when(r.payout_date)}</div>`;
     return `<div>Payout ${when(r.payout_date)}</div>`;
   }
   function splitNote() {
@@ -358,7 +363,7 @@ tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
       const out = k.slice(0, 7) !== st.month;
       const cls = ["day", out && "out", !list.length && "empty", k === today && "today", st.day === k && "sel", k < today && "past"].filter(Boolean).join(" ");
       const tagOf = i => i.kind === "first" ? "1" : i.kind === "final" ? "2" : "";
-      const chips = list.slice(0, 4).map(i => `<span class="chip ${esc(i.r.show_type)}" title="${esc(i.r.name)} · ${esc(i.r.platform_name)}${i.kind === "first" ? " · 1st payment" : i.kind === "final" ? " · final payment" : ""}">${esc(i.r.platform_code)}${tagOf(i)} ${kmoney(i.amount)}</span>`).join("") + (list.length > 4 ? `<span class="chip" style="background:var(--muted)">+${list.length - 4}</span>` : "");
+      const chips = list.slice(0, 4).map(i => `<span class="chip ${i.kind === "final" ? "final" : esc(i.r.show_type)}" title="${esc(i.r.name)} · ${esc(i.r.platform_name)}${i.kind === "first" ? " · 1st payment" : i.kind === "final" ? " · final payment" : ""}">${esc(i.r.platform_code)}${tagOf(i)} ${kmoney(i.amount)}</span>`).join("") + (list.length > 4 ? `<span class="chip" style="background:var(--muted)">+${list.length - 4}</span>` : "");
       const label = `${longDay(k)}${list.length ? `: ${list.length} ${st.basis === "pay" ? "payment" : "show"}${list.length === 1 ? "" : "s"}, ${money(t.amount)}${t.profit ? `, ${money(t.profit)} profit` : ""}` : ""}`;
       html += `<button class="${cls}" type="button" data-d="${k}" aria-label="${esc(label)}" ${list.length ? "" : 'tabindex="-1"'}>
         <span class="n"><span>${d.getDate()}</span>${list.length > 1 ? `<span>${list.length}</span>` : ""}</span>
@@ -392,10 +397,10 @@ tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
     const row = i => {
       const r = i.r;
       const what = i.kind === "first" ? `<span class="st">1st payment · ${pct(r.first_payout_share)} of ${money(r.revenue)} sales, fees not taken out</span>`
-        : i.kind === "final" ? `<span class="st">Final payment · rest of the sales minus ${money(r.fees)} fees · ${money(r.net_proceeds)} net for the show</span>`
+        : i.kind === "final" ? `<span class="st"><span class="payfinal">Final payment</span> · rest of the sales minus ${money(r.fees)} fees · ${money(r.net_proceeds)} net for the show</span>`
         : i.kind === "single" ? `<span class="st">Full payment · sales minus fees</span>` : payLines(r);
       const dash = `<span class="st">–</span>`;
-      return `<tr>
+      return `<tr${i.kind === "final" ? ' class="isfinal"' : ""}>
       <td class="nm"><div class="s1">${esc(r.name)}</div><div class="s2"><span class="tag">${esc(r.platform_name)}</span><span class="tag ${esc(r.show_type)}">${esc(CATS[r.show_type] || r.show_type)}</span>${pay ? `<span>show ${short(r.show_date)}</span>` : ""}</div><div>${!i.date && pay ? payLines(r) : what}</div></td>
       <td class="hide-both" data-k="Books">${i.kind === "first" ? dash : r.books_sold}</td>
       <td class="hide-both" data-k="Sales">${i.kind === "first" ? dash : money(r.revenue)}</td>
@@ -429,7 +434,7 @@ tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
     if (st.view !== "list") renderCal(all);
     if (st.view !== "cal") renderList(all);
     const unsetN = rows.filter(r => !r.payout_date).length;
-    $("foot").textContent = `Net sales = sales minus platform fees. Profit = net sales minus book cost. ${splitNote()} Payout dates are estimates from the show date.${rows.some(r => r.first_payout_date) ? " On the calendar, TT1 is a first payment and TT2 the final one." : ""}` + (unsetN ? ` ${unsetN} show${unsetN === 1 ? "" : "s"} on a platform with no payout timing set yet.` : "");
+    $("foot").textContent = `Net sales = sales minus platform fees. Profit = net sales minus book cost. ${splitNote()} Payout dates are estimates from the show date.${rows.some(r => r.first_payout_date) ? " On the calendar, TT1 is a first payment and the green TT2 the final one." : ""}` + (unsetN ? ` ${unsetN} show${unsetN === 1 ? "" : "s"} on a platform with no payout timing set yet.` : "");
   }
 
   load();
