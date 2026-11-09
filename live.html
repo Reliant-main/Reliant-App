@@ -301,6 +301,34 @@ body.sideOn .hint { left: calc((100% - var(--side-w)) / 2); }
   padding: 6px 8px; border-radius: 6px; border: 1px solid transparent; cursor: pointer;
 }
 .pl li:hover { background: var(--cloth-3); }
+/* sets: a header row above each group of books loaded onto the table together */
+.setbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font: 12px var(--f-mono); color: var(--paper-dim); }
+.setbar .btn { padding: 5px 10px; font-size: 13px; }
+.setbar .btn:disabled { opacity: .4; cursor: default; }
+.setbar select { font: 13px var(--f-ui); color: var(--paper); background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+.setbar .sbn b { color: var(--gilt); }
+.pl li.sethead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; cursor: default; margin-top: 8px; padding: 7px 8px 5px; border: 0; border-top: 1px solid var(--rule); border-radius: 0; }
+.pl li.sethead:first-child { margin-top: 0; }
+.pl li.sethead:hover { background: transparent; }
+.pl li.sethead .sn { font: 600 14px var(--f-ui); color: var(--gilt); }
+.pl li.sethead .sc { font: 11px var(--f-mono); color: var(--paper-dim); }
+.pl li.sethead .ss { font: 600 10.5px var(--f-mono); text-transform: uppercase; letter-spacing: .08em; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--rule); color: var(--paper-dim); }
+.pl li.sethead .ss.on { color: var(--on-accent); background: var(--gilt); border-color: var(--gilt); }
+.pl li.sethead .ss.next { color: var(--gilt); border-color: var(--gilt); }
+.pl li.sethead .sa { margin-left: auto; display: flex; gap: 3px; flex-wrap: wrap; }
+.pl li.sethead .sa .ib { width: auto; padding: 0 7px; font-size: 12px; }
+body:not(.tableMode) .pl li.sethead .sa [data-ld] { display: none; }
+.pl li.sethead.done .sn { opacity: .55; }
+.pl li.sethead.rej .sn { color: #c9b98f; }
+.pl li.sethead.celeb .sn { color: var(--stem); }
+.pl li.picking { cursor: copy; }
+.pl li.picked { outline: 2px solid var(--gilt); outline-offset: -2px; background: var(--cloth-3); }
+.pl li.picked .n { color: var(--gilt); font-weight: 700; }
+.pl .lottag { font: 600 11px var(--f-mono); color: var(--on-accent); background: var(--gilt); border-radius: 4px; padding: 0 5px; }
+.pl .ib.split { font-size: 12px; }
+.tb-celeb { display: none; }
+body.setsOn .tb-celeb { display: flex; }
+.tb-celeb select { background: var(--cloth); color: var(--paper); border: 1px solid var(--rule); border-radius: 5px; padding: 4px 6px; font: 13px var(--f-ui); }
 .pl .n { font: 500 13px var(--f-mono); color: var(--paper-dim); grid-row: 1 / span 2; font-variant-numeric: tabular-nums; }
 .pl .t { font-family: var(--f-text); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pl .m { font: 11px var(--f-mono); color: var(--paper-dim); grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -367,6 +395,9 @@ body.tableMode .pl li.seen .t { opacity: .55; }
 .tb-grid .tbacts button:hover { color: var(--gilt); border-color: var(--gilt); }
 .tb-grid .empty { grid-column: 1 / -1; padding-left: 4px; cursor: default; border: 0; background: transparent; }
 body.tableMode #btnBundle { display: none; }
+body.usedShow [data-ta="dmg"], body.usedShow #oaDmg, body.usedShow #tabDmg { display: none !important; }
+.tb-grid button[data-ta="dmg"] { color: var(--warn-ink); }
+.slist li.dmgrow .pr { font-size: 13px; color: var(--warn-ink); }
 body.tableMode #autoNext { }
 body.tableMode .entry label.check[data-hide="autoNext"] { display: none; }
 .pending .pick { color: var(--gilt); font-weight: 600; }
@@ -860,7 +891,7 @@ body.mode-display #btnHome2 { display: none !important; }
       <div class="t" id="oaTitle">—</div>
       <div class="a" id="oaAuthor"></div>
       <div class="pr" id="oaPron" hidden></div>
-      <div class="pronrow"><button class="btn" id="oaPronTv" type="button" aria-pressed="true">Spelling on TV: ON</button><span class="navbtns"><button class="btn" id="oaPrev" type="button">← Back</button><button class="btn" id="oaNextBtn" type="button">Next →</button></span></div>
+      <div class="pronrow"><button class="btn" id="oaPronTv" type="button" aria-pressed="true">Spelling on TV: ON</button><span class="navbtns"><button class="btn" id="oaDmg" type="button" title="This copy is damaged">Damaged</button><button class="btn" id="oaPrev" type="button">← Back</button><button class="btn" id="oaNextBtn" type="button">Next →</button></span></div>
       <div class="nx" id="oaNext"></div>
     </div>
   </section>
@@ -882,6 +913,7 @@ body.mode-display #btnHome2 { display: none !important; }
         <div class="tb-head">
           <span class="tb-title" id="tbTitle">Table is empty</span>
           <label class="tb-size">Books per round <input id="tbSize" type="number" min="1" max="12" value="6"></label>
+          <label class="tb-size tb-celeb">Celeb shots <select id="tbCeleb"><option value="table">Onto the table</option><option value="bottom">Celeb shots set</option></select></label>
           <button class="btn primary" id="tbLoad" type="button">Load next round</button>
           <button class="btn" id="tbAdd" type="button" title="Put the next playlist book on the table as one more lot">+ Next book</button>
           <button class="btn warn" id="tbEnd" type="button">End round (rest = R)</button>
@@ -910,6 +942,7 @@ body.mode-display #btnHome2 { display: none !important; }
       <button class="tab" id="tabReqs" type="button" role="tab" aria-selected="false" data-hide="reqs">Customer requests <span id="reqCount">0</span></button>
       <button class="tab" id="tabEvents" type="button" role="tab" aria-selected="false" data-hide="events">Life events <span id="evCount">0</span></button>
       <button class="tab" id="tabPace" type="button" role="tab" aria-selected="false" data-hide="pace">Pace</button>
+      <button class="tab" id="tabDmg" type="button" role="tab" aria-selected="false" data-hide="dmg">Damaged <span id="dmgCount">0</span></button>
     </div>
     <ol class="slist" id="saleList"></ol>
     <div id="reqPane" hidden style="display:flex;flex-direction:column;gap:8px;min-height:0;flex:1">
@@ -937,10 +970,27 @@ body.mode-display #btnHome2 { display: none !important; }
       <div class="qrow"><span class="msg" id="evMsg">Each event goes straight to the Customer Events tab in your Sales and Inventory workbook.</span><button class="btn" id="evRetry" type="button" hidden>Send unsent events</button></div>
       <ol class="slist" id="evList"></ol>
     </div>
+    <div id="dmgPane" hidden style="display:none;flex-direction:column;gap:8px;min-height:0;flex:1">
+      <div class="qrow"><span class="msg">Copies pulled as damaged during this show. They go to the Damaged Stock tab when you Send to sheets at the end of the show.</span></div>
+      <ol class="slist" id="dmgList"></ol>
+    </div>
   </section>
 </div>
 
-<div class="disp-wait" id="dispWait" hidden>Connecting to the Operator window…<br>Keep Reliant Workspace Test open in another window to control this screen.</div>
+<div class="modal" id="dmgModal" hidden role="dialog" aria-modal="true" aria-labelledby="dmgTitle">
+  <div class="card">
+    <h2 id="dmgTitle">Damaged copy</h2>
+    <p class="sub" id="dmgWhat"></p>
+    <label class="check"><input type="checkbox" id="dmgTooBad"> Too damaged to sell (it leaves inventory)</label>
+    <p class="sub" style="font-size:13px">Left unticked, the copy moves to damaged stock and can still be sold at a lower price.</p>
+    <div class="opts">
+      <button class="btn primary" type="button" id="dmgRepl">Damaged · replaced<small style="display:block;font-weight:400;font-size:12px">A good copy took its place</small></button>
+      <button class="btn" type="button" id="dmgNoRepl">Damaged · not replaced<small style="display:block;font-weight:400;font-size:12px">It comes off the table</small></button>
+    </div>
+    <button class="btn" type="button" id="dmgCancel">Cancel</button>
+  </div>
+</div>
+<div class="disp-wait" id="dispWait" hidden>Connecting to the Operator window…<br>Keep Reliant Workspace open in another window to control this screen.</div>
 <div class="disp-hint" id="dispHint" hidden>Double-click for full screen</div>
 
 <div class="modal" id="showModal" hidden>
@@ -1013,6 +1063,7 @@ body.mode-display #btnHome2 { display: none !important; }
   </div>
   <div class="pane" id="panePl">
     <button class="backto" id="btnBackTo" type="button" hidden></button>
+    <div class="setbar" id="setBar" hidden></div>
     <ol class="pl" id="plList"></ol>
     <div class="side-foot" id="plFoot">
       <button class="plfoot-tg" id="btnPlFoot" type="button" aria-expanded="true">▾ Search &amp; add books</button>
@@ -1475,6 +1526,10 @@ body.mode-display #btnHome2 { display: none !important; }
   // Each entry is its own spot ({id, key}), so the same ISBN can appear more than once.
   const keyOf = b => (b.sku || b.isbn || b.title || "").trim().toLowerCase();
   let playlist = [], curId = null, detourFrom = null, returnId = null, shownIds = new Set(), nextEid = 1, detourMark = false;
+  let nextSet = 1, nextLotTag = 1, selMode = false;
+  window.relBooks = () => books;   // read by the Show Prep window
+  const plSel = new Set();
+  let plDone = null, plTableSet = null, plLoadSet = null;   // set by the sales panel
   let byKey = new Map();
   let onTvChanged = null, plBadgeFor = null, plToTable = null, plSeenFor = null, plToggleSeen = null; // set by the sales panel
   const START = "__start";
@@ -1482,13 +1537,15 @@ body.mode-display #btnHome2 { display: none !important; }
   const idxOf = id => id == null || id === START ? -1 : playlist.findIndex(e => e.id === id);
   const entryTitle = e => { const i = byKey.get(e.key); return i == null ? "ISBN " + e.key + " (not in sheet)" : splitTitle(books[i].title).main; };
   function savePL() {
-    store.set("spotlight.playlist", JSON.stringify({ list: playlist.map(e => [e.id, e.key]), cur: curId, det: detourFrom, ret: returnId, shown: [...shownIds], next: nextEid }));
+    store.set("spotlight.playlist", JSON.stringify({ list: playlist.map(e => e.g != null || e.lot ? [e.id, e.key, e.g ?? null, e.lot || null] : [e.id, e.key]), cur: curId, det: detourFrom, ret: returnId, shown: [...shownIds], next: nextEid, nextSet, nextLotTag }));
   }
   function loadPL() {
     let s = null;
     try { s = JSON.parse(store.get("spotlight.playlist") || "null"); } catch {}
     if (!s || !Array.isArray(s.list)) return;
-    playlist = s.list.map(([id, key]) => ({ id, key }));
+    playlist = s.list.map(([id, key, g, lot]) => { const e = { id, key }; if (g != null) e.g = g; if (lot) e.lot = lot; return e; });
+    nextSet = s.nextSet || (Math.max(0, ...playlist.map(e => typeof e.g === "number" ? e.g : 0)) + 1);
+    nextLotTag = s.nextLotTag || (Math.max(0, ...playlist.map(e => e.lot ? parseInt(String(e.lot).slice(1), 10) || 0 : 0)) + 1);
     const ok = id => id === START || playlist.some(e => e.id === id);
     curId = ok(s.cur) ? s.cur : null; detourFrom = ok(s.det) ? s.det : null; returnId = ok(s.ret) ? s.ret : null;
     shownIds = new Set((s.shown || []).filter(id => playlist.some(e => e.id === id)));
@@ -1513,7 +1570,9 @@ body.mode-display #btnHome2 { display: none !important; }
   function insertNext(bookIdx) {
     const key = keyOf(books[bookIdx]);
     const at = anchorIndex() + 1;
-    playlist.splice(at, 0, newEntry(key)); plChanged();
+    const ne = newEntry(key), nb = playlist[at - 1] || playlist[at];
+    if (setsOn() && nb && nb.g != null) ne.g = nb.g;
+    playlist.splice(at, 0, ne); plChanged();
     toast(`Plays next as #${at + 1}: ${splitTitle(books[bookIdx].title).main}${dupNote(key, at + 1)}`);
   }
   function gotoEntry(i, jump = false) {
@@ -1572,8 +1631,208 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   function moveEntry(i, d) {
     const j = i + d; if (j < 0 || j >= playlist.length) return;
-    [playlist[i], playlist[j]] = [playlist[j], playlist[i]]; plChanged();
+    const e = playlist[i], o = playlist[j];
+    if (setsOn() && (e.g ?? null) !== (o.g ?? null)) {   // at the edge of a set: the book moves into the next set over
+      if (o.g == null) delete e.g; else e.g = o.g;
+      delete e.lot; normSets(); cleanupLots(); plChanged();
+      toast(`#${idxOf(e.id) + 1} moved to ${setName(e.g ?? null)}`);
+      return;
+    }
+    [playlist[i], playlist[j]] = [o, e]; plChanged();
   }
+
+  // ---------- sets: groups of books loaded onto the table together ----------
+  // An entry's g is its set: a number for an ordinary set, "celeb" for the Celeb shots set, "rej" for the Rejects set.
+  // Books with no g are unsorted. Books sharing a lot tag are sold together as one purchase.
+  // The books of a set always sit together in the playlist; Celeb shots and Rejects stay at the bottom.
+  const SPECIAL = { celeb: "Celeb shots", rej: "Rejects" };
+  const setsOn = () => playlist.some(e => e.g != null);
+  const setSize = () => { try { return tbSizeVal(); } catch { return 6; } };
+  const isDone = e => plDone ? plDone(e) : shownIds.has(e.id);
+  function blockKeys() {
+    let run = 0, prevU = false;
+    return playlist.map(e => { if (e.g == null) { if (!prevU) run++; prevU = true; return "u" + run; } prevU = false; return e.g; });
+  }
+  function normSets() {
+    if (!setsOn()) return;
+    const ks = blockKeys(), first = new Map();
+    ks.forEach((k, i) => { if (!first.has(k)) first.set(k, i); });
+    const rank = k => k === "celeb" ? 1e9 : k === "rej" ? 1e9 + 1 : first.get(k);
+    playlist = playlist.map((e, i) => ({ e, r: rank(ks[i]), i })).sort((a, b) => a.r - b.r || a.i - b.i).map(x => x.e);
+  }
+  function blocks() {   // [{key, g, idx: [playlist indexes]}] in playlist order
+    const ks = blockKeys(), out = [];
+    ks.forEach((k, i) => { const last = out[out.length - 1]; if (last && last.key === k) last.idx.push(i); else out.push({ key: k, g: playlist[i].g ?? null, idx: [i] }); });
+    return out;
+  }
+  const regular = b => b.g != null && !SPECIAL[b.g];
+  function setName(g) {
+    if (g == null) return "Unsorted";
+    if (SPECIAL[g]) return SPECIAL[g];
+    let n = 0;
+    for (const b of blocks()) if (regular(b)) { n++; if (b.g === g) return "Set " + n; }
+    return "Set";
+  }
+  function cleanupLots() {   // a lot needs at least two books in the same set
+    const c = new Map();
+    playlist.forEach(e => { if (e.lot) { const k = (e.g ?? "") + "|" + e.lot; c.set(k, (c.get(k) || 0) + 1); } });
+    playlist.forEach(e => { if (e.lot && c.get((e.g ?? "") + "|" + e.lot) < 2) delete e.lot; });
+  }
+  function makeSets(quiet) {
+    const size = setSize(); let made = 0;
+    for (const b of blocks()) if (b.g == null) {
+      let id = null;
+      b.idx.forEach((i, k) => { if (k % size === 0) { id = nextSet++; made++; } playlist[i].g = id; });
+    }
+    normSets(); plChanged();
+    if (!quiet) toast(made ? `Made ${made} set${made === 1 ? "" : "s"} of up to ${size} books. Move, merge or split them in the playlist.` : "Every book is already in a set");
+    return made;
+  }
+  function removeSets() {
+    const snap = playlist.map(e => ({ e, g: e.g, lot: e.lot })), order = playlist.slice();
+    playlist.forEach(e => { delete e.g; delete e.lot; });
+    selMode = false; plSel.clear(); plChanged();
+    toast("Sets removed · the playlist is one list again", { label: "Undo", run: () => {
+      playlist = order; snap.forEach(x => { if (x.g != null) x.e.g = x.g; if (x.lot) x.e.lot = x.lot; }); plChanged(); toast("Sets restored");
+    } }, 10000);
+  }
+  function rebuild(bs) { const old = playlist; playlist = bs.flatMap(b => b.idx.map(i => old[i])); normSets(); plChanged(); }
+  function findBlock(key) { const bs = blocks(); return { bs, k: bs.findIndex(b => String(b.key) === String(key)) }; }
+  function moveSet(key, d) {
+    const { bs, k } = findBlock(key); const j = k + d;
+    if (k < 0 || j < 0 || j >= bs.length || SPECIAL[bs[k].g] || SPECIAL[bs[j].g]) return;
+    [bs[k], bs[j]] = [bs[j], bs[k]]; rebuild(bs);
+  }
+  function setToFront(key) {
+    const { bs, k } = findBlock(key); if (k < 0 || SPECIAL[bs[k].g]) return;
+    const onT = plTableSet ? plTableSet() : null;
+    // the front is the first set that still has books to play and isn't on the table right now
+    const at = bs.findIndex(b => !SPECIAL[b.g] && b.idx.some(i => !isDone(playlist[i])) && !(onT != null && b.g === onT));
+    if (at < 0 || at >= k) { toast(`${setName(bs[k].g)} is already next`); return; }
+    const [b] = bs.splice(k, 1); bs.splice(at, 0, b); rebuild(bs);
+    toast(`${setName(b.g)} is next`);
+  }
+  function mergeNext(key) {
+    const { bs, k } = findBlock(key); const nb = bs[k + 1];
+    if (k < 0 || !nb || SPECIAL[bs[k].g] || SPECIAL[nb.g]) return;
+    const g = bs[k].g != null ? bs[k].g : nextSet++;
+    bs[k].idx.concat(nb.idx).forEach(i => { playlist[i].g = g; });
+    normSets(); plChanged(); toast(`Merged · ${setName(g)} now has ${bs[k].idx.length + nb.idx.length} books`);
+  }
+  function splitAt(i) {
+    const e = playlist[i]; if (!e || e.g == null || SPECIAL[e.g]) return;
+    const { bs } = findBlock(e.g), b = bs.find(x => x.g === e.g), pos = b.idx.indexOf(i);
+    if (pos <= 0) return;
+    const g = nextSet++;
+    b.idx.slice(pos).forEach(j => { playlist[j].g = g; });
+    cleanupLots(); normSets(); plChanged(); toast(`New set starts at #${i + 1}`);
+  }
+  // books picked with Select
+  const selEntries = () => playlist.filter(e => plSel.has(e.id));
+  function placeAfter(ents, anchorId) {   // move ents (in their playlist order) to sit right after the entry anchorId, or at the end
+    const ids = new Set(ents.map(e => e.id));
+    const rest = playlist.filter(e => !ids.has(e.id));
+    const at = anchorId == null ? rest.length : rest.findIndex(e => e.id === anchorId) + 1;
+    rest.splice(at, 0, ...ents); playlist = rest;
+  }
+  function selNewSet() {
+    const ents = selEntries(); if (!ents.length) return;
+    const g = nextSet++, firstIdx = idxOf(ents[0].id);
+    const before = playlist.slice(0, firstIdx).filter(e => !plSel.has(e.id)).pop();
+    ents.forEach(e => { e.g = g; });
+    placeAfter(ents, before ? before.id : null);
+    if (!before) { playlist = ents.concat(playlist.filter(e => !plSel.has(e.id))); }
+    cleanupLots(); normSets(); plSel.clear(); plChanged();
+    toast(`${setName(g)} made from ${ents.length} book${ents.length === 1 ? "" : "s"}`);
+  }
+  function selMoveTo(g) {
+    const ents = selEntries(); if (!ents.length) return;
+    ents.forEach(e => { e.g = g; });
+    const last = playlist.filter(e => e.g === g && !plSel.has(e.id)).pop();
+    placeAfter(ents, last ? last.id : null);
+    cleanupLots(); normSets(); plSel.clear(); plChanged();
+    toast(`${ents.length} book${ents.length === 1 ? "" : "s"} moved to ${setName(g)}`);
+  }
+  function selMakeLot() {
+    const ents = selEntries(); if (ents.length < 2) { toast("Pick two or more books to make a lot"); return; }
+    let g = ents[0].g ?? null;
+    if (g == null) { g = nextSet++; }
+    const tag = "L" + (nextLotTag++);
+    ents.forEach(e => { e.g = g; e.lot = tag; });
+    placeAfter(ents.slice(1), ents[0].id);
+    cleanupLots(); normSets(); plSel.clear(); plChanged();
+    toast(`Lot of ${ents.length} made in ${setName(g)} · they go on the table as one lot`);
+  }
+  function selUnLot() {
+    const ents = selEntries(); ents.forEach(e => { delete e.lot; });
+    cleanupLots(); plSel.clear(); plChanged(); toast("Lot undone");
+  }
+  // a celeb shot or other book added to a set (the end of that set)
+  function addToSet(isbn, g) {
+    const d = digits(isbn || "").toLowerCase();
+    const bi = books.findIndex(b => b._ids.some(id => id === d));
+    const ne = newEntry(bi >= 0 ? keyOf(books[bi]) : d);
+    ne.g = g;
+    const last = playlist.filter(e => e.g === g).pop();
+    if (last) playlist.splice(idxOf(last.id) + 1, 0, ne); else playlist.push(ne);
+    normSets(); plChanged();
+    return idxOf(ne.id);
+  }
+  function toRejects(eids) {
+    const ids = new Set(eids); let n = 0;
+    playlist.forEach(e => { if (ids.has(e.id) && e.g !== "rej") { e.g = "rej"; delete e.lot; n++; } });
+    if (!n) return;
+    const ents = playlist.filter(e => ids.has(e.id) && e.g === "rej");
+    placeAfter(ents, null);
+    cleanupLots(); normSets(); plChanged();
+  }
+  function drawSetBar() {
+    const bar = $("setBar"); if (!bar) return;
+    document.body.classList.toggle("setsOn", setsOn());
+    if (!playlist.length) { bar.hidden = true; return; }
+    bar.hidden = false;
+    const size = setSize();
+    if (selMode) {
+      const n = plSel.size, on = setsOn();
+      const opts = on ? blocks().filter(b => b.g != null).map(b => `<option value="${esc(String(b.g))}">${esc(setName(b.g))}</option>`).join("") : "";
+      const hasCeleb = playlist.some(e => e.g === "celeb"), hasRej = playlist.some(e => e.g === "rej");
+      bar.innerHTML = `<span class="sbn"><b>${n}</b> picked · click books to pick them</span>
+        <button class="btn" type="button" data-sb="newset"${n ? "" : " disabled"}>New set</button>
+        ${on ? `<select data-sb="moveto"${n ? "" : " disabled"} aria-label="Move picked books to a set"><option value="">Move to…</option>${opts}${hasCeleb ? "" : '<option value="celeb">Celeb shots</option>'}${hasRej ? "" : '<option value="rej">Rejects</option>'}</select>` : ""}
+        <button class="btn" type="button" data-sb="lot"${n >= 2 ? "" : " disabled"} title="Sold together as one purchase">Make lot</button>
+        <button class="btn" type="button" data-sb="unlot"${selEntries().some(e => e.lot) ? "" : " disabled"}>Undo lot</button>
+        <button class="btn primary" type="button" data-sb="done">Done</button>`;
+      return;
+    }
+    if (!setsOn()) {
+      bar.innerHTML = `<button class="btn" type="button" data-sb="make">Make sets of ${size}</button><button class="btn" type="button" data-sb="sel">Pick books…</button><span class="sbn">Group the playlist into sets for the table</span>`;
+      return;
+    }
+    const nSets = blocks().filter(regular).length, unsorted = playlist.filter(e => e.g == null).length;
+    bar.innerHTML = `<span class="sbn"><b>${nSets}</b> set${nSets === 1 ? "" : "s"}${unsorted ? ` · ${unsorted} unsorted` : ""}</span>
+      <button class="btn" type="button" data-sb="sel">Pick books…</button>
+      ${unsorted ? `<button class="btn" type="button" data-sb="make">Group unsorted into sets of ${size}</button>` : ""}
+      <button class="btn" type="button" data-sb="remove">Remove sets</button>`;
+  }
+  let rmArm = 0;
+  $("setBar").addEventListener("click", e => {
+    const b = e.target.closest("button[data-sb]"); if (!b || b.disabled) return;
+    const a = b.dataset.sb;
+    if (a === "make") makeSets(false);
+    else if (a === "sel") { selMode = true; plSel.clear(); drawPL(); }
+    else if (a === "done") { selMode = false; plSel.clear(); drawPL(); }
+    else if (a === "newset") selNewSet();
+    else if (a === "lot") selMakeLot();
+    else if (a === "unlot") selUnLot();
+    else if (a === "remove") {
+      if (Date.now() - rmArm > 4000) { rmArm = Date.now(); b.textContent = "Click again to remove sets"; setTimeout(() => { if (b.isConnected) b.textContent = "Remove sets"; }, 4000); return; }
+      rmArm = 0; removeSets();
+    }
+  });
+  $("setBar").addEventListener("change", e => {
+    const sel = e.target.closest("select[data-sb='moveto']"); if (!sel || !sel.value) return;
+    const v = sel.value; selMoveTo(SPECIAL[v] ? v : +v);
+  });
   function updateCounter() {
     const el = $("counter");
     if (!playlist.length) { el.hidden = true; scheduleBroadcast(); return; }
@@ -1620,17 +1879,43 @@ body.mode-display #btnHome2 { display: none !important; }
       return;
     }
     const q = plQuery();
+    drawSetBar();
     const hits = q ? playlist.map((e, i) => plMatches(e, q) ? i : -1).filter(i => i >= 0) : null;
     if (hits && !hits.length) { ul.innerHTML = `<li class="empty">No book in this playlist matches "${esc($("plFind").value.trim())}".</li>`; return; }
+    const on = setsOn(), heads = new Map(), lotLetter = new Map(), firstOf = new Set();
+    if (on) {
+      const bs = blocks(), onT = plTableSet ? plTableSet() : null;
+      const upNext = bs.find(b => b.g !== "rej" && !(onT != null && b.g === onT) && b.idx.some(i => !isDone(playlist[i])));
+      let nReg = 0;
+      bs.forEach((b, k) => {
+        const name = b.g == null ? "Unsorted" : SPECIAL[b.g] || ("Set " + (++nReg));
+        const lots = [...new Set(b.idx.map(i => playlist[i].lot).filter(Boolean))];
+        lots.forEach((t, n) => lotLetter.set(b.key + "|" + t, String.fromCharCode(65 + n)));
+        b.idx.forEach((i, n) => { if (n > 0) firstOf.add(i); });
+        const onTable = onT != null && b.g === onT, done = b.idx.every(i => isDone(playlist[i]));
+        const status = onTable ? `<span class="ss on">On the table</span>` : b === upNext ? `<span class="ss next">Up next</span>` : done && b.g !== "rej" ? `<span class="ss">Done</span>` : "";
+        const prevMovable = k > 0 && !SPECIAL[bs[k - 1].g], nextMovable = k < bs.length - 1 && !SPECIAL[bs[k + 1].g];
+        const btn = (act, label, title, extra = "") => `<button class="ib" type="button" data-sa="${act}" title="${title}"${extra}>${label}</button>`;
+        const acts = b.g == null
+          ? btn("make", "Make sets", "Group these books into sets")
+          : SPECIAL[b.g] ? btn("load", "Load", `Put ${name} on the table`, ' data-ld="1"')
+          : btn("up", "↑", "Move this set up", prevMovable ? "" : " disabled") + btn("down", "↓", "Move this set down", nextMovable ? "" : " disabled")
+            + btn("front", "To front", "Make this the next set to load") + (nextMovable ? btn("merge", "Merge ↓", "Join this set with the one below") : "")
+            + btn("load", "Load", `Put ${name} on the table now`, ' data-ld="1"');
+        heads.set(b.idx[0], `<li class="sethead${done && b.g !== "rej" ? " done" : ""}${onTable ? " ontable" : ""}${b.g === "rej" ? " rej" : ""}${b.g === "celeb" ? " celeb" : ""}" data-g="${esc(String(b.key))}"><span class="sn">${esc(name)}</span><span class="sc">${b.idx.length} book${b.idx.length === 1 ? "" : "s"}${lots.length ? ` · ${lots.length} lot${lots.length === 1 ? "" : "s"}` : ""}</span>${status}<span class="sa">${acts}</span></li>`);
+      });
+    }
     ul.innerHTML = playlist.map((e, i) => {
       if (hits && !hits.includes(i)) return "";
+      const head = !hits && heads.has(i) ? heads.get(i) : "";
+      const lotTag = on && e.lot ? lotLetter.get((e.g ?? blockKeys()[i]) + "|" + e.lot) : null;
       const bi = byKey.get(e.key), b = bi == null ? null : books[bi];
       const sb = plBadgeFor ? plBadgeFor(e) : null;
       const seen = plSeenFor ? plSeenFor(e) : null;
       const cls = [e.id === curId ? "cur" : "", e.id === returnId ? "ret" : "", shownIds.has(e.id) ? "shown" : "", b ? "" : "missing", sb ? (sb.r ? "nosale" : "sold") : "", seen === "seen" ? "seen" : "", seen === "fresh" ? "fresh" : ""].filter(Boolean).join(" ");
-      const meta = (sb ? `<b class="sb">${esc(sb.text)}</b> · ` : "") + (seen === "seen" && !sb ? `<b class="seentag">Seen</b> · ` : "") + (seen === "fresh" ? `<b class="seentag fresh">Unseen</b> · ` : "") + (b ? [fixAuthor(b.author), b.isbn].filter(Boolean).map(esc).join(" · ") : esc(e.key));
-      return `<li class="${cls}" data-i="${i}"><span class="n">${i + 1}</span><span class="t">${esc(entryTitle(e))}</span><span class="m">${meta}</span>
-        <span class="acts"><button class="ib" type="button" data-act="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button><button class="ib" type="button" data-act="down" title="Move down" ${i === playlist.length - 1 ? "disabled" : ""}>↓</button><button class="ib tbadd" type="button" data-act="table" title="Put this book on the table">+ Table</button>${seen && seen !== "table" ? `<button class="ib tbadd" type="button" data-act="seen" title="${seen === "seen" ? "Mark unseen: Load next round will pick this book up again, in playlist order" : "Mark seen: Load next round will skip this book"}">${seen === "seen" ? "Unseen" : "Seen"}</button>` : ""}<button class="ib" type="button" data-act="del" title="Remove from playlist">✕</button></span></li>`;
+      const meta = (lotTag ? `<b class="lottag">Lot ${lotTag}</b> · ` : "") + (sb ? `<b class="sb">${esc(sb.text)}</b> · ` : "") + (seen === "seen" && !sb ? `<b class="seentag">Seen</b> · ` : "") + (seen === "fresh" ? `<b class="seentag fresh">Unseen</b> · ` : "") + (b ? [fixAuthor(b.author), b.isbn].filter(Boolean).map(esc).join(" · ") : esc(e.key));
+      return `${head}<li class="${cls}${selMode && plSel.has(e.id) ? " picked" : ""}${selMode ? " picking" : ""}" data-i="${i}"><span class="n">${selMode && plSel.has(e.id) ? "✓" : i + 1}</span><span class="t">${esc(entryTitle(e))}</span><span class="m">${meta}</span>
+        <span class="acts"><button class="ib" type="button" data-act="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button><button class="ib" type="button" data-act="down" title="Move down" ${i === playlist.length - 1 ? "disabled" : ""}>↓</button><button class="ib tbadd" type="button" data-act="table" title="Put this book on the table">+ Table</button>${seen && seen !== "table" ? `<button class="ib tbadd" type="button" data-act="seen" title="${seen === "seen" ? "Mark unseen: Load next round will pick this book up again, in playlist order" : "Mark seen: Load next round will skip this book"}">${seen === "seen" ? "Unseen" : "Seen"}</button>` : ""}${on && e.g != null && !SPECIAL[e.g] && firstOf.has(i) ? `<button class="ib split" type="button" data-act="split" title="Start a new set from this book">✂</button>` : ""}<button class="ib" type="button" data-act="del" title="Remove from playlist">✕</button></span></li>`;
     }).join("");
     const focusId = curId != null ? curId : (detourFrom !== START ? detourFrom : null);
     if (!hits && focusId != null && focusId !== lastScrolledId) {
@@ -1640,10 +1925,25 @@ body.mode-display #btnHome2 { display: none !important; }
     }
   }
   $("plList").addEventListener("click", e => {
+    const hd = e.target.closest("li.sethead");
+    if (hd) {
+      const sb = e.target.closest("button[data-sa]"); if (!sb || sb.disabled) return;
+      const key = hd.dataset.g, b = blocks().find(x => String(x.key) === key); if (!b) return;
+      const a = sb.dataset.sa;
+      if (a === "up") moveSet(key, -1);
+      else if (a === "down") moveSet(key, 1);
+      else if (a === "front") setToFront(key);
+      else if (a === "merge") mergeNext(key);
+      else if (a === "make") makeSets(false);
+      else if (a === "load" && plLoadSet) plLoadSet(b.g);
+      return;
+    }
     const li = e.target.closest("li[data-i]"); if (!li) return;
     const i = +li.dataset.i;
     const btn = e.target.closest("button[data-act]");
+    if (selMode && !btn) { const id = playlist[i].id; if (plSel.has(id)) plSel.delete(id); else plSel.add(id); drawPL(); return; }
     if (btn) {
+      if (btn.dataset.act === "split") { splitAt(i); return; }
       if (btn.dataset.act === "up") moveEntry(i, -1);
       else if (btn.dataset.act === "down") moveEntry(i, 1);
       else if (btn.dataset.act === "del") removeEntry(i);
@@ -1666,6 +1966,21 @@ body.mode-display #btnHome2 { display: none !important; }
       else missed.push(line);
     }
     return { added, missed };
+  }
+  // Show Prep rows: each row is one lot (a book, or a book plus its 2nd book); every N rows is one set
+  function addPrepRows(prows) {
+    const size = setSize(), byDiv = prows.includes("DIV"); let added = 0, sets = 0, lots = 0, k = 0, g = null, fresh = true; const missed = [];
+    for (const row of prows) {
+      if (row === "DIV") { fresh = true; continue; }
+      const before = playlist.length;
+      const r = addIsbnLines(row); added += r.added; missed.push(...r.missed);
+      const ents = playlist.slice(before); if (!ents.length) continue;
+      if (byDiv ? fresh : k % size === 0) { g = nextSet++; sets++; fresh = false; }
+      ents.forEach(e => { e.g = g; });
+      if (ents.length > 1) { const tag = "L" + (nextLotTag++); ents.forEach(e => { e.lot = tag; }); lots++; }
+      k++;
+    }
+    return { added, missed, sets, lots };
   }
   function addFromBox() {
     const box = $("plScan");
@@ -2201,10 +2516,10 @@ body.mode-display #btnHome2 { display: none !important; }
       document.head.appendChild(sc);
     });
   }
-  const colLetter = i => String.fromCharCode(65 + i);
+  const colLetter = i => (i >= 26 ? String.fromCharCode(64 + Math.floor(i / 26)) : "") + String.fromCharCode(65 + (i % 26));
   function drawPrep() {
     const ok = prepCols.filter(c => c.isbns.length);
-    $("prepList").innerHTML = ok.length ? ok.map(c => `<button type="button" data-i="${c.i}" class="${c.i === prepPick ? "on" : ""}"><span>${esc(c.name)}</span><small>${c.isbns.length} book${c.isbns.length === 1 ? "" : "s"}</small></button>`).join("")
+    $("prepList").innerHTML = ok.length ? ok.map(c => `<button type="button" data-i="${c.i}" class="${c.i === prepPick ? "on" : ""}"><span>${esc(c.name)}</span><small>${c.isbns.length} book${c.isbns.length === 1 ? "" : "s"}${c.pairCol != null ? ` · ${c.nsets ?? Math.ceil(c.prows.length / setSize())} set${(c.nsets ?? Math.ceil(c.prows.length / setSize())) === 1 ? "" : "s"}${c.lots2 ? ` · ${c.lots2} two-book lot${c.lots2 === 1 ? "" : "s"}` : ""}` : ""}</small></button>`).join("")
       : `<p class="empty">No Show Prep lists with books yet. Build one on the Show Prep page (it works on a tablet), then press Re-read.</p>`;
     $("prepLoad").disabled = prepPick < 0;
   }
@@ -2213,10 +2528,18 @@ body.mode-display #btnHome2 { display: none !important; }
     $("prepMsg").textContent = ""; $("prepSub").textContent = "Reading the Show Prep lists…"; $("prepList").innerHTML = ""; $("prepLoad").disabled = true;
     try {
       const rows = await readPrep(), head = rows[0] || [], width = Math.max(0, ...rows.map(r => r.length));
+      const isPair = i => /2nd\s*book|second\s*book|\bpair/i.test(String(head[i] || ""));
       for (let i = 0; i < width; i++) {
-        const isbns = rows.slice(1).map(r => String((r && r[i]) || "").trim()).filter(Boolean);
+        if (isPair(i)) continue;
+        const cell = (r, k) => String((r && r[k]) || "").trim();
+        const pairCol = i + 1 < width + 1 && isPair(i + 1) ? i + 1 : null;
+        // each row is one lot on the table: the book, plus its 2nd book when the row has one
+        // a divider row ("— Set 2 —", written by Show Prep) starts a new set; it shows up as "DIV" here
+        const prows = rows.slice(1).map(r => /^\W*set\b/i.test(cell(r, i)) ? "DIV" : [cell(r, i), pairCol != null ? cell(r, pairCol) : ""].filter(Boolean)).filter(x => x === "DIV" || x.length);
+        const isbns = prows.filter(x => x !== "DIV").flat();
         const name = String(head[i] || "").trim() || "Column " + colLetter(i);
-        prepCols.push({ i, name, isbns, rowsUsed: rows.length - 1 });
+        const hasDiv = prows.includes("DIV"), nsets = hasDiv ? prows.reduce((a, x, k) => { if (x === "DIV") a.open = false; else if (!a.open) { a.open = true; a.n++; } return a; }, { n: 0, open: false }).n : null;
+        prepCols.push({ i, name, isbns, prows, pairCol, hasDiv, nsets, lots2: prows.filter(x => x !== "DIV" && x.length > 1).length, rowsUsed: rows.length - 1 });
       }
       const ok = prepCols.filter(c => c.isbns.length);
       if (ok.length === 1) prepPick = ok[0].i;
@@ -2240,9 +2563,18 @@ body.mode-display #btnHome2 { display: none !important; }
       let base = null; try { base = how === "append" ? JSON.parse(store.get("spotlight.playlist.saved") || "null") : null; } catch {}
       const list = base && Array.isArray(base.list) ? base.list.slice() : [];
       let next = base && base.next ? base.next : (Math.max(0, ...list.map(x => x[0])) + 1);
-      c.isbns.forEach(x => { const d = digits(x).toLowerCase(); if (d.length >= 10) list.push([next++, d]); });
+      if (c.pairCol != null) {
+        const size = setSize(), byDiv = c.hasDiv; let sid = Math.max(0, ...list.map(x => typeof x[2] === "number" ? x[2] : 0)), lt = 1, k = 0, fresh = true;
+        c.prows.forEach(row => {
+          if (row === "DIV") { fresh = true; return; }
+          const ds = row.map(x => digits(x).toLowerCase()).filter(d => d.length >= 10); if (!ds.length) return;
+          if (byDiv ? fresh : k % size === 0) { sid++; fresh = false; }
+          const lot = ds.length > 1 ? "P" + (lt++) : null;
+          ds.forEach(d => list.push([next++, d, sid, lot])); k++;
+        });
+      } else c.isbns.forEach(x => { const d = digits(x).toLowerCase(); if (d.length >= 10) list.push([next++, d]); });
       if ($("prepClear").checked && mcpRef) {
-        try { const n = Math.max(c.rowsUsed, c.isbns.length); await mcpRef.callTool("Google Sheets", "update_values", { spreadsheetId: SHEET_ID, range: `'${PREP_TAB}'!${colLetter(c.i)}2:${colLetter(c.i)}${n + 1}`, values: Array.from({ length: n }, () => [""]) }, { cache: false }); } catch {}
+        try { const n = Math.max(c.rowsUsed, c.isbns.length), lastCol = c.pairCol != null ? c.pairCol : c.i; await mcpRef.callTool("Google Sheets", "update_values", { spreadsheetId: SHEET_ID, range: `'${PREP_TAB}'!${colLetter(c.i)}2:${colLetter(lastCol)}${n + 1}`, values: Array.from({ length: n }, () => lastCol === c.i ? [""] : ["", ""]) }, { cache: false }); } catch {}
       }
       try {
         localStorage.setItem("spotlight.playlist", JSON.stringify({ list, cur: null, det: null, ret: null, shown: [], next }));
@@ -2254,20 +2586,20 @@ body.mode-display #btnHome2 { display: none !important; }
     }
     const snap = { list: playlist.slice(), cur: curId, det: detourFrom, ret: returnId, shown: new Set(shownIds) };
     if (how === "replace") { playlist = []; curId = null; detourFrom = null; returnId = null; shownIds = new Set(); }
-    const r = addIsbnLines(c.isbns);
-    plChanged();
+    const r = c.pairCol != null ? addPrepRows(c.prows) : addIsbnLines(c.isbns);
+    normSets(); plChanged();
     // books missing from the saved copy of the sheet are usually rows added in the last few minutes: fetch a fresh copy
     if (r.missed.length && !$("btnRefresh").disabled) setTimeout(() => $("btnRefresh").click(), 50);
     if (how === "replace" && playlist.length) gotoEntry(0, true);
     $("prepModal").hidden = true;
-    const msg = `Loaded "${c.name}": ${r.added} book${r.added === 1 ? "" : "s"}` + (how === "append" ? " added to the end" : "") + (r.missed.length ? ` · ${r.missed.length} not in the sheet yet` : "");
+    const msg = `Loaded "${c.name}": ${r.added} book${r.added === 1 ? "" : "s"}` + (r.sets ? ` in ${r.sets} set${r.sets === 1 ? "" : "s"}${r.lots ? `, ${r.lots} two-book lot${r.lots === 1 ? "" : "s"}` : ""}` : "") + (how === "append" ? " added to the end" : "") + (r.missed.length ? ` · ${r.missed.length} not in the sheet yet` : "");
     toast(msg, how === "replace" && snap.list.length ? { label: "Undo", run: () => {
       playlist = snap.list; curId = snap.cur; detourFrom = snap.det; returnId = snap.ret; shownIds = snap.shown; plChanged(); if (curId) { const k = playlist.findIndex(x => x.id === curId); if (k >= 0) gotoEntry(k, true); }
     } } : null, 8000);
     if ($("prepClear").checked && mcpRef) {
       try {
-        const n = Math.max(c.rowsUsed, c.isbns.length);
-        await mcpRef.callTool("Google Sheets", "update_values", { spreadsheetId: SHEET_ID, range: `'${PREP_TAB}'!${colLetter(c.i)}2:${colLetter(c.i)}${n + 1}`, values: Array.from({ length: n }, () => [""]) }, { cache: false });
+        const n = Math.max(c.rowsUsed, c.isbns.length), lastCol = c.pairCol != null ? c.pairCol : c.i;
+        await mcpRef.callTool("Google Sheets", "update_values", { spreadsheetId: SHEET_ID, range: `'${PREP_TAB}'!${colLetter(c.i)}2:${colLetter(lastCol)}${n + 1}`, values: Array.from({ length: n }, () => lastCol === c.i ? [""] : ["", ""]) }, { cache: false });
       } catch { toast("Playlist loaded, but the Show Prep list couldn't be emptied. Empty it on the Show Prep page.", null, 6000); }
     }
   };
@@ -2552,10 +2884,12 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   const salesCol = id => S.db.collection(`shows/${id}/sales`);
   const reqsCol = id => S.db.collection(`shows/${id}/requests`);
+  const dmgCol = id => S.db.collection(`shows/${id}/damaged`);
   function backup() {
     if (!S.show) return;
     store.set("spotlight.sales." + S.show.id, JSON.stringify(S.sales));
     store.set("spotlight.reqs." + S.show.id, JSON.stringify(S.reqs));
+    store.set("spotlight.dmg." + S.show.id, JSON.stringify(S.dmgs || []));
     let shows = []; try { shows = JSON.parse(store.get("spotlight.shows") || "[]"); } catch {}
     const i = shows.findIndex(s => s.id === S.show.id); if (i >= 0) shows[i] = S.show; else shows.push(S.show);
     store.set("spotlight.shows", JSON.stringify(shows.slice(-60)));
@@ -2570,7 +2904,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (S.db) { try { const d = await S.db.doc("meta/current").get(); curId = d.exists ? (d.data().showId || null) : null; } catch {} }
     else curId = store.get("spotlight.currentShow");
     if (curId) await openShow(curId);
-    drawShow(); drawSales(); drawReqs();
+    drawShow(); drawSales(); drawReqs(); drawDmgs();
     setSaleMode(saleMode);
   }
   async function openShow(id) {
@@ -2580,6 +2914,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!show || show.endedAt) return;
     S.show = show;
     try { S.sales = JSON.parse(store.get("spotlight.sales." + id) || "[]"); S.reqs = JSON.parse(store.get("spotlight.reqs." + id) || "[]"); } catch { S.sales = []; S.reqs = []; }
+    try { S.dmgs = JSON.parse(store.get("spotlight.dmg." + id) || "[]"); } catch { S.dmgs = []; }
     subscribe();
   }
   function subscribe() {
@@ -2592,6 +2927,11 @@ body.mode-display #btnHome2 { display: none !important; }
     S.unsubR = reqsCol(S.show.id).onSnapshot(snap => {
       S.reqs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.loggedAt - b.loggedAt);
       backup(); drawReqs();
+    }, () => {});
+    if (S.unsubD) S.unsubD();
+    S.unsubD = dmgCol(S.show.id).onSnapshot(snap => {
+      S.dmgs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.loggedAt - b.loggedAt);
+      backup(); drawDmgs();
     }, () => {});
   }
   function drawShow() {
@@ -2645,7 +2985,7 @@ body.mode-display #btnHome2 { display: none !important; }
         if (S.db) { await S.db.doc("shows/" + id).set(show); await S.db.doc("meta/current").set({ showId: id }); }
         else store.set("spotlight.currentShow", id);
       } catch { $("showErr").textContent = "Couldn't start the show. Check the connection and try again."; return; }
-      S.show = show; S.sales = []; S.reqs = []; backup(); subscribe();
+      S.show = show; S.sales = []; S.reqs = []; S.dmgs = []; backup(); subscribe();
       $("showModal").hidden = true; drawShow(); drawSales(); drawReqs();
       $("saleScan").focus(); toast(`Show started: ${show.sourceTab}`);
     } else {
@@ -2738,20 +3078,21 @@ body.mode-display #btnHome2 { display: none !important; }
 
   // ---- Table rounds: lots under the camera (a lot is 1+ books); each winner picks a lot (or several) ----
   let saleMode = store.get("spotlight.saleMode") === "table" ? "table" : "single";
-  const T = { multi: false, round: 0, lots: [], sel: new Set(), lastEid: null, firstEid: null, tabled: new Set(), fresh: new Set(), awaitPick: null, nextLot: 1 };
+  const T = { multi: false, round: 0, lots: [], sel: new Set(), lastEid: null, firstEid: null, tabled: new Set(), fresh: new Set(), awaitPick: null, nextLot: 1, curSet: null };
   const tKey = () => S.show ? "spotlight.table." + S.show.id : "";
   const newLot = books => ({ id: "L" + (T.nextLot++), books });
   const tBooks = () => T.lots.reduce((n, l) => n + l.books.length, 0);
   const onTable = eid => T.lots.some(l => l.books.some(x => x.eid === eid));
-  function tSave() { if (!S.show) return; T.lots.forEach(l => l.books.forEach(x => { if (x.eid != null) { T.tabled.add(x.eid); T.fresh.delete(x.eid); } })); store.set(tKey(), JSON.stringify({ round: T.round, lots: T.lots, lastEid: T.lastEid, firstEid: T.firstEid, tabled: [...T.tabled], fresh: [...T.fresh], nextLot: T.nextLot })); }
+  function tSave() { if (!S.show) return; T.lots.forEach(l => l.books.forEach(x => { if (x.eid != null) { T.tabled.add(x.eid); T.fresh.delete(x.eid); } })); store.set(tKey(), JSON.stringify({ round: T.round, lots: T.lots, lastEid: T.lastEid, firstEid: T.firstEid, tabled: [...T.tabled], fresh: [...T.fresh], nextLot: T.nextLot, curSet: T.curSet })); }
   function tLoad() {
-    T.round = 0; T.lots = []; T.lastEid = null; T.firstEid = null; T.tabled = new Set(); T.fresh = new Set(); T.sel.clear(); T.awaitPick = null; T.nextLot = 1;
+    T.round = 0; T.lots = []; T.lastEid = null; T.firstEid = null; T.tabled = new Set(); T.fresh = new Set(); T.sel.clear(); T.awaitPick = null; T.nextLot = 1; T.curSet = null;
     if (!S.show) return;
     try {
       const d = JSON.parse(store.get(tKey()) || "null");
       if (d) {
         T.round = d.round || 0; T.lastEid = d.lastEid ?? null; T.firstEid = d.firstEid ?? null; T.tabled = new Set(Array.isArray(d.tabled) ? d.tabled : []); T.fresh = new Set(Array.isArray(d.fresh) ? d.fresh : []); T.nextLot = d.nextLot || 1;
         T.lots = Array.isArray(d.lots) ? d.lots : (d.items || []).map(it => newLot([it]));   // older saves held single books
+        T.curSet = d.curSet ?? null;
       }
     } catch {}
   }
@@ -2797,18 +3138,64 @@ body.mode-display #btnHome2 { display: none !important; }
     const c = curId != null ? idxOf(curId) : (detourFrom != null && detourFrom !== START ? idxOf(detourFrom) : -1);
     return c >= 0 ? c : 0;
   }
+  const loadLabel = () => setsOn() ? "Load next set" : "Load next round";
+  const celebMode = () => $("tbCeleb").value === "bottom" ? "bottom" : "table";
+  $("tbCeleb").value = store.get("spotlight.celeb") === "bottom" ? "bottom" : "table";
+  $("tbCeleb").onchange = () => { store.set("spotlight.celeb", celebMode()); toast(celebMode() === "bottom" ? "Celeb shots now go to a Celeb shots set at the bottom of the playlist" : "Celeb shots now go straight onto the table"); };
+  plDone = e => S.show && saleMode === "table" ? usedOnTable(e) : shownIds.has(e.id);
+  plTableSet = () => T.lots.length ? T.curSet : null;
+  plLoadSet = g => loadSet(g);
+  // ask once before a load would mark the books still on the table as R
+  function armLoad(what) {
+    if (!T.lots.length || T.confirmLoad) return false;
+    T.confirmLoad = true; $("tbLoad").textContent = `${T.lots.length} lot${T.lots.length === 1 ? "" : "s"} still on the table. Click again to mark R and load`;
+    toast(`${T.lots.length} lot${T.lots.length === 1 ? "" : "s"} still on the table · click ${what} again to mark them R and load`);
+    setTimeout(() => { T.confirmLoad = false; $("tbLoad").textContent = loadLabel(); }, 4000);
+    return true;
+  }
+  function loadNextSet() {
+    if (playlist.some(e => e.g == null)) makeSets(true);   // unsorted books become sets of the usual size first
+    const b = blocks().find(x => x.g !== "rej" && x.idx.some(i => !onTable(playlist[i].id) && !usedOnTable(playlist[i])));
+    if (!b) { toast(playlist.some(e => e.g === "rej") ? "Every set has been on the table. Load the Rejects set from the playlist to give them another chance." : "Every set has been on the table. Scan more books into the playlist, or scan books straight onto the table."); return; }
+    loadSet(b.g, "Load next set");
+  }
+  function loadSet(g, what = "Load") {
+    if (!S.show) { toast("Start a show first"); return; }
+    if (saleMode !== "table") setSaleMode("table");
+    const rej = g === "rej";
+    const canLoad = e => !onTable(e.id) && (rej ? !salesFor(e).some(s => !s.noSale) : !usedOnTable(e));
+    let ids = playlist.filter(e => e.g === g && canLoad(e)).map(e => e.id);
+    if (!ids.length) { toast(`${setName(g)} has no books left to load`); return; }
+    if (armLoad(what)) return;
+    if (T.lots.length) endRound(true);
+    T.confirmLoad = false; $("tbLoad").textContent = loadLabel();
+    const items = ids.map(id => { const i = idxOf(id); return i >= 0 ? entryItem(playlist[i], i) : null; }).filter(Boolean);
+    const groups = [];
+    items.forEach(it => { const lot = (playlist[idxOf(it.eid)] || {}).lot, x = lot && groups.find(y => y.lot === lot); if (x) x.books.push(it); else groups.push({ lot, books: [it] }); });
+    const put = groups.slice(0, 12), left = groups.length - put.length;
+    T.lots = put.map(x => newLot(x.books)); T.round += 1; T.sel.clear(); T.multi = false; T.awaitPick = null; T.curSet = g;
+    const loaded = put.flatMap(x => x.books);
+    T.firstEid = loaded[0].eid; T.lastEid = loaded[loaded.length - 1].eid;
+    loaded.forEach(it => { T.tabled.add(it.eid); T.fresh.delete(it.eid); });
+    tSave();
+    gotoEntry(idxOf(loaded[0].eid), true);
+    drawTable(); drawPendingLine(); $("salePrice").focus();
+    const nl = put.length;
+    toast(`${setName(g)} · round ${T.round}: ${loaded.length} book${loaded.length === 1 ? "" : "s"} on the table${nl !== loaded.length ? ` as ${nl} lots` : ""}${left ? ` · ${left} more stay in the set (the table holds 12 lots)` : ""}`);
+  }
   function loadRound() {
     if (!S.show) { toast("Start a show first"); return; }
+    if (setsOn()) { loadNextSet(); return; }
     if (!playlist.length) { toast("The playlist is empty. Scan books into the playlist, or scan them straight onto the table."); return; }
     const st0 = nextRoundStart();
     if (!playlist.some((e, i) => inLine(i, st0) && !usedOnTable(e))) { toast("No books left in the playlist after the last round. Scan more into the playlist, or scan books straight onto the table."); return; }
     if (T.lots.length && !T.confirmLoad) {
       T.confirmLoad = true; $("tbLoad").textContent = `${T.lots.length} lot${T.lots.length === 1 ? "" : "s"} still on the table. Click again to mark R and load`;
-      setTimeout(() => { T.confirmLoad = false; $("tbLoad").textContent = "Load next round"; }, 4000);
+      setTimeout(() => { T.confirmLoad = false; $("tbLoad").textContent = loadLabel(); }, 4000);
       return;
     }
     if (T.lots.length) endRound(true);
-    T.confirmLoad = false; $("tbLoad").textContent = "Load next round";
+    T.confirmLoad = false; $("tbLoad").textContent = loadLabel(); T.curSet = null;
     const start = nextRoundStart();
     const n = tbSizeVal(), add = [];
     for (let i = 0; i < playlist.length && add.length < n; i++) { if (!inLine(i, start) || usedOnTable(playlist[i])) continue; const it = entryItem(playlist[i], i); if (it) add.push(it); }
@@ -2841,7 +3228,8 @@ body.mode-display #btnHome2 { display: none !important; }
     const left = T.lots.slice(), nb = tBooks();
     left.forEach(l => logSale(l.books.map(it => ({ ...it, round: T.round, lg: l.id })), 0, true));
     T.lots = []; T.sel.clear(); T.multi = false; T.awaitPick = null; tSave();
-    if (!silent) toast(`Round ${T.round} ended · ${nb} book${nb === 1 ? "" : "s"} marked R`);
+    if (setsOn()) toRejects(left.flatMap(l => l.books.map(b => b.eid)).filter(x => x != null));
+    if (!silent) toast(`Round ${T.round} ended · ${nb} book${nb === 1 ? "" : "s"} marked R${setsOn() ? " · moved to the Rejects set" : ""}`);
     drawTable(); drawPendingLine();
   }
   $("tbLoad").onclick = loadRound;
@@ -2874,17 +3262,19 @@ body.mode-display #btnHome2 { display: none !important; }
     const g = $("tbGrid");
     if (saleMode !== "table") return;
     const nb = tBooks(), nl = T.lots.length;
-    $("tbTitle").textContent = !S.show ? "Start a show to use table rounds" : nl ? `Round ${T.round} · ${nl} lot${nl === 1 ? "" : "s"}${nb !== nl ? ` (${nb} books)` : ""}` : (T.round ? `Round ${T.round} finished` : "Table is empty");
+    const setTag = nl && T.curSet != null && setsOn() ? setName(T.curSet) + " · " : "";
+    $("tbTitle").textContent = !S.show ? "Start a show to use table rounds" : nl ? `${setTag}Round ${T.round} · ${nl} lot${nl === 1 ? "" : "s"}${nb !== nl ? ` (${nb} books)` : ""}` : (T.round ? `Round ${T.round} finished` : "Table is empty");
+    if (!T.confirmLoad) $("tbLoad").textContent = loadLabel();
     $("tbLoad").disabled = $("tbEnd").disabled = $("tbAdd").disabled = !S.show;
-    if (!nl) { g.innerHTML = `<li class="empty">${S.show ? "Click Load next round to put the next books from the playlist on the table. + Next book adds one more; scanning a book adds it too." : ""}</li>`; return; }
+    if (!nl) { g.innerHTML = `<li class="empty">${S.show ? `Click ${loadLabel()} to put the next ${setsOn() ? "set" : "books"} from the playlist on the table. + Next book adds one more; scanning a book adds it too.` : ""}</li>`; return; }
     g.innerHTML = T.lots.map((l, i) => {
       const multi = l.books.length > 1;
       const tv = l.books.some(it => it.eid != null && it.eid === curId);
       const fb = (it, j) => { const on = flagActive(it.isbn); return `<button type="button" class="tbflag${on ? " on" : ""}" data-ta="flag" data-j="${j}" title="${on ? "Already flagged · flag again" : "Flag this book for a problem"}" aria-label="${on ? "Flagged. Flag again" : "Flag this book"}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.5v13" /><path class="fl" d="M3.5 2.5h8.2l-1.9 3 1.9 3H3.5z" /></svg></button>`; };
       const lines = l.books.map((it, j) => multi
-        ? `<span class="bk"><span class="t1">${esc(itemLabel(it))}</span><span class="m">${rPrev(it)}${esc(it.pos ? "#" + it.pos : "")}${it.eid != null ? ` <button type="button" data-ta="tv" data-j="${j}">TV</button>` : ""}${fb(it, j)}</span></span>`
+        ? `<span class="bk"><span class="t1">${esc(itemLabel(it))}</span><span class="m">${rPrev(it)}${esc(it.pos ? "#" + it.pos : "")}${it.eid != null ? ` <button type="button" data-ta="tv" data-j="${j}">TV</button>` : ""} <button type="button" data-ta="dmg" data-j="${j}" title="This copy is damaged">Dmg</button>${fb(it, j)}</span></span>`
         : `${fb(it, j)}<span class="t">${esc(itemLabel(it))}</span><span class="m">${rPrev(it)}${esc([it.pos ? "#" + it.pos : "", fixAuthor(it.author || "")].filter(Boolean).join(" · "))}</span>`).join("");
-      const acts = `${!multi && l.books[0].eid != null ? `<button type="button" data-ta="tv" data-j="0">TV</button>` : ""}${multi ? `<button type="button" data-ta="split" title="Make each book its own lot">Split</button>` : ""}<button type="button" data-ta="rm" title="Take off the table without logging">✕</button>`;
+      const acts = `${!multi && l.books[0].eid != null ? `<button type="button" data-ta="tv" data-j="0">TV</button>` : ""}${multi ? `<button type="button" data-ta="split" title="Make each book its own lot">Split</button>` : `<button type="button" data-ta="dmg" data-j="0" title="This copy is damaged">Dmg</button>`}<button type="button" data-ta="rm" title="Take off the table without logging">✕</button>`;
       return `<li data-k="${i}" class="${T.sel.has(i) ? "sel" : ""} ${tv ? "ontv" : ""} ${multi ? "multi" : ""}"><span class="k">${i + 1}</span>${multi ? `<span class="lotlbl">Lot of ${l.books.length}</span>` : ""}${lines}<span class="tbacts">${acts}</span></li>`;
     }).join("");
   }
@@ -2896,6 +3286,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (a && a.dataset.ta === "rm") { T.lots.splice(k, 1); T.sel.clear(); tSave(); drawTable(); drawPendingLine(); return; }
     if (a && a.dataset.ta === "flag") { const it = l.books[+a.dataset.j || 0]; if (it) openFlag({ isbn: it.isbn || "", title: it.found && it.title ? it.title : "ISBN " + (it.isbn || ""), author: it.found ? (it.author || "") : "", missing: !it.found }); return; }
     if (a && a.dataset.ta === "split") { splitLot(k); return; }
+    if (a && a.dataset.ta === "dmg") { const it = l.books[+a.dataset.j || 0]; if (it) openDmg({ it, lotKey: k }); return; }
     if (T.awaitPick != null) { pickAndLog([k], T.awaitPick); return; }
     if (T.multi) { if (T.sel.has(k)) T.sel.delete(k); else T.sel.add(k); }
     else if (T.sel.has(k)) T.sel.clear();
@@ -2946,7 +3337,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!S.show) return "Start a show to begin logging sales.";
     const nl = T.lots.length;
     if (T.awaitPick != null) return `<span class="pick">${money(T.awaitPick)} · which lot? Press its number${nl > 9 ? " (1–9) or click it" : ` (1–${nl}) or click it`}.</span> Esc cancels.`;
-    if (!nl) return T.round ? "Round finished. Click Load next round." : "Click Load next round to start.";
+    if (!nl) return T.round ? `Round finished. Click ${loadLabel()}.` : `Click ${loadLabel()} to start.`;
     const bundleBtn = nl >= 2 ? ` <button class="btn" type="button" id="tbBundle">Bundle lots</button>` : "";
     if (T.multi) {
       const ks = [...T.sel].sort((a, b) => a - b).map(k => k + 1).join(", ");
@@ -2980,7 +3371,7 @@ body.mode-display #btnHome2 { display: none !important; }
       if (/^r$/i.test(raw)) { $("salePrice").value = ""; endRound(false); return; }
       const n = parseFloat(raw.replace(/[$,\s]/g, ""));
       if (!(n > 0) || n > 10000) { setPending(`<span class="warn">Type a bid like 8 or 8.50, or R to end the round.</span>`); return; }
-      if (!T.lots.length) { setPending(`<span class="warn">The table is empty. Click Load next round first.</span>`); return; }
+      if (!T.lots.length) { setPending(`<span class="warn">The table is empty. Click ${loadLabel()} first.</span>`); return; }
       const total = Math.round(n * 100) / 100;
       if (T.sel.size) { pickAndLog([...T.sel], total); return; }
       if (T.lots.length === 1) { pickAndLog([0], total); return; }
@@ -2994,11 +3385,25 @@ body.mode-display #btnHome2 { display: none !important; }
       if (!it) { setPending(`<span class="warn">"${esc(val)}" didn't match an ISBN or a title in the loaded list. Scan the barcode, or type more of the title.</span>`); return; }
       if (it.eid == null) {   // a scanned book that is in the playlist (a celeb shot added with Up next) is tied to that playlist spot, so later rounds skip it
         const d = digits(it.isbn || "");
-        const same = (e, i) => { const x = entryItem(e, i); return x && d && digits(x.isbn || "") === d; };
+        // with sets, only a copy in the set on the table (or the Celeb shots set) is used; books waiting in other sets are never pulled
+        const inReach = e => !setsOn() || e.g === "celeb" || (T.curSet != null && e.g === T.curSet);
+        const same = (e, i) => { if (!inReach(e)) return false; const x = entryItem(e, i); return x && d && digits(x.isbn || "") === d; };
         let at = -1;
         for (let i = Math.max(0, nextRoundStart()); i < playlist.length && at < 0; i++) if (!usedOnTable(playlist[i]) && same(playlist[i], i)) at = i;
         for (let i = 0; i < playlist.length && at < 0; i++) if (!usedOnTable(playlist[i]) && same(playlist[i], i)) at = i;
         if (at >= 0) it = entryItem(playlist[at], at);
+      }
+      if (it.eid == null && setsOn()) {
+        const joining = T.sel.size === 1 && !T.multi;
+        if (!joining && celebMode() === "bottom") {
+          const at = addToSet(it.isbn, "celeb");
+          drawTable(); drawPendingLine();
+          toast(`Celeb shot added to the Celeb shots set as #${at + 1}: ${itemLabel(it)}`); return;
+        }
+        if (T.lots.length && T.curSet != null && playlist.some(e => e.g === T.curSet)) {
+          const at = addToSet(it.isbn, T.curSet), x = at >= 0 ? entryItem(playlist[at], at) : null;
+          if (x) { it = x; T.tabled.add(x.eid); }
+        }
       }
       if (T.sel.size === 1 && !T.multi) {   // a lot is selected: the scanned book joins it
         const k = [...T.sel][0]; T.lots[k].books.push(it); tSave(); drawTable(); drawPendingLine();
@@ -3325,6 +3730,58 @@ body.mode-display #btnHome2 { display: none !important; }
   }
 
   // requests
+  // ---------- damaged copies pulled during the show ----------
+  let dmgTarget = null;   // { it, lotKey } from the table, or { it } for the book on the TV
+  function openDmg(target) {
+    if (!S.show) { toast("Start a show first"); return; }
+    if (!target || !target.it || !target.it.isbn) { toast("That book has no ISBN, so it can't be logged as damaged"); return; }
+    dmgTarget = target;
+    $("dmgWhat").textContent = `${itemLabel(target.it)}${target.it.isbn ? " · " + target.it.isbn : ""}`;
+    $("dmgTooBad").checked = false;
+    $("dmgNoRepl").hidden = false;
+    $("dmgModal").hidden = false; $("dmgRepl").focus();
+  }
+  async function saveDmg(replaced) {
+    const t = dmgTarget; if (!t) return;
+    $("dmgModal").hidden = true; dmgTarget = null;
+    const it = t.it, rec = { isbn: it.isbn || "", title: it.found ? (it.title || "") : "", replaced, tooBad: $("dmgTooBad").checked, round: saleMode === "table" ? T.round : null, loggedAt: Date.now() };
+    if (!replaced && t.lotKey != null) {   // not replaced: the copy comes off the table
+      const l = T.lots[t.lotKey];
+      if (l) { l.books = l.books.filter(b => b !== it); if (!l.books.length) T.lots.splice(t.lotKey, 1); T.sel.clear(); tSave(); drawTable(); drawPendingLine(); }
+    }
+    if (S.db) { try { await dmgCol(S.show.id).doc().set(rec); } catch { S.dmgs = (S.dmgs || []).concat({ id: "l" + rec.loggedAt, ...rec }); backup(); drawDmgs(); } }
+    else { S.dmgs = (S.dmgs || []).concat({ id: "l" + rec.loggedAt, ...rec }); backup(); drawDmgs(); }
+    toast(`Damaged copy logged${replaced ? " · replaced" : " · taken off the table"}: ${itemLabel(it)}`);
+  }
+  $("dmgRepl").onclick = () => saveDmg(true);
+  $("dmgNoRepl").onclick = () => saveDmg(false);
+  $("dmgCancel").onclick = () => { $("dmgModal").hidden = true; dmgTarget = null; };
+  $("dmgModal").addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); $("dmgModal").hidden = true; dmgTarget = null; } }, true);
+  $("oaDmg").onclick = () => {
+    const i = curId != null ? idxOf(curId) : -1;
+    if (i < 0) { toast("No book is on the TV"); return; }
+    const it = entryItem(playlist[i], i);
+    let lotKey = null;   // in a table round, the TV book's spot on the table
+    if (saleMode === "table") T.lots.forEach((l, k) => { const b = l.books.find(x => x.eid === it.eid); if (b && lotKey == null) { lotKey = k; it.__b = b; } });
+    openDmg(lotKey != null ? { it: it.__b, lotKey } : { it });
+  };
+  function drawDmgs() {
+    const list = S.dmgs || [];
+    $("dmgCount").textContent = list.length;
+    const ul = $("dmgList"); if (!ul) return;
+    if (!list.length) { ul.innerHTML = `<li class="empty" style="display:block">No damaged copies this show. Use Dmg on a book on the table, or Damaged under On the TV.</li>`; return; }
+    ul.innerHTML = list.slice().reverse().map(x => `<li class="dmgrow" data-id="${esc(x.id)}"><span class="n"></span><span class="tm">${timeOf(x.loggedAt)}</span>
+      <span class="ttl">${esc(x.title || "ISBN " + x.isbn)}<span class="sub">${esc(x.isbn)}${x.round ? ` · round ${x.round}` : ""}</span></span>
+      <span class="pr">${x.replaced ? "Replaced" : "Not replaced"}<small>${x.tooBad ? "too damaged to sell" : "still sellable"}</small></span>
+      <span class="acts"><button class="btn" type="button" data-dmgdel="1">Undo</button></span></li>`).join("");
+  }
+  $("dmgList").addEventListener("click", async e => {
+    const b = e.target.closest("button[data-dmgdel]"); if (!b) return;
+    const id = b.closest("li").dataset.id;
+    if (S.db && !String(id).startsWith("l")) { try { await dmgCol(S.show.id).doc(id).delete(); } catch { toast("Couldn't undo. Try again."); return; } }
+    else { S.dmgs = (S.dmgs || []).filter(x => x.id !== id); backup(); drawDmgs(); }
+    toast("Damaged entry removed");
+  });
   function drawReqs() {
     $("reqCount").textContent = S.reqs.length;
     const ul = $("reqList");
@@ -3353,8 +3810,9 @@ body.mode-display #btnHome2 { display: none !important; }
     else { S.reqs = S.reqs.filter(x => x !== r); backup(); drawReqs(); }
   });
   function setSalesTab(t) {
-    $("saleList").hidden = t !== "sales"; $("reqPane").hidden = t !== "reqs"; $("evPane").hidden = t !== "events"; $("pacePane").hidden = t !== "pace";
+    $("saleList").hidden = t !== "sales"; $("reqPane").hidden = t !== "reqs"; $("evPane").hidden = t !== "events"; $("pacePane").hidden = t !== "pace"; $("dmgPane").hidden = t !== "dmg";
     $("pacePane").style.display = t === "pace" ? "flex" : "none"; $("tabPace").classList.toggle("on", t === "pace"); $("tabPace").setAttribute("aria-selected", t === "pace");
+    $("dmgPane").style.display = t === "dmg" ? "flex" : "none"; $("tabDmg").classList.toggle("on", t === "dmg"); $("tabDmg").setAttribute("aria-selected", t === "dmg");
     if (t === "pace") drawPace();
     $("reqPane").style.display = t === "reqs" ? "flex" : "none";
     $("evPane").style.display = t === "events" ? "flex" : "none";
@@ -3469,6 +3927,7 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   setInterval(drawPace, 20000);
   $("tabReqs").onclick = () => setSalesTab("reqs");
+  $("tabDmg").onclick = () => { setSalesTab("dmg"); drawDmgs(); };
 
   // ---------- export ----------
   const HDR_STAGING = ["Date", "ISBN", "Title", "Author", "Cost per Unit", "Sale Price", "GR Score", "Platform", "Source Tab", "Notes", "Sale #", "Logged At", "Copied to Master Roster"];
@@ -3483,7 +3942,7 @@ body.mode-display #btnHome2 { display: none !important; }
     return shows.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0)).slice(0, 40);
   }
   async function loadShowData(show) {
-    if (S.show && S.show.id === show.id) return { show: S.show, sales: S.sales.slice(), reqs: S.reqs.slice() };
+    if (S.show && S.show.id === show.id) return { show: S.show, sales: S.sales.slice(), reqs: S.reqs.slice(), dmgs: (S.dmgs || []).slice() };
     let sales = null, reqs = null;
     if (S.db) {
       try { sales = (await salesCol(show.id).get()).docs.map(d => ({ id: d.id, ...d.data() })); } catch {}
@@ -3491,7 +3950,10 @@ body.mode-display #btnHome2 { display: none !important; }
     }
     if (!sales) { try { sales = JSON.parse(store.get("spotlight.sales." + show.id) || "[]"); } catch { sales = []; } }
     if (!reqs) { try { reqs = JSON.parse(store.get("spotlight.reqs." + show.id) || "[]"); } catch { reqs = []; } }
-    return { show, sales: sales.sort((a, b) => a.loggedAt - b.loggedAt), reqs: reqs.sort((a, b) => a.loggedAt - b.loggedAt) };
+    let dmgs = null;
+    if (S.db) { try { dmgs = (await dmgCol(show.id).get()).docs.map(d => ({ id: d.id, ...d.data() })); } catch {} }
+    if (!dmgs) { try { dmgs = JSON.parse(store.get("spotlight.dmg." + show.id) || "[]"); } catch { dmgs = []; } }
+    return { show, sales: sales.sort((a, b) => a.loggedAt - b.loggedAt), reqs: reqs.sort((a, b) => a.loggedAt - b.loggedAt), dmgs: dmgs.sort((a, b) => a.loggedAt - b.loggedAt) };
   }
   function bookRows({ show, sales }) {
     const rows = [];
@@ -3580,6 +4042,7 @@ body.mode-display #btnHome2 { display: none !important; }
         const [ss, rs] = await Promise.all([salesCol(show.id).get(), reqsCol(show.id).get()]);
         for (const d of ss.docs) await salesCol(show.id).doc(d.id).delete();
         for (const d of rs.docs) await reqsCol(show.id).doc(d.id).delete();
+        try { const ds = await dmgCol(show.id).get(); for (const d of ds.docs) await dmgCol(show.id).doc(d.id).delete(); } catch {}
         await S.db.doc("shows/" + show.id).delete();
       } catch { return false; }
     }
@@ -3683,8 +4146,15 @@ body.mode-display #btnHome2 { display: none !important; }
   const SEND_PARTS = [
     { key: "staging", kind: "staging", tab: "Show Sales – Staging", label: "Staging", sheetId: 900100, cols: 13 },
     { key: "rejects", kind: "rejects", tab: "Show Rejects", label: "Rejects", sheetId: 900300, cols: 10 },
-    { key: "requests", kind: "requests", tab: "Customer Requests", label: "Requests", sheetId: 900200, cols: 8 }
+    { key: "requests", kind: "requests", tab: "Customer Requests", label: "Requests", sheetId: 900200, cols: 8 },
+    { key: "damaged", tab: "Damaged Stock", label: "Damaged", sheetId: 901600, cols: 8, rows: d => damagedRows(d) }
   ];
+  const DMG_SELLABLE = "Damaged on the shelf – sellable", DMG_GONE = "Too damaged to sell (from good copies)";
+  function damagedRows(d) {
+    const iso = /^\d{4}-\d{2}-\d{2}$/.test(String(d.show.date || "")) ? d.show.date : new Date(d.show.startedAt || Date.now()).toISOString().slice(0, 10);
+    return (d.dmgs || []).filter(x => x.isbn).map(x => [iso, x.isbn, 1, x.tooBad ? DMG_GONE : DMG_SELLABLE, "",
+      `Pulled during ${d.show.sourceTab}${x.replaced ? " · replaced with a good copy" : " · not replaced"}${x.round ? ` · round ${x.round}` : ""}`, "Operator screen", "dmg" + (x.id || x.loggedAt)]);
+  }
   const USED_PARTS = [
     { key: "staging", tab: "Show Sales – Staging", label: "Staging", sheetId: 910100, cols: 20, wb: USED_ID, rows: usedStagingRows },
     { key: "rejects", tab: "Show Rejects", label: "Rejects", sheetId: 910200, cols: 9, wb: USED_ID, rows: usedRejectRows },

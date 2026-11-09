@@ -156,18 +156,22 @@
     for (const b of data) lines.push([b.title, b.author, b.genres, b.tropes, b.goodreads, b.spice, b.isbn, b.description, b.series, b.pron].map(csvCell).join(","));
     return lines.join("\n");
   }
-  let prepOrder = [];   // column i of the old Show Prep tab -> prep document path
+  // Each Show Prep list becomes two columns, like the old Show Prep tab: the show's books, then its
+  // "2nd book" column (the second book of a two-book lot sits on the same row). A divider row such as
+  // "— Set 2 —" starts a new set.
+  let prepOrder = [];   // column i of the old Show Prep tab -> prep document path (both columns of a list)
   async function prepValues() {
     await loadCol("prep");
     const lists = [];
     for (const [p, d] of docs) if (parentOf(p) === "prep" && d) lists.push({ p, d });
     lists.sort((a, b) => (a.d.createdAt || 0) - (b.d.createdAt || 0));
-    prepOrder = lists.map(x => x.p);
-    const width = lists.length, height = Math.max(0, ...lists.map(x => (x.d.isbns || []).length));
-    const rows = [lists.map(x => x.d.name || "Show")];
-    for (let r = 0; r < height; r++) rows.push(lists.map(x => (x.d.isbns || [])[r] || ""));
-    return width ? rows : [];
+    prepOrder = lists.flatMap(x => [x.p, x.p]);
+    const height = Math.max(0, ...lists.map(x => (x.d.isbns || []).length));
+    const rows = [lists.flatMap(x => { const n = x.d.name || "Show"; return [n, n + " - 2nd book"]; })];
+    for (let r = 0; r < height; r++) rows.push(lists.flatMap(x => [(x.d.isbns || [])[r] || "", (x.d.pairs || [])[r] || ""]));
+    return lists.length ? rows : [];
   }
+  const colIndex = s => [...s].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
   const rangeTab = r => { const m = /^'([^']+)'!/.exec(String(r || "")); return m ? m[1] : ""; };
   const notSent = () => Promise.reject({ code: "rehearsal", message: "Rehearsal: nothing is written to the sheets." });
   const mcp = {
@@ -192,8 +196,8 @@
       }
       if (tool === "update_values" && rangeTab(input && input.range) === "Show Prep") {
         // "clear these ISBNs after loading": empty that Show Prep list (its name stays)
-        const m = /!([A-Z]+)\d/.exec(input.range), col = m ? m[1].charCodeAt(0) - 65 : -1, path = prepOrder[col];
-        if (path) await docRef(path).update({ isbns: [], updatedAt: Date.now() });
+        const m = /!([A-Z]+)\d/.exec(input.range), col = m ? colIndex(m[1]) : -1, path = prepOrder[col];
+        if (path) await docRef(path).update({ isbns: [], pairs: [], updatedAt: Date.now() });
         return { payload: {} };
       }
       return notSent();

@@ -55,6 +55,14 @@ ol.items .miss .t { color: var(--warnfg); }
 ol.items .acts { display: flex; gap: 4px; }
 ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; font-size: 16px; }
 .empty { padding: 18px; color: var(--muted); text-align: center; }
+ol.items li.sethd { display: flex; gap: 10px; align-items: center; background: var(--surface-2); padding: 6px 10px; }
+ol.items li.sethd .sn { font: 600 15px var(--f-ui); color: var(--gilt); flex: 1; }
+ol.items .t2 { display: flex; gap: 6px; align-items: baseline; margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
+.lotchip { font: 600 11px var(--f-mono); color: #0e1915; background: var(--gilt); border-radius: 4px; padding: 0 5px; }
+ol.items .acts { flex-wrap: wrap; justify-content: flex-end; }
+ol.items .acts .wide { font-size: 13px; }
+#scan.second { border-color: var(--gilt); background: color-mix(in srgb, var(--gilt) 12%, var(--surface)); }
+#add2nd.on { background: var(--gilt); color: #0e1915; border-color: var(--gilt); }
 .cam { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
 .cam video { display: block; width: 100%; max-height: 50vh; object-fit: cover; }
 .cam .line { position: absolute; left: 10%; right: 10%; top: 50%; height: 2px; background: var(--bad); box-shadow: 0 0 8px var(--bad); }
@@ -79,7 +87,7 @@ ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; fon
   <!-- all lists -->
   <section id="vLists">
     <div><span class="eyebrow">Shows · prep</span><h1>Show Prep</h1></div>
-    <p class="sub" style="margin:8px 0 14px">Build a show's playlist ahead of time: make a list, then scan the books in the order they'll go on. On the live show screen, <b>Load from Show Prep</b> picks the list up.</p>
+    <p class="sub" style="margin:8px 0 14px">Build a show's playlist ahead of time: make a list, then scan the books in the order they'll go on. Tap <b>Add set</b> to start the next table set, and <b>+ 2nd book</b> to sell the next book you scan together with the one before it. On the live show screen, <b>Load from Show Prep</b> picks the list up.</p>
     <form class="newrow" id="newForm" autocomplete="off">
       <input type="text" id="newName" placeholder="Show name, e.g. Tuesday romance" maxlength="60" aria-label="New list name">
       <button class="btn primary" type="submit">New list</button>
@@ -100,6 +108,8 @@ ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; fon
       <button class="btn primary" type="submit">Add</button>
     </form>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn primary" type="button" id="addSet">Add set</button>
+      <button class="btn" type="button" id="add2nd">+ 2nd book</button>
       <button class="btn" type="button" id="camBtn" hidden>Scan with camera</button>
       <button class="btn" type="button" id="rename">Rename</button>
       <button class="btn warn" type="button" id="del">Delete list</button>
@@ -129,29 +139,57 @@ ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; fon
   const bookOf = isbn => books.get(isbn13(digits(isbn)));
 
   const cur = () => lists.find(l => l.id === openId);
+  // A list is rows: isbns[k] is a book, or a divider ("— Set —") that starts the next set;
+  // pairs[k] is the 2nd book sold together with isbns[k] (blank when it's a single book).
+  const DIVIDER = "— Set —";
+  const isDiv = v => /^\W*set\b/i.test(String(v || "").trim());
+  const rowsOf = l => { const a = [...(l.isbns || [])], p = [...(l.pairs || [])]; while (p.length < a.length) p.push(""); p.length = a.length; return { a, p }; };
+  const bookCount = l => { const { a, p } = rowsOf(l); return a.filter(x => !isDiv(x)).length + p.filter(Boolean).length; };
+  const setCount = l => { const { a } = rowsOf(l); let n = 0, open = false; a.forEach(x => { if (isDiv(x)) open = false; else if (!open) { open = true; n++; } }); return n; };
+  const lastBook = a => { for (let k = a.length - 1; k >= 0; k--) if (!isDiv(a[k])) return k; return -1; };
+  let armed2nd = false;
+  const label = x => { const b = bookOf(x); return b ? b.title : "ISBN " + x; };
   function drawLists() {
     const box = $("lists");
     if (!lists.length) { box.innerHTML = `<p class="sub">No lists yet. Type a show name above and press New list.</p>`; return; }
-    box.innerHTML = lists.map(l => { const n = (l.isbns || []).length;
-      return `<button type="button" data-id="${esc(l.id)}"><span class="n">${esc(l.name || "Show")}</span><span class="c">${n} book${n === 1 ? "" : "s"}${l.by ? " · " + esc(l.by) : ""}</span></button>`; }).join("");
+    box.innerHTML = lists.map(l => { const n = bookCount(l), ns = setCount(l), hasDiv = (l.isbns || []).some(isDiv);
+      return `<button type="button" data-id="${esc(l.id)}"><span class="n">${esc(l.name || "Show")}</span><span class="c">${n} book${n === 1 ? "" : "s"}${hasDiv ? ` · ${ns} set${ns === 1 ? "" : "s"}` : ""}${l.by ? " · " + esc(l.by) : ""}</span></button>`; }).join("");
+  }
+  function draw2nd() {
+    $("scan").classList.toggle("second", armed2nd);
+    $("add2nd").classList.toggle("on", armed2nd);
+    $("add2nd").textContent = armed2nd ? "Scan the 2nd book…" : "+ 2nd book";
+    $("scan").placeholder = armed2nd ? "Scan the 2nd book" : "Scan or type an ISBN";
   }
   function drawList() {
     const l = cur();
     if (!l) { openId = null; show(); return; }
     $("lName").textContent = l.name || "Show";
-    const isbns = l.isbns || [];
-    $("lCount").textContent = `${isbns.length} book${isbns.length === 1 ? "" : "s"}`;
-    if (!isbns.length) { $("items").innerHTML = `<li class="empty" style="display:block">Scan the first book.</li>`; return; }
-    $("items").innerHTML = isbns.map((x, i) => {
-      const b = bookOf(x);
-      return `<li data-i="${i}" class="${b ? "" : "miss"} ${i === lastAdded ? "new" : ""}"><span class="k">${i + 1}</span>
-        <span><span class="t">${esc(b ? b.title : "ISBN " + x)}</span><br><span class="a">${esc(b ? [b.author, x].filter(Boolean).join(" · ") : "Not in the book list yet")}</span></span>
-        <span class="acts"><button class="btn" type="button" data-a="up" aria-label="Move up" ${i ? "" : "disabled"}>▲</button><button class="btn" type="button" data-a="down" aria-label="Move down" ${i < isbns.length - 1 ? "" : "disabled"}>▼</button><button class="btn warn" type="button" data-a="rm" aria-label="Remove">✕</button></span></li>`;
-    }).join("");
+    const { a, p } = rowsOf(l), n = bookCount(l), hasDiv = a.some(isDiv), ns = setCount(l);
+    $("lCount").textContent = `${n} book${n === 1 ? "" : "s"}${hasDiv ? ` · ${ns} set${ns === 1 ? "" : "s"}` : ""}`;
+    draw2nd();
+    if (!a.length) { $("items").innerHTML = `<li class="empty" style="display:block">Scan the first book.</li>`; return; }
+    let setNo = 1, row = 0, html = hasDiv ? `<li class="sethd"><span class="sn">Set 1</span></li>` : "";
+    a.forEach((x, i) => {
+      const up = `<button class="btn" type="button" data-a="up" aria-label="Move up" ${i ? "" : "disabled"}>▲</button><button class="btn" type="button" data-a="down" aria-label="Move down" ${i < a.length - 1 ? "" : "disabled"}>▼</button>`;
+      if (isDiv(x)) {
+        setNo++;
+        html += `<li class="sethd" data-i="${i}"><span class="sn">Set ${setNo}</span><span class="acts">${up}<button class="btn warn" type="button" data-a="rm" aria-label="Remove this set break">✕</button></span></li>`;
+        return;
+      }
+      row++;
+      const b = bookOf(x), prevIsBook = i > 0 && !isDiv(a[i - 1]);
+      html += `<li data-i="${i}" class="${b ? "" : "miss"} ${i === lastAdded ? "new" : ""}"><span class="k">${row}</span>
+        <span><span class="t">${esc(label(x))}</span><br><span class="a">${esc(b ? [b.author, x].filter(Boolean).join(" · ") : "Not in the book list yet")}</span>
+        ${p[i] ? `<span class="t2"><b class="lotchip">2nd</b><span>${esc(label(p[i]))}${bookOf(p[i]) ? "" : " · not in the book list yet"}</span></span>` : ""}</span>
+        <span class="acts">${up}${p[i] ? `<button class="btn wide" type="button" data-a="unpair">Unpair</button>` : prevIsBook && !p[i - 1] ? `<button class="btn wide" type="button" data-a="pair" title="Sell this book together with the one above">Pair with above</button>` : ""}<button class="btn warn" type="button" data-a="rm" aria-label="Remove">✕</button></span></li>`;
+    });
+    $("items").innerHTML = html;
     const nl = $("items").querySelector("li.new"); if (nl) nl.scrollIntoView({ block: "nearest" });
   }
   function show() {
     $("vLists").hidden = !!openId; $("vList").hidden = !openId;
+    armed2nd = false;
     if (openId) { drawList(); setTimeout(() => $("scan").focus(), 0); } else { stopCam(); drawLists(); }
   }
   const setMsg = (id, t, kind) => { const m = $(id); m.textContent = t; m.className = "msg" + (kind ? " " + kind : ""); };
@@ -159,6 +197,7 @@ ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; fon
     try { await db.doc("prep/" + l.id).update({ ...fields, updatedAt: Date.now() }); }
     catch { setMsg("msg", "Couldn't save that. Check the connection and try again.", "bad"); }
   }
+  const store = (l, a, p) => { l.isbns = a; l.pairs = p; drawList(); save(l, { isbns: a, pairs: p }); };
 
   $("newForm").onsubmit = async e => {
     e.preventDefault();
@@ -166,7 +205,7 @@ ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; fon
     if (!name) { setMsg("listsMsg", "Type a show name first.", "bad"); $("newName").focus(); return; }
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const me = (window.RELIANT && window.RELIANT.staff) || {};
-    try { await db.doc("prep/" + id).set({ name, isbns: [], createdAt: Date.now(), updatedAt: Date.now(), by: me.name || "" }); }
+    try { await db.doc("prep/" + id).set({ name, isbns: [], pairs: [], createdAt: Date.now(), updatedAt: Date.now(), by: me.name || "" }); }
     catch { setMsg("listsMsg", "Couldn't make the list. Check the connection and try again.", "bad"); return; }
     $("newName").value = ""; setMsg("listsMsg", "");
     openId = id; lastAdded = -1; show();
@@ -179,21 +218,49 @@ ol.items .acts button { min-width: 40px; min-height: 40px; padding: 4px 8px; fon
     const d = digits(raw);
     if (d.length < 10) { setMsg("msg", `"${raw}" isn't an ISBN. Scan the barcode, or type all 10 or 13 digits.`, "bad"); return; }
     const isbn = d.length === 10 ? isbn13(d) : d;
-    const isbns = [...(l.isbns || []), isbn];
-    const b = bookOf(isbn);
-    const again = (l.isbns || []).includes(isbn);
-    lastAdded = isbns.length - 1;
-    l.isbns = isbns; drawList();
-    setMsg("msg", `#${isbns.length} ${b ? b.title : "ISBN " + isbn}${b ? "" : " · not in the book list yet"}${again ? " · already in this list once (kept both)" : ""}`, b ? "ok" : "bad");
-    save(l, { isbns });
+    const { a, p } = rowsOf(l), b = bookOf(isbn);
+    const again = a.includes(isbn) || p.includes(isbn);
+    if (armed2nd) {
+      armed2nd = false;
+      const k = lastBook(a);
+      if (k >= 0 && !p[k]) {
+        p[k] = isbn; lastAdded = k; store(l, a, p);
+        setMsg("msg", `2nd book added to #${a.slice(0, k + 1).filter(x => !isDiv(x)).length}: ${label(isbn)}${b ? "" : " · not in the book list yet"}${again ? " · already in this list once (kept both)" : ""}`, b ? "ok" : "bad");
+        return;
+      }
+    }
+    a.push(isbn); p.push("");
+    lastAdded = a.length - 1;
+    store(l, a, p);
+    setMsg("msg", `#${a.filter(x => !isDiv(x)).length} ${label(isbn)}${b ? "" : " · not in the book list yet"}${again ? " · already in this list once (kept both)" : ""}`, b ? "ok" : "bad");
   }
   $("scanForm").onsubmit = e => { e.preventDefault(); const v = $("scan").value.trim(); $("scan").value = ""; if (v) addIsbn(v); $("scan").focus(); };
+  $("addSet").onclick = () => {
+    const l = cur(); if (!l) return;
+    const { a, p } = rowsOf(l);
+    if (!a.length || isDiv(a[a.length - 1])) { setMsg("msg", "Scan at least one book into this set first.", "bad"); $("scan").focus(); return; }
+    a.push(DIVIDER); p.push(""); armed2nd = false; lastAdded = -1;
+    store(l, a, p);
+    setMsg("msg", `Set ${setCount(l) + 1} started · scan its first book`, "ok");
+    const items = $("items"); items.lastElementChild && items.lastElementChild.scrollIntoView({ block: "nearest" });
+    $("scan").focus();
+  };
+  $("add2nd").onclick = () => {
+    const l = cur(); if (!l) return;
+    const { a, p } = rowsOf(l), k = lastBook(a);
+    if (k < 0 || (k < a.length - 1)) { setMsg("msg", "Scan the first book, then tap + 2nd book.", "bad"); $("scan").focus(); return; }
+    if (p[k]) { setMsg("msg", "That book already has a 2nd book.", "bad"); $("scan").focus(); return; }
+    armed2nd = !armed2nd; draw2nd(); setMsg("msg", armed2nd ? "Scan the 2nd book to sell with the one above." : ""); $("scan").focus();
+  };
   $("items").addEventListener("click", e => {
     const b = e.target.closest("button[data-a]"); if (!b) return;
-    const l = cur(), i = +b.closest("li").dataset.i, isbns = [...(l.isbns || [])];
-    if (b.dataset.a === "rm") { isbns.splice(i, 1); setMsg("msg", ""); lastAdded = -1; }
-    else { const j = b.dataset.a === "up" ? i - 1 : i + 1; if (j < 0 || j >= isbns.length) return; [isbns[i], isbns[j]] = [isbns[j], isbns[i]]; lastAdded = j; }
-    l.isbns = isbns; drawList(); save(l, { isbns });
+    const l = cur(), i = +b.closest("li").dataset.i, { a, p } = rowsOf(l), act = b.dataset.a;
+    armed2nd = false;
+    if (act === "rm") { a.splice(i, 1); p.splice(i, 1); setMsg("msg", ""); lastAdded = -1; }
+    else if (act === "pair") { if (i < 1 || isDiv(a[i - 1]) || p[i - 1] || p[i]) return; p[i - 1] = a[i]; a.splice(i, 1); p.splice(i, 1); lastAdded = i - 1; setMsg("msg", `${label(p[i - 1])} now sells together with ${label(a[i - 1])}`, "ok"); }
+    else if (act === "unpair") { setMsg("msg", `${label(p[i])} is its own book again`, "ok"); a.splice(i + 1, 0, p[i]); p.splice(i + 1, 0, ""); p[i] = ""; lastAdded = i + 1; }
+    else { const j = act === "up" ? i - 1 : i + 1; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; [p[i], p[j]] = [p[j], p[i]]; lastAdded = j; }
+    store(l, a, p);
   });
   $("rename").onclick = () => {
     const l = cur(); if (!l) return;
