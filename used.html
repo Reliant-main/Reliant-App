@@ -246,7 +246,7 @@ tr:last-child td { border-bottom: 0; }
     const numbered = sales.some(x => x.sale != null);
     $("ful").innerHTML = `
       <h3>Cancellations</h3>
-      ${!numbered ? `<p class="how">This show’s sales came over from the Sales Master Roster without sale numbers, so they can’t be canceled here. Cancel sales in the Workspace (Inventory → Fulfillment → Used &amp; vintage) before the show is copied to the Roster.</p>`
+      ${!numbered ? `<p class="how">This show was copied to the Sales Master Roster before it had a Sale # column, so its sales can’t be matched to an order here. Shows copied from now on carry their sale numbers and can be canceled here.</p>`
         : `<div class="tbl"><table><thead><tr><th class="plain num">Sale #</th><th class="plain">Book(s)</th><th class="plain num">Price</th><th class="plain"></th></tr></thead><tbody>${
         [...groups.values()].filter(g => g[0].sale != null).map(g => {
           const k = String(g[0].sale), live = g.filter(x => x.status === "sold");
