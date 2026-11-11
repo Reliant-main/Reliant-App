@@ -109,6 +109,8 @@ details.practice .acts { margin-top: 10px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; }
 .dot.live { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 .dot.down { background: var(--bad); }
+.dot.warn { background: var(--warnfg); }
+#printerStatus.bad #pTxt { color: var(--bad); font-weight: 600; } #printerStatus.warn #pTxt { color: var(--warnfg); }
 .conn { font: 13px var(--f-mono); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
 .bridgeFail { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: var(--bg); padding: 16px; }
 .bridgeFail > div { max-width: 460px; }
@@ -125,6 +127,7 @@ details.practice .acts { margin-top: 10px; }
     <a class="btn" href="index.html">⌂ Home</a>
     <div><span class="eyebrow">Shows · live</span><h1>Show Station</h1></div>
     <span class="sp"></span>
+    <span class="conn" id="printerStatus" title="Which computer is printing chits"><span class="dot" id="pDot"></span><span id="pTxt">Chit printer: checking…</span></span>
     <span class="conn" id="conn"><span class="dot" id="connDot"></span><span id="connTxt">Connecting…</span></span>
   </div>
 
@@ -415,15 +418,16 @@ details.practice .acts { margin-top: 10px; }
     pump();
   }
   async function pump() {
-    if (printing || !queue.length) return;
+    if (printing) return;
     printing = true;
-    const { sale, kind } = queue.shift();
-    try {
-      await sb.rpc("live_mark_printed", { p_sale: sale.id, p_kind: kind });
-      await printNow(chitHtml(sale, kind === "title"));
-    } catch (e) { setMsg("A chit didn't print: " + (e.message || e), "bad"); }
+    while (queue.length) {
+      const { sale, kind } = queue.shift();
+      try {
+        await sb.rpc("live_mark_printed", { p_sale: sale.id, p_kind: kind });
+        await printNow(chitHtml(sale, kind === "title"));
+      } catch (e) { setMsg("A chit didn't print: " + (e.message || e), "bad"); }
+    }
     printing = false;
-    setTimeout(pump, 400);
   }
   function printNow(html) {
     return new Promise(res => {
@@ -477,8 +481,33 @@ details.practice .acts { margin-top: 10px; }
       .on("postgres_changes", { event: "*", schema: "public", table: "live_buyers" }, () => soon())
       .on("postgres_changes", { event: "*", schema: "public", table: "live_shows" }, () => soon(true))
       .subscribe(st => setConn(st === "SUBSCRIBED" ? "live" : (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") ? "down" : "connecting"));
+    startPresence();
     // Safety net in case a live update is missed.
     setInterval(() => soon(true), 15000);
+  }
+
+  // ---------------------------------------------------------------- which computer prints
+  const myKey = store.get("deviceKey", null) || (() => { const k = Math.random().toString(36).slice(2, 10); store.set("deviceKey", k); return k; })();
+  const deviceName = () => /Mac/i.test(navigator.platform || navigator.userAgent) ? "Mac" : /Win/i.test(navigator.platform || navigator.userAgent) ? "Windows" : "another computer";
+  let pres = null;
+  function presenceState() { return { printer: $("printer").checked, visible: document.visibilityState === "visible", device: deviceName() }; }
+  function startPresence() {
+    pres = sb.channel("station-presence", { config: { presence: { key: myKey } } });
+    pres.on("presence", { event: "sync" }, drawPrinter)
+        .subscribe(async st => { if (st === "SUBSCRIBED") await pres.track(presenceState()); });
+    const retrack = () => { if (pres) pres.track(presenceState()); drawPrinter(); };
+    document.addEventListener("visibilitychange", retrack);
+    $("printer").addEventListener("change", retrack);
+  }
+  function drawPrinter() {
+    const box = $("printerStatus");
+    const all = pres ? Object.values(pres.presenceState()).flat() : [];
+    const printers = all.filter(p => p.printer);
+    box.className = "conn";
+    if (!printers.length) { $("pDot").className = "dot down"; box.classList.add("bad"); $("pTxt").textContent = "No computer is printing chits"; return; }
+    const hidden = printers.filter(p => !p.visible), names = [...new Set(printers.map(p => p.device))].join(" + ");
+    if (hidden.length === printers.length) { $("pDot").className = "dot warn"; box.classList.add("warn"); $("pTxt").textContent = `Chits print on ${names}, but its station window is hidden (chits may be late)`; return; }
+    $("pDot").className = "dot live"; $("pTxt").textContent = `Chits print on ${names}` + (printers.length > 1 ? " (more than one computer is printing)" : "");
   }
 
   // keep the cursor in the scan box
