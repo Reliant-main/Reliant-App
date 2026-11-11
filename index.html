@@ -41,21 +41,36 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .msg.bad { color: var(--bad); }
 .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
 
-/* home */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--rule); background: var(--cloth-2); }
-.top .brand { font: 400 24px var(--f-display); color: var(--gilt); margin-right: auto; }
+/* home: laid out like the Workspace home (numbered groups of tiles) */
+.home { min-height: 100%; display: flex; flex-direction: column; align-items: center; padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(32px + env(safe-area-inset-bottom, 0px)); }
+.home-in { width: min(1080px, 100%); display: flex; flex-direction: column; gap: 28px; }
+.home-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+.home-head > div:first-child { margin-right: auto; }
+.home-head h1 { margin: 4px 0 0; font: 400 clamp(36px, 6vw, 60px)/1.05 var(--f-display); }
 .who { font: 500 14px var(--f-ui); color: var(--paper-dim); }
 .who b { color: var(--paper); }
-.home { max-width: 1100px; margin: 0 auto; padding: clamp(20px, 4vw, 48px) clamp(16px, 4vw, 40px) 48px; display: flex; flex-direction: column; gap: 24px; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 14px; }
-.tile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 18px 18px 20px; border: 1px solid var(--rule); border-radius: 12px; background: var(--cloth-2); min-height: 132px; }
+.acct { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.acct .btn { padding: 7px 12px; font-size: 14px; }
+.secs { display: flex; flex-direction: column; gap: 26px; }
+.sec { display: flex; flex-direction: column; gap: 12px; }
+.sech { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.sech h3 { margin: 0; font: 400 26px/1.1 var(--f-display); color: var(--paper); }
+.secn { align-self: center; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--gilt); color: var(--on-accent); font: 600 14px var(--f-mono); flex: none; }
+.secd { font: 14px var(--f-ui); color: var(--paper-dim); }
+.tiles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 640px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 940px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 8px; min-height: 150px; padding: 20px; border: 1px solid var(--rule); border-radius: 10px; background: var(--cloth-2); transition: border-color .15s, background .15s; }
 .tile:hover:not([aria-disabled="true"]) { border-color: var(--gilt); background: var(--cloth-3); }
-.tile .t { font: 400 24px/1.15 var(--f-display); }
-.tile .d { font-size: 14px; color: var(--paper-dim); }
-.tile .s { margin-top: auto; font: 500 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gilt); }
+.tile:focus-visible { outline: 2px solid var(--gilt); outline-offset: 3px; }
+.tile h2 { margin: 0; font: 400 28px/1.1 var(--f-display); }
+.tile p { margin: 0; color: var(--paper-dim); font: 14px/1.45 var(--f-ui); }
+.tile .st { margin-top: auto; font: 13px var(--f-mono); color: var(--paper); }
+.tile .st.dim { color: var(--paper-dim); }
 .tile[aria-disabled="true"] { cursor: default; opacity: .55; }
-.tile[aria-disabled="true"] .s { color: var(--paper-dim); }
-.note { font-size: 14px; color: var(--paper-dim); max-width: 70ch; }
+.sub { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; color: var(--paper-dim); font: 13px var(--f-ui); }
+.sub a { color: var(--gilt); }
+@media (max-width: 639px) { .home-head h1 { font-size: 34px; } .tile { min-height: 0; padding: 18px; } .tile h2 { font-size: 26px; } }
 
 /* a section opened full screen */
 .section { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--cloth); z-index: 10; }
@@ -105,15 +120,18 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 
 <!-- Home -->
 <div id="home" hidden>
-  <header class="top">
-    <span class="brand">Reliant Workspace</span>
-    <span class="who" id="who"></span>
-    <button class="btn" type="button" data-signout>Sign out</button>
-  </header>
   <main class="home">
-    <div><span class="eyebrow" id="today"></span><h1 id="hello">Welcome</h1></div>
-    <div class="tiles" id="tiles"></div>
-    <p class="note">This is the new Workspace, built one section at a time on the Reliant database. Until a section is switched over, keep using the current Workspace for it. Numbers here are copied from the Google Sheets every night.</p>
+    <div class="home-in">
+      <div class="home-head">
+        <div><span class="eyebrow">Reliant Distribution</span><h1>Workspace</h1></div>
+        <div class="acct"><span class="who" id="who"></span><button class="btn" type="button" data-signout>Sign out</button></div>
+      </div>
+      <div class="secs" id="secs"></div>
+      <div class="sub">
+        <span>TV screen:</span><a href="live.html#display" target="_blank" rel="noopener">open the TV window</a>
+        <span>· This is the new Workspace on the Reliant database. Until a section is switched over, keep using the current Workspace for it.</span>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -134,18 +152,28 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 
   const MANAGER = ["owner", "manager"];
   const SHOW_CREW = ["owner", "manager", "operator"];
-  const SECTIONS = [
-    { id: "analytics", title: "Sales Analytics", desc: "Revenue, profit, titles, shows and comparisons.", url: "analytics.html", roles: MANAGER },
-    { id: "orders", title: "Orders & Receiving", desc: "Supplier orders, what’s on the way, shortages.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
-    { id: "inventory", title: "Inventory", desc: "On hand by title, damaged, on the way, records to review.", url: "inventory.html" },
-    { id: "purchasing", title: "Purchasing", desc: "Build and save buy lists from what sells.", url: "purchasing.html", roles: MANAGER },
-    { id: "payouts", title: "Payouts", desc: "Net sales after fees, profit, and when each show’s money lands.", url: "payouts.html", roles: MANAGER },
-    { id: "shows", title: "Shows", desc: "Every show’s results, customer events and requests.", url: "shows.html" },
-    { id: "used", title: "Used Books", desc: "Load results, check-ins and used and vintage shows.", url: "used.html", roles: MANAGER },
-    { id: "live", title: "Live Show · Rehearsal", desc: "Book Spotlight, the TV screen and sales logging. Practice shows only for now.", page: "live.html", roles: SHOW_CREW },
-    { id: "station", title: "Show Station", desc: "Live sales with buyer numbers, chit printing, and scan-to-sale. Practice sales for testing.", page: "station.html", roles: SHOW_CREW },
-    { id: "prep", title: "Show Prep", desc: "Build a show’s playlist ahead of time, on a tablet or computer.", page: "prep.html", roles: SHOW_CREW }
+  // Grouped and ordered like the Workspace home: what to do first, on show day, and after.
+  const GROUPS = [
+    { title: "Buy & stock", desc: "Get books in the door", items: [
+      { id: "purchasing", title: "Purchasing", desc: "Build buy lists from sales, stock, price, ratings and profit, and keep the lists you send.", url: "purchasing.html", roles: MANAGER },
+      { id: "orders", title: "Orders & Receiving", desc: "Supplier orders, what’s on the way, and confirming boxes when they arrive.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
+      { id: "inventory", title: "Inventory", desc: "What’s on hand and on order, held for shows, damaged, and records to review.", url: "inventory.html" }
+    ] },
+    { title: "Show day", desc: "Get books ready, then sell them live", items: [
+      { id: "prep", title: "Show Prep", desc: "Scan books into an upcoming show and group them into sets, on a tablet or computer.", page: "prep.html", roles: SHOW_CREW },
+      { id: "live", title: "Book Spotlight", desc: "Run the show: playlist, the TV screen, sales and customer requests.", page: "live.html", roles: SHOW_CREW, status: "Rehearsal · practice shows only" },
+      { id: "station", title: "Show Station", desc: "Live sales with buyer numbers, chit printing and scan-to-sale.", page: "station.html", roles: SHOW_CREW, status: "Practice sales for testing" }
+    ] },
+    { title: "After the show", desc: "See the money and how it went", items: [
+      { id: "payouts", title: "Payouts", desc: "Net sales after fees, profit, and when each show’s money lands.", url: "payouts.html", roles: MANAGER },
+      { id: "analytics", title: "Sales Analytics", desc: "Sales, titles, shows and side-by-side comparisons.", url: "analytics.html", roles: MANAGER },
+      { id: "shows", title: "Shows", desc: "Every show’s results, customer events and requests.", url: "shows.html" }
+    ] },
+    { title: "Used books", desc: "Loads, check-ins and used shows", items: [
+      { id: "used", title: "Used Books", desc: "Load results, check-ins, and used and vintage shows.", url: "used.html", roles: MANAGER }
+    ] }
   ];
+  const SECTIONS = GROUPS.flatMap(g => g.items);
   const views = ["signin", "newpw", "pending", "home", "section"];
   const show = id => views.forEach(v => { $(v).hidden = v !== id && !(id === "section" && v === "home"); });
 
@@ -159,26 +187,33 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     window.RELIANT.staff = me;
     $("who").innerHTML = `<b></b> · ${me.role[0].toUpperCase() + me.role.slice(1)}`;
     $("who").querySelector("b").textContent = me.name;
-    $("hello").textContent = `Welcome, ${me.name.split(" ")[0]}`;
-    $("today").textContent = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
     drawTiles(me);
     if ($("section").hidden) show("home");
   }
   function drawTiles(me) {
-    const box = $("tiles"); box.innerHTML = "";
-    for (const s of SECTIONS) {
-      const allowed = !s.roles || s.roles.includes(me.role);
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "tile";
-      const off = s.soon || !allowed;
-      if (off) b.setAttribute("aria-disabled", "true");
-      b.innerHTML = `<span class="t"></span><span class="d"></span><span class="s"></span>`;
-      b.querySelector(".t").textContent = s.title;
-      b.querySelector(".d").textContent = s.desc;
-      b.querySelector(".s").textContent = s.soon ? "Coming next" : allowed ? "Open →" : "Not for your role";
-      if (!off) b.onclick = () => { if (s.page) location.href = s.page; else openSection(s); };
-      box.appendChild(b);
-    }
+    const box = $("secs"); box.innerHTML = "";
+    GROUPS.forEach((g, gi) => {
+      const sec = document.createElement("section"); sec.className = "sec";
+      sec.innerHTML = `<div class="sech"><span class="secn">${gi + 1}</span><h3></h3><span class="secd"></span></div><div class="tiles"></div>`;
+      sec.querySelector("h3").textContent = g.title;
+      sec.querySelector(".secd").textContent = g.desc;
+      const tiles = sec.querySelector(".tiles");
+      for (const s of g.items) {
+        const allowed = !s.roles || s.roles.includes(me.role);
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "tile";
+        if (!allowed) b.setAttribute("aria-disabled", "true");
+        b.innerHTML = `<h2></h2><p></p><span class="st"></span>`;
+        b.querySelector("h2").textContent = s.title;
+        b.querySelector("p").textContent = s.desc;
+        const st = b.querySelector(".st");
+        st.textContent = !allowed ? "Not for your role" : s.status || "Open →";
+        st.classList.toggle("dim", !allowed || !!s.status);
+        if (allowed) b.onclick = () => { if (s.page) location.href = s.page; else openSection(s); };
+        tiles.appendChild(b);
+      }
+      box.appendChild(sec);
+    });
   }
   function openSection(s) {
     $("sectionTitle").textContent = s.title;
