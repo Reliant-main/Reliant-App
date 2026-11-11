@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Show Station · Reliant Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.12); --gilt: #d2a54a;
+  --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--f-ui); -webkit-text-size-adjust: 100%; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 16px 16px 60px; display: flex; flex-direction: column; gap: 14px; }
+.topbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.topbar .sp { flex: 1; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 2px 0 0; font: 400 clamp(26px, 4vw, 36px)/1.05 var(--f-display); }
+h2 { margin: 0; font: 600 13px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: 600 15px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-height: 44px; cursor: pointer; touch-action: manipulation; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: #0e1915; border-color: var(--accent); }
+.btn.warn { color: var(--bad); }
+.btn.small { min-height: 34px; padding: 4px 10px; font-size: 13px; }
+.btn.on { background: var(--gilt); color: #0e1915; border-color: var(--gilt); }
+.btn:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: 15px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 44px; max-width: 100%; }
+label.chk { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink-2); cursor: pointer; }
+label.chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+.sub { color: var(--muted); font-size: 14px; margin: 0; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+/* next-scan card */
+.next { border: 2px solid var(--accent); background: linear-gradient(180deg, var(--accent-wash), transparent 70%), var(--surface); border-radius: 16px; padding: 16px 18px; display: grid; grid-template-columns: auto 1fr; gap: 4px 20px; align-items: center; min-height: 168px; }
+.next.same { border-color: var(--gilt); background: linear-gradient(180deg, color-mix(in srgb, var(--gilt) 14%, transparent), transparent 70%), var(--surface); }
+.next.idle { border-color: var(--line); background: var(--surface); }
+.next .lbl { grid-column: 1 / -1; font: 600 12px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.next.same .lbl { color: var(--gilt); }
+.next.idle .lbl { color: var(--muted); }
+.next .num { font: 800 clamp(64px, 11vw, 120px)/.9 var(--f-ui); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.next .num.q { color: var(--warnfg); }
+.next .who { min-width: 0; }
+.next .user { font: 700 clamp(18px, 2.4vw, 26px)/1.2 var(--f-ui); overflow-wrap: anywhere; }
+.next .meta { font: 15px var(--f-mono); color: var(--ink-2); margin-top: 4px; }
+.next .wait { grid-column: 1 / -1; font: 400 clamp(22px, 3vw, 30px)/1.2 var(--f-display); color: var(--ink-2); }
+
+.scanrow { display: flex; gap: 8px; }
+.scanrow input { flex: 1; min-width: 0; font: 22px var(--f-mono); letter-spacing: .03em; color: var(--ink); background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px; min-height: 58px; }
+.scanrow input:focus { border-color: var(--accent); outline: none; }
+.scanrow input.same { border-color: var(--gilt); }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.msg { min-height: 1.5em; font-size: 16px; font-weight: 600; }
+.msg.ok { color: var(--accent); } .msg.bad { color: var(--bad); } .msg.warn { color: var(--warnfg); }
+.hint { font-size: 13px; color: var(--muted); }
+kbd { font: 12px var(--f-mono); background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+
+.results { display: flex; flex-direction: column; gap: 6px; }
+.results button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: center; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.results button:hover, .results button:focus-visible { border-color: var(--accent); }
+.results .k { font: 600 14px var(--f-mono); color: var(--gilt); text-align: center; }
+.results .t { font-weight: 600; } .results .a { font-size: 13px; color: var(--muted); }
+
+.stats { display: flex; gap: 18px; flex-wrap: wrap; font: 14px var(--f-mono); color: var(--ink-2); }
+.stats b { color: var(--ink); font-size: 18px; }
+.stats .w b { color: var(--warnfg); }
+
+/* sales list */
+ol.sales { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+ol.sales li { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--surface); }
+ol.sales li:first-child { border-top: 0; }
+ol.sales li.target { background: var(--accent-wash); }
+ol.sales li.cancel { opacity: .5; }
+ol.sales li.cancel .u { text-decoration: line-through; }
+.badge { font: 800 24px/1 var(--f-ui); text-align: center; font-variant-numeric: tabular-nums; border: 1px solid var(--line); border-radius: 10px; padding: 8px 0; background: var(--surface-2); }
+.badge.q { color: var(--warnfg); }
+.u { font-weight: 700; overflow-wrap: anywhere; }
+.m { font: 13px var(--f-mono); color: var(--muted); }
+.bk { font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.bk .miss { color: var(--warnfg); font-weight: 600; }
+.tag { font: 600 11px var(--f-mono); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
+.tag.warn { background: var(--warnbg); color: var(--warnfg); }
+.tag.bad { background: var(--badbg); color: var(--bad); }
+.tag.lot { background: var(--gilt); color: #0e1915; }
+.empty { padding: 18px; color: var(--muted); text-align: center; }
+
+/* buyers */
+.buyers { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.buyers div { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: center; }
+.buyers .n { font: 800 22px var(--f-ui); grid-row: span 2; }
+.buyers .nm { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.buyers .c { font: 12px var(--f-mono); color: var(--muted); }
+
+details.practice { border: 1px dashed var(--line); border-radius: 12px; padding: 10px 14px; }
+details.practice summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+details.practice .acts { margin-top: 10px; }
+.printbar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.dot.down { background: var(--bad); }
+.conn { font: 13px var(--f-mono); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.bridgeFail { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: var(--bg); padding: 16px; }
+.bridgeFail > div { max-width: 460px; }
+.bridgeFail h2 { font: 400 32px var(--f-display); margin: 0 0 8px; color: var(--ink); text-transform: none; letter-spacing: 0; }
+.bridgeFail a { color: var(--gilt); }
+#printFrame { position: fixed; width: 0; height: 0; border: 0; left: -9999px; top: 0; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="btn" href="index.html">⌂ Home</a>
+    <div><span class="eyebrow">Shows · live</span><h1>Show Station</h1></div>
+    <span class="sp"></span>
+    <span class="conn" id="conn"><span class="dot" id="connDot"></span><span id="connTxt">Connecting…</span></span>
+  </div>
+
+  <div class="printbar">
+    <label class="chk">Show
+      <select id="showPick" aria-label="Show"></select>
+    </label>
+    <label class="chk"><input type="checkbox" id="follow" checked> Switch to a new show automatically</label>
+    <span class="sp"></span>
+    <label class="chk"><input type="checkbox" id="printer"> This computer prints chits</label>
+    <label class="chk">Chits
+      <select id="chitMode" aria-label="When chits print">
+        <option value="sale">At the sale</option>
+        <option value="scan">After the scan (with title)</option>
+        <option value="both">Both</option>
+        <option value="off">Don't print</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="grid">
+    <section class="panel" aria-label="Scan">
+      <div class="next idle" id="next" aria-live="polite"></div>
+      <form class="scanrow" id="scanForm" autocomplete="off">
+        <input type="text" id="scan" enterkeyhint="done" placeholder="Scan the book, or type a title" aria-label="Scan or type a book">
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      <div class="results" id="results" hidden></div>
+      <div class="acts">
+        <button class="btn" type="button" id="same">+ Same sale <kbd>F2</kbd></button>
+        <button class="btn" type="button" id="undo">Undo last book</button>
+        <button class="btn" type="button" id="reprint">Reprint last chit</button>
+      </div>
+      <p class="msg" id="msg" role="status"></p>
+      <p class="hint">Each scan goes to the <b>oldest sale that doesn't have a book yet</b>, so scan in the order books sold. For a lot, press <b>+ Same sale</b> (or <kbd>F2</kbd>) before scanning the extra books. No barcode? Type the title and press Enter, then pick it (or press <kbd>1</kbd>–<kbd>6</kbd>).</p>
+      <details class="practice" id="practice">
+        <summary>Practice without Whatnot</summary>
+        <p class="sub" style="margin-top:8px">Makes pretend sales in today's practice show so you can try scanning and chit printing. Practice sales never go into real sales history.</p>
+        <div class="acts">
+          <button class="btn" type="button" id="pNew">Practice sale · new buyer</button>
+          <button class="btn" type="button" id="pRepeat">Practice sale · repeat buyer</button>
+          <button class="btn warn" type="button" id="pClear" hidden>Clear this practice show</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel" aria-label="This show">
+      <div class="stats" id="stats"></div>
+      <h2>Buyers · lot bins</h2>
+      <div class="buyers" id="buyers"></div>
+      <h2>Sales · newest first</h2>
+      <ol class="sales" id="sales"></ol>
+    </section>
+  </div>
+</div>
+<iframe id="printFrame" title="Chit printer" aria-hidden="true" tabindex="-1"></iframe>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const money = n => n == null ? "" : "$" + Number(n).toFixed(2);
+  const tm = t => t ? new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+  const dt = t => t ? new Date(t).toLocaleString([], { month: "numeric", day: "numeric", year: "2-digit", hour: "numeric", minute: "2-digit" }) : "";
+  const PLAT = { WN: "Whatnot", TT: "TikTok", EB: "eBay" };
+  const SHOW_CREW = ["owner", "manager", "operator"];
+  const PRINT_WINDOW_MS = 10 * 60 * 1000;   // only auto-print sales from the last 10 minutes (no backlog after a reload)
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("station." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("station." + k, JSON.stringify(v)); } catch {} }
+  };
+
+  const fail = msg => {
+    const d = document.createElement("div");
+    d.className = "bridgeFail";
+    d.innerHTML = `<div><h2>Show Station</h2><p></p><p><a href="index.html">Go to the Workspace sign-in</a></p></div>`;
+    d.querySelector("p").textContent = msg;
+    document.body.appendChild(d);
+  };
+  const cfg = window.RELIANT_CONFIG;
+  if (!window.supabase || !cfg) { fail("The Workspace couldn't load. Check the internet connection and reload."); return; }
+  const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
+
+  let shows = [], showId = null, sales = [], items = [], buyers = [], sameArmed = false, results = [], lastSaleTouched = null, lastQuery = "";
+
+  // ---------------------------------------------------------------- settings
+  $("printer").checked = store.get("printer", false);
+  $("chitMode").value = store.get("chitMode", "sale");
+  $("follow").checked = store.get("follow", true);
+  $("printer").onchange = () => { store.set("printer", $("printer").checked); refocus(); };
+  $("chitMode").onchange = () => { store.set("chitMode", $("chitMode").value); refocus(); };
+  $("follow").onchange = () => { store.set("follow", $("follow").checked); refocus(); };
+  $("showPick").onchange = () => { showId = +$("showPick").value || null; store.set("show", showId); sameArmed = false; loadShow(); refocus(); };
+
+  const setMsg = (t, kind) => { $("msg").textContent = t; $("msg").className = "msg" + (kind ? " " + kind : ""); };
+  const refocus = () => setTimeout(() => { const a = document.activeElement; if (!a || a === document.body || a.tagName === "BUTTON") $("scan").focus(); }, 0);
+
+  // ---------------------------------------------------------------- data
+  async function loadShows() {
+    const { data, error } = await sb.from("live_shows").select("id,platform_code,platform_show_id,title,is_practice,created_at").order("created_at", { ascending: false }).limit(25);
+    if (error) { setMsg("Couldn't load shows: " + error.message, "bad"); return; }
+    const newest = data[0] && data[0].id;
+    const hadNew = shows.length && newest && !shows.some(s => s.id === newest);
+    shows = data;
+    if (!showId || !shows.some(s => s.id === showId) || (hadNew && $("follow").checked)) {
+      const saved = store.get("show", null);
+      showId = (hadNew && $("follow").checked) ? newest : (shows.some(s => s.id === saved) ? saved : newest || null);
+    }
+    $("showPick").innerHTML = shows.length ? shows.map(s => `<option value="${s.id}">${esc(showLabel(s))}</option>`).join("") : `<option value="">No shows yet</option>`;
+    if (showId) $("showPick").value = String(showId);
+  }
+  const showLabel = s => (PLAT[s.platform_code] || s.platform_code) + " · " + (s.title || ("started " + new Date(s.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })));
+
+  async function loadShow() {
+    if (!showId) { sales = []; items = []; buyers = []; draw(); return; }
+    const sid = showId;
+    const [s, i, b] = await Promise.all([
+      sb.from("live_sales").select("id,live_buyer_id,total,subtotal,status,flag,order_created_at,received_at,chit_printed_at,title_chit_printed_at,transaction_type").eq("live_show_id", sid).order("order_created_at", { ascending: true }).order("id"),
+      sb.from("live_sale_items").select("id,live_sale_id,isbn,item_text,scan_code,in_book_list,entry_method,scanned_at,books(title,author)").eq("live_show_id", sid).order("scanned_at").order("id"),
+      sb.from("live_buyers").select("id,buyer_number,username,display_name,platform_buyer_id").eq("live_show_id", sid).order("buyer_number")
+    ]);
+    const err = s.error || i.error || b.error;
+    if (err) { setMsg("Couldn't load the show: " + err.message, "bad"); return; }
+    if (sid !== showId) return;
+    sales = s.data; items = i.data; buyers = b.data;
+    draw();
+    autoPrint();
+  }
+
+  const buyerOf = sale => buyers.find(b => b.id === sale.live_buyer_id);
+  const itemsOf = sale => items.filter(x => x.live_sale_id === sale.id);
+  const isCancelled = sale => sale.status === "cancelled";
+  const saleTime = sale => sale.order_created_at || sale.received_at;
+  const target = () => {
+    if (sameArmed) { const last = items[items.length - 1]; return last ? sales.find(s => s.id === last.live_sale_id) : null; }
+    return sales.find(s => !isCancelled(s) && !itemsOf(s).length) || null;
+  };
+  const itemTitle = x => x.books ? x.books.title : (x.item_text || x.scan_code || "Book");
+
+  // ---------------------------------------------------------------- drawing
+  function draw() {
+    const cur = shows.find(s => s.id === showId);
+    $("pClear").hidden = !(cur && cur.is_practice);
+
+    const t = target(), card = $("next");
+    card.className = "next" + (t ? (sameArmed ? " same" : "") : " idle");
+    $("scan").classList.toggle("same", sameArmed);
+    $("same").classList.toggle("on", sameArmed);
+    $("same").innerHTML = sameArmed ? "Adding to the same sale… <kbd>F2</kbd>" : "+ Same sale <kbd>F2</kbd>";
+    if (t) {
+      const b = buyerOf(t);
+      card.innerHTML = `<span class="lbl">${sameArmed ? "Same sale · next scan adds to" : "Next scan goes to"}</span>
+        <span class="num ${b ? "" : "q"}">${b ? "#" + b.buyer_number : "?"}</span>
+        <span class="who"><div class="user">${b ? esc(b.username || b.display_name || "Buyer") : "Buyer not sent by the platform"}</div>
+        <div class="meta">${money(t.total ?? t.subtotal)} · ${tm(saleTime(t))}${sameArmed ? " · " + itemsOf(t).length + " book" + (itemsOf(t).length === 1 ? "" : "s") + " so far" : ""}</div></span>`;
+    } else {
+      card.innerHTML = `<span class="lbl">Next scan goes to</span><span class="wait">${sameArmed ? "No sale has a book yet." : showId ? "Waiting for the next sale…" : "No show yet. Sales appear here as soon as they happen."}</span>`;
+    }
+
+    const live = sales.filter(s => !isCancelled(s));
+    const waiting = live.filter(s => !itemsOf(s).length).length;
+    const total = live.reduce((n, s) => n + Number(s.total ?? s.subtotal ?? 0), 0);
+    $("stats").innerHTML = `<span><b>${live.length}</b> sales</span><span><b>${buyers.length}</b> buyers</span><span><b>${items.length}</b> books</span><span class="${waiting ? "w" : ""}"><b>${waiting}</b> waiting for a book</span><span><b>${money(total)}</b></span>`;
+
+    $("buyers").innerHTML = buyers.length ? buyers.map(b => {
+      const mine = live.filter(s => s.live_buyer_id === b.id), nb = mine.reduce((n, s) => n + itemsOf(s).length, 0);
+      return `<div><span class="n">#${b.buyer_number}</span><span class="nm" title="${esc(b.username)}">${esc(b.username || b.display_name || "Buyer")}</span><span class="c">${mine.length} sale${mine.length === 1 ? "" : "s"} · ${nb} book${nb === 1 ? "" : "s"}</span></div>`;
+    }).join("") : `<p class="sub">Buyer numbers show up here as people buy.</p>`;
+
+    const tid = t && t.id;
+    $("sales").innerHTML = sales.length ? [...sales].reverse().map(s => {
+      const b = buyerOf(s), its = itemsOf(s), c = isCancelled(s);
+      const books = its.length ? its.map(x => esc(itemTitle(x)) + (x.in_book_list ? "" : ` <span class="tag warn">not in book list</span>`)).join(" · ")
+                               : (c ? "" : `<span class="miss">Needs a book</span>`);
+      return `<li class="${s.id === tid ? "target" : ""} ${c ? "cancel" : ""}">
+        <span class="badge ${b ? "" : "q"}">${b ? "#" + b.buyer_number : "?"}</span>
+        <span><span class="u">${esc(b ? (b.username || b.display_name) : "No buyer sent")}</span>${its.length > 1 ? `<span class="tag lot">LOT ${its.length}</span>` : ""}${c ? `<span class="tag bad">cancelled</span>` : ""}${s.flag ? `<span class="tag warn">${esc(s.flag)}</span>` : ""}
+          <div class="m">${money(s.total ?? s.subtotal)} · ${tm(saleTime(s))}</div><div class="bk">${books}</div></span>
+        <button class="btn small" type="button" data-print="${s.id}" title="Print this chit again">Print</button></li>`;
+    }).join("") : `<li class="empty" style="display:block">No sales in this show yet.</li>`;
+  }
+
+  // ---------------------------------------------------------------- scanning
+  const looksLikeCode = v => /^[0-9xX\- ]{8,20}$/.test(v) || /^RD-?\d+$/i.test(v) || (!/\s/.test(v) && /\d/.test(v) && v.length >= 4 && !/[a-z]{4,}/i.test(v));
+  let busy = false;
+  async function attach(args, label) {
+    if (busy) return; busy = true;
+    try {
+      const { data, error } = await sb.rpc("live_attach_book", { p_show: showId, p_same_sale: sameArmed, ...args });
+      if (error) { setMsg(error.message, "bad"); beep(false); return; }
+      lastSaleTouched = data.sale_id;
+      const note = data.in_book_list ? "" : " (not in the book list, it's flagged for later)";
+      setMsg(`${data.buyer_number ? "#" + data.buyer_number : "No buyer #"} · ${data.title || label}${note}`, data.in_book_list ? "ok" : "warn");
+      beep(true);
+      await loadShow();
+    } finally { busy = false; }
+  }
+  $("scanForm").onsubmit = async e => {
+    e.preventDefault();
+    const v = $("scan").value.trim();
+    if (!v) return;
+    if (!showId) { setMsg("There's no show yet. Sales appear when the first order comes in.", "bad"); return; }
+    if (looksLikeCode(v)) { $("scan").value = ""; clearResults(); await attach({ p_code: v }, v); return; }
+    await search(v);
+  };
+  async function search(q) {
+    lastQuery = q;
+    const { data, error } = await sb.from("books").select("isbn,title,author").ilike("title", "%" + q.replace(/[%_]/g, "") + "%").order("title").limit(6);
+    if (error) { setMsg("Search failed: " + error.message, "bad"); return; }
+    results = data;
+    const box = $("results");
+    box.hidden = false;
+    box.innerHTML = data.map((b, k) => `<button type="button" data-k="${k}"><span class="k">${k + 1}</span><span><span class="t">${esc(b.title)}</span><br><span class="a">${esc([b.author, b.isbn].filter(Boolean).join(" · "))}</span></span></button>`).join("")
+      + `<button type="button" data-k="typed"><span class="k">↵</span><span><span class="t">Use “${esc(q)}” as typed</span><br><span class="a">Not in the book list. It's saved as typed and flagged for later.</span></span></button>`;
+    setMsg(data.length ? "Pick the book (or press its number)." : "No titles match. Use it as typed, or try fewer words.", data.length ? "" : "warn");
+  }
+  const clearResults = () => { results = []; lastQuery = ""; $("results").hidden = true; $("results").innerHTML = ""; };
+  async function pick(k) {
+    const q = $("scan").value.trim();
+    if (k === "typed") { if (!q) return; $("scan").value = ""; clearResults(); await attach({ p_text: q }, q); }
+    else if (results[k]) { const b = results[k]; $("scan").value = ""; clearResults(); await attach({ p_isbn: b.isbn }, b.title); }
+    refocus();
+  }
+  $("results").onclick = e => { const b = e.target.closest("button[data-k]"); if (b) pick(b.dataset.k === "typed" ? "typed" : +b.dataset.k); };
+  $("scan").addEventListener("keydown", e => {
+    // Number keys pick a result only while the box still holds the words that were searched,
+    // so a barcode scanned next still goes in as a barcode.
+    if (!$("results").hidden && /^[1-6]$/.test(e.key) && $("scan").value.trim() === lastQuery) {
+      const k = +e.key - 1; if (results[k]) { e.preventDefault(); pick(k); }
+    }
+    if (e.key === "Escape") { clearResults(); if (sameArmed) { sameArmed = false; draw(); } setMsg(""); }
+  });
+  $("scan").addEventListener("input", () => { if (!$("results").hidden && !$("scan").value.trim()) clearResults(); });
+
+  const toggleSame = () => { sameArmed = !sameArmed; draw(); setMsg(sameArmed ? "Scan the extra books for this lot. Press F2 again when done." : "Back to the next sale.", ""); refocus(); };
+  $("same").onclick = toggleSame;
+  addEventListener("keydown", e => { if (e.key === "F2") { e.preventDefault(); toggleSame(); } });
+  $("undo").onclick = async () => {
+    const { data, error } = await sb.rpc("live_undo_last", { p_show: showId });
+    if (error) setMsg(error.message, "bad"); else { setMsg("Removed: " + (data.what || "last book"), "warn"); await loadShow(); }
+    refocus();
+  };
+
+  // ---------------------------------------------------------------- practice
+  async function practice(repeat) {
+    const { error } = await sb.rpc("live_practice_sale", { p_repeat: repeat });
+    if (error) { setMsg(error.message, "bad"); return; }
+    await loadShows(); await loadShow(); refocus();
+  }
+  $("pNew").onclick = () => practice(false);
+  $("pRepeat").onclick = () => practice(true);
+  $("pClear").onclick = async () => {
+    if (!confirm("Clear this practice show and all its practice sales?")) return;
+    const { error } = await sb.rpc("live_clear_practice", { p_show: showId });
+    if (error) { setMsg(error.message, "bad"); return; }
+    showId = null; store.set("show", null); await loadShows(); await loadShow(); setMsg("Practice show cleared.", "ok"); refocus();
+  };
+
+  // ---------------------------------------------------------------- chits (Star TSP700II, 2 x 1 in labels)
+  const queue = []; let printing = false; const queued = new Set();
+  function chitHtml(sale, withTitle) {
+    const b = buyerOf(sale), its = itemsOf(sale);
+    const title = withTitle && its.length ? its.map(itemTitle).join(" + ") : "";
+    return `<!doctype html><html><head><meta charset="utf-8"><style>
+      @page { size: 2in 1in; margin: 0; }
+      html, body { margin: 0; padding: 0; }
+      body { width: 2in; height: 1in; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; color: #000; background: #fff; }
+      .c { box-sizing: border-box; width: 2in; height: 1in; padding: .05in .08in; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr auto; column-gap: .08in; }
+      .n { grid-row: 1 / 3; font: 900 ${b && b.buyer_number > 99 ? 28 : 36}pt/0.95 "Arial Black", Arial, sans-serif; align-self: center; }
+      .u { font: 700 9pt/1.15 "Segoe UI", Arial, sans-serif; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-all; }
+      .p { font: 800 13pt/1.1 Arial, sans-serif; align-self: end; }
+      .t { grid-column: 1 / -1; font: 7pt/1.1 Arial, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .d { grid-column: 1 / -1; font: 6.5pt/1.1 Arial, sans-serif; }
+    </style></head><body><div class="c">
+      <div class="n">${b ? "#" + b.buyer_number : "?"}</div>
+      <div class="u">${esc(b ? (b.username || b.display_name) : "No buyer")}</div>
+      <div class="p">${money(sale.total ?? sale.subtotal)}</div>
+      ${title ? `<div class="t">${esc(title)}</div>` : ""}
+      <div class="d">${esc(dt(saleTime(sale)))}${isCancelled(sale) ? " · CANCELLED" : ""}</div>
+    </div></body></html>`;
+  }
+  function enqueue(sale, kind) {
+    const key = sale.id + ":" + kind;
+    if (queued.has(key)) return;
+    queued.add(key);
+    queue.push({ sale, kind });
+    pump();
+  }
+  async function pump() {
+    if (printing || !queue.length) return;
+    printing = true;
+    const { sale, kind } = queue.shift();
+    try {
+      await sb.rpc("live_mark_printed", { p_sale: sale.id, p_kind: kind });
+      await printNow(chitHtml(sale, kind === "title"));
+    } catch (e) { setMsg("A chit didn't print: " + (e.message || e), "bad"); }
+    printing = false;
+    setTimeout(pump, 400);
+  }
+  function printNow(html) {
+    return new Promise(res => {
+      const f = $("printFrame");
+      f.onload = () => {
+        setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch {} res(); refocus(); }, 60);
+      };
+      f.srcdoc = html;
+    });
+  }
+  function autoPrint() {
+    if (!$("printer").checked) return;
+    const mode = $("chitMode").value, now = Date.now();
+    for (const s of sales) {
+      if (isCancelled(s)) continue;
+      const recent = now - new Date(s.received_at).getTime() < PRINT_WINDOW_MS;
+      if ((mode === "sale" || mode === "both") && !s.chit_printed_at && recent) enqueue(s, "sale");
+      if ((mode === "scan" || mode === "both") && !s.title_chit_printed_at) {
+        const its = itemsOf(s);
+        if (its.length && now - new Date(its[0].scanned_at).getTime() < PRINT_WINDOW_MS) enqueue(s, "title");
+      }
+    }
+  }
+  const printSale = s => { if (!s) return; const kind = $("chitMode").value === "scan" && itemsOf(s).length ? "title" : (itemsOf(s).length && $("chitMode").value === "both" ? "title" : "sale"); printNow(chitHtml(s, kind === "title")); };
+  $("sales").onclick = e => { const b = e.target.closest("button[data-print]"); if (b) printSale(sales.find(s => s.id === +b.dataset.print)); };
+  $("reprint").onclick = () => { printSale(sales.find(s => s.id === lastSaleTouched) || sales[sales.length - 1]); };
+
+  // ---------------------------------------------------------------- sound
+  let ac = null;
+  function beep(ok) {
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.frequency.value = ok ? 880 : 220; o.type = ok ? "sine" : "square";
+      g.gain.setValueAtTime(.08, ac.currentTime); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + (ok ? .12 : .35));
+      o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + (ok ? .12 : .35));
+    } catch {}
+  }
+
+  // ---------------------------------------------------------------- live updates
+  let tmr = null;
+  const soon = (shows_ = false) => { clearTimeout(tmr); tmr = setTimeout(async () => { if (shows_) await loadShows(); await loadShow(); }, 120); };
+  function setConn(state) {
+    $("connDot").className = "dot" + (state === "live" ? " live" : state === "down" ? " down" : "");
+    $("connTxt").textContent = state === "live" ? "Live" : state === "down" ? "Reconnecting…" : "Connecting…";
+  }
+  function subscribe() {
+    sb.channel("station")
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_sales" }, () => soon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_sale_items" }, () => soon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_buyers" }, () => soon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_shows" }, () => soon(true))
+      .subscribe(st => setConn(st === "SUBSCRIBED" ? "live" : (st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") ? "down" : "connecting"));
+    // Safety net in case a live update is missed.
+    setInterval(() => soon(true), 15000);
+  }
+
+  // keep the cursor in the scan box
+  document.addEventListener("click", e => { if (!e.target.closest("select,input,textarea,summary,a")) refocus(); });
+
+  // ---------------------------------------------------------------- start
+  (async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { fail("Sign in on the Workspace home page first, then open the Show Station again."); return; }
+    const { data: me, error } = await sb.rpc("my_staff");
+    if (error) { fail("Couldn't check your account: " + error.message); return; }
+    if (!me || !SHOW_CREW.includes(me.role)) { fail("Your account doesn't run shows. Ask the owner if it should."); return; }
+    await sb.realtime.setAuth(session.access_token);
+    await loadShows();
+    // On first open, don't reprint chits that were already handled.
+    await loadShow();
+    subscribe();
+    $("scan").focus();
+  })();
+})();
+</script>
+</body>
+</html>
