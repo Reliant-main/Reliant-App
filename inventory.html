@@ -155,6 +155,9 @@ tr:last-child td { border-bottom: 0; }
     rows = (D.titles || []).map(r => ({ isbn: r[0], title: r[1], author: r[2], counted: r[3], count_date: r[4], counted_qty: r[5],
       received: r[6], sold: r[7], given: r[8], adjusted: r[9], damage: r[10], on_hand: r[11], damaged: r[12], good: r[13],
       en_route: r[14], coming: +r[15] || 0, written_off: r[16], cost: r[17], value: r[18], sold30: r[19], last_sold: r[20] }));
+    // held for shows: copies pulled in Show Prep or sitting in a running show's playlist
+    const held = D.committed || {};
+    rows.forEach(r => { const h = held[r.isbn]; r.held = h ? +h[0] || 0 : 0; r.heldShows = h ? h[1] || [] : []; r.avail = Math.max(0, (+r.good || 0) - r.held); });
     const at = D.synced_at ? new Date(D.synced_at) : null;
     setStatus("live", `${int(rows.length)} titles · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"} · full count ${dfmt(D.full_count_date)}`);
     render();
@@ -166,6 +169,7 @@ tr:last-child td { border-bottom: 0; }
     ["out", "Out of stock", r => r.on_hand === 0],
     ["neg", "Below zero", r => r.on_hand < 0],
     ["low", "Low (1–2)", r => r.on_hand > 0 && r.on_hand <= 2],
+    ["held", "Held for shows", r => r.held > 0],
     ["damaged", "Damaged", r => r.damaged > 0],
     ["route", "On the way", r => r.en_route > 0 || r.coming > 0],
     ["slow", "Not selling (30 days)", r => r.on_hand > 0 && !r.sold30],
@@ -173,7 +177,7 @@ tr:last-child td { border-bottom: 0; }
   ];
   function cols() {
     const c = [
-      { k: "title", h: "Title", txt: 1 }, { k: "on_hand", h: "On hand" }, { k: "good", h: "Good" }, { k: "damaged", h: "Damaged", sm: 1 },
+      { k: "title", h: "Title", txt: 1 }, { k: "on_hand", h: "On hand" }, { k: "good", h: "Good" }, { k: "avail", h: "Available now" }, { k: "held", h: "Held for shows" }, { k: "damaged", h: "Damaged", sm: 1 },
       { k: "en_route", h: "En route", sm: 1 }, { k: "sold30", h: "Sold 30 days" }, { k: "last_sold", h: "Last sold", txt: 1, sm: 1 }
     ];
     if (D.costs) c.push({ k: "cost", h: "Cost each", sm: 1 }, { k: "value", h: "Value" });
@@ -186,6 +190,7 @@ tr:last-child td { border-bottom: 0; }
     const reviewN = (D.review || []).length;
     const k = [
       ["Books on hand", int(sum(r => r.on_hand, r => r.on_hand > 0)), `${int(rows.filter(r => r.on_hand > 0).length)} titles in stock`, "stock"],
+      ["Held for shows", int(sum(r => r.held)), "pulled for a show, not yet sold", "held"],
       ["Damaged", int(sum(r => r.damaged, r => r.damaged > 0)), "included in on hand", "damaged"],
       ["En route", int(sum(r => r.en_route)), "ordered, not yet received", "route"],
       ["Possibly coming", int(sum(r => r.coming)), "short on arrival, still expected", "route"],
@@ -224,6 +229,7 @@ tr:last-child td { border-bottom: 0; }
         case "damaged": return r.damaged ? `<span class="pill">${int(r.damaged)}</span>` : "–";
         case "en_route": return r.en_route ? int(r.en_route) + (r.coming ? ` <span class="a">+${int(r.coming)}?</span>` : "") : r.coming ? `<span class="a">${int(r.coming)}?</span>` : "–";
         case "sold30": return r.sold30 ? int(r.sold30) : "–";
+        case "held": return r.held ? `<span class="pill" title="${esc(r.heldShows.map(x => String(x.show).replace(/^LIVE:/, "") + " ×" + x.qty).join(", "))}">${int(r.held)}</span>` : "–";
         case "last_sold": return r.last_sold ? dfmt(r.last_sold) : "Never";
         case "cost": return money(r.cost);
         case "value": return r.on_hand > 0 ? money(r.value) : "–";

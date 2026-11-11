@@ -38,6 +38,19 @@ h1 { margin: 0; font: 400 34px/1.05 var(--f-display); }
 .btn:hover { border-color: var(--accent); }
 .btn:focus-visible, .seg button:focus-visible, .day:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.cons { margin-top: 22px; padding: 16px 18px; }
+.consh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 10px; }
+.consh h2 { margin: 0; font-size: 18px; }
+.cons table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cons th { text-align: left; font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.cons td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.cons td.n, .cons th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.cons .due { font-weight: 600; color: var(--bad); }
+.cons .ok { color: var(--good); font-weight: 600; }
+.cons .payrow td { background: var(--accent-wash); }
+.cons .payrow input { font: 14px var(--f-ui); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); width: 110px; }
+.cons .payrow .grow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 720px) { .cons .hm { display: none; } }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .kpi { background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -182,6 +195,10 @@ tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
       <div class="panel" id="listPanel"><div id="list"></div></div>
     </div>
     <div class="foot" id="foot" style="margin-top:12px"></div>
+    <section class="panel cons" id="consPanel" hidden>
+      <div class="consh"><h2>Consignors</h2><span class="sub">Owed each month: their share of the after-fees amount on every book they consigned. That share is counted as the book's cost, so profit above is already after paying them.</span></div>
+      <div id="consBody"></div>
+    </section>
   </div>
 </div>
 <script>
@@ -420,6 +437,48 @@ tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
     if (groups.size > 1) html += `<table style="margin-top:12px"><tfoot><tr><td class="nm">${st.day ? "Day" : "Month"} total · ${pay ? `${all2.length} payment${all2.length === 1 ? "" : "s"}` : `${T.n} show${T.n === 1 ? "" : "s"}`}${st.cat === "all" ? `<div class="split">${catSplit(all2, "amount")}</div>` : ""}</td><td class="hide-both" data-k="Books">${T.books}</td><td class="hide-both" data-k="Sales">${money(T.sales)}</td><td class="hide-both" data-k="Fees">${money(T.fees)}</td><td data-k="${pay ? "Amount" : "Net sales"}">${money(T.amount)}</td><td data-k="Profit">${money(T.profit)}${T.profit !== T.after ? `<span class="ag">${money(T.after)} after giveaways</span>` : ""}</td></tr></tfoot></table>`;
     $("list").innerHTML = html;
   }
+
+  async function consLoad() {
+    const { data, error } = await sb().rpc("consignment_export"); if (error) throw error;
+    return data || { consignors: [], months: [] };
+  }
+  async function consPay(code, month, amount, notes) {
+    const { error } = await sb().rpc("consignment_pay", { p_code: code, p_month: month, p_amount: Number(amount), p_notes: notes || null }); if (error) throw error;
+  }
+  let cons = null, consOpen = "";
+  const mLabel = m => parse(String(m).slice(0, 10)).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  async function consRefresh() {
+    try { cons = await consLoad(); } catch { cons = null; }
+    drawCons();
+  }
+  function drawCons() {
+    const el = $("consPanel");
+    if (!cons || !(cons.consignors || []).length) { el.hidden = true; return; }
+    el.hidden = false;
+    const ms = (cons.months || []).map(r => ({ ...r, owed: +r.owed || 0, paid: +r.paid || 0, balance: +r.balance || 0, after_fees: +r.after_fees || 0, gross: +r.gross || 0, books: +r.books || 0 }));
+    const due = ms.reduce((n, r) => n + Math.max(0, r.balance), 0);
+    const sh = (cons.consignors || []).map(x => `${esc(x.name)} ${Math.round(x.share * 100)}%`).join(" · ");
+    $("consBody").innerHTML = (ms.length ? `<table><thead><tr><th>Month</th><th>Consignor</th><th class="n hm">Books</th><th class="n hm">Sold for</th><th class="n">After fees</th><th class="n">Owed</th><th class="n">Paid</th><th class="n">Balance</th><th></th></tr></thead><tbody>${
+      ms.map(r => {
+        const key = r.code + "|" + r.month, open = consOpen === key;
+        const row = `<tr><td>${esc(mLabel(r.month))}</td><td>${esc(r.name)} <span class="sub">${Math.round((+r.share || 0) * 100)}%</span></td><td class="n hm">${r.books}</td><td class="n hm">${money(r.gross)}</td><td class="n">${money(r.after_fees)}</td><td class="n">${money(r.owed)}</td><td class="n">${money(r.paid)}</td><td class="n ${r.balance > 0.004 ? "due" : "ok"}">${r.balance > 0.004 ? money(r.balance) : "Paid"}</td><td>${r.balance > 0.004 ? `<button class="btn" type="button" data-cpay="${esc(key)}">Record payment</button>` : ""}</td></tr>`;
+        return row + (open ? `<tr class="payrow"><td colspan="9"><div class="grow">Paid ${esc(r.name)} for ${esc(mLabel(r.month))}: $<input type="number" step="0.01" min="0" id="cAmt" value="${r.balance.toFixed(2)}"> <input type="text" id="cNote" placeholder="Note (check #, etc.)" style="width:200px"> <button class="btn" type="button" data-csave="${esc(key)}">Save payment</button> <button class="btn" type="button" data-ccancel="1">Cancel</button> <span class="sub" id="cMsg"></span></div></td></tr>` : "");
+      }).join("")}</tbody></table>` : `<p class="sub">No consignment books sold yet (${sh}). Sales show up here once a vintage show's rows reach the Used Books workbook and the nightly copy runs.</p>`)
+      + (ms.length ? `<p class="sub" style="margin-top:10px">${due > 0.004 ? `<b>${money(due)}</b> still owed in total.` : "Everyone is paid up."} Rates: ${sh} of the after-fees amount.</p>` : "");
+  }
+  $("consBody").addEventListener("click", async e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.cpay) { consOpen = b.dataset.cpay; drawCons(); const a = $("cAmt"); if (a) a.select(); return; }
+    if (b.dataset.ccancel) { consOpen = ""; drawCons(); return; }
+    if (b.dataset.csave) {
+      const [code, month] = b.dataset.csave.split("|"), amt = parseFloat($("cAmt").value);
+      if (!(amt > 0)) { $("cMsg").textContent = "Type the amount paid."; return; }
+      b.disabled = true; $("cMsg").textContent = "Saving…";
+      try { await consPay(code, month, amt, $("cNote").value.trim()); consOpen = ""; await consRefresh(); }
+      catch (err) { b.disabled = false; $("cMsg").textContent = "Couldn't save: " + (err && err.message || "no connection"); }
+    }
+  });
+  consRefresh();
 
   function render() {
     const all = filtered();
