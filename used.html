@@ -90,6 +90,15 @@ tr:last-child td { border-bottom: 0; }
 .tag.vintage { background: rgba(210,165,74,.16); color: var(--gilt); }
 .bar3 { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); }
 .bar3 i { display: block; height: 100%; }
+.ful h3 { margin: 4px 0 6px; font: 600 15px var(--f-ui); }
+.ful .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ful .fg { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 10px; }
+.ful label { display: flex; flex-direction: column; gap: 3px; font: 500 11px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ful input, .ful select { font: 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; text-transform: none; letter-spacing: 0; }
+.ful .box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+.ful .ok { color: var(--good); } .ful .no { color: var(--bad); }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -205,9 +214,115 @@ tr:last-child td { border-bottom: 0; }
         <i style="width:${(100 * main / Math.max(1, s.sold + s.rej)).toFixed(1)}%;background:var(--accent)"></i><i style="width:${(100 * s.speed / Math.max(1, s.sold + s.rej)).toFixed(1)}%;background:var(--gilt)"></i></div>
       <p class="how">${int(main)} sold in the main round · ${int(s.speed)} in the speed round · ${int(s.rej)} R’s</p>
       ${tbl("Round", by(1))}
-      ${tbl("Condition", by(2))}`;
+      ${tbl("Condition", by(2))}
+      <div class="ful" id="ful"><p class="how">Loading cancellations and giveaways…</p></div>`;
     $("drawer").hidden = false; $("closeD").onclick = () => { $("drawer").hidden = true; };
+    fulLoad(s.id);
   }
+
+  // ---------- fulfillment for used shows: cancellations by sale, giveaways by source ----------
+  const GTYPES = [
+    { name: "Raffle", needShow: true, who: "Winner", whoReq: true },
+    { name: "Over-MSRP bonus", needShow: true, who: "Customer", whoReq: true, sale: true },
+    { name: "Life event", who: "Customer", whoReq: true, event: true },
+    { name: "Other gift", who: "Given to", whoReq: false }
+  ];
+  const tagId = () => Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 5);
+  const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  let F = null, fShowId = null, fOpen = "", fType = "Raffle";
+  async function fulLoad(id) {
+    fShowId = id; fOpen = "";
+    const { data, error } = await sb().rpc("used_show_detail", { p_show_id: id });
+    if (fShowId !== id || !$("ful")) return;
+    if (error || !data) { $("ful").innerHTML = `<p class="how">Couldn’t load fulfillment${error ? ": " + esc(error.message) : ""}.</p>`; return; }
+    F = data; fulDraw();
+  }
+  const by = () => { try { const m = window.parent.RELIANT.staff || {}; return m.display_name || m.name || m.email || ""; } catch { return ""; } };
+  function fulDraw() {
+    const sales = F.sales || [], groups = new Map();
+    sales.forEach(x => { const k = x.sale == null ? "n" + x.id : "s" + x.sale; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(x); });
+    const can = sales.filter(x => x.status === "canceled"), gs = F.giveaways || [], gN = gs.reduce((a, g) => a + (+g.qty || 0), 0);
+    const bySrc = (() => { const m = new Map(); gs.forEach(g => m.set(g.source || "—", (m.get(g.source || "—") || 0) + (+g.qty || 0))); return [...m].map(([k, n]) => `${k} ×${n}`).join(" · "); })();
+    const numbered = sales.some(x => x.sale != null);
+    $("ful").innerHTML = `
+      <h3>Cancellations</h3>
+      ${!numbered ? `<p class="how">This show’s sales came over from the Sales Master Roster without sale numbers, so they can’t be canceled here. Cancel sales in the Workspace (Inventory → Fulfillment → Used &amp; vintage) before the show is copied to the Roster.</p>`
+        : `<div class="tbl"><table><thead><tr><th class="plain num">Sale #</th><th class="plain">Book(s)</th><th class="plain num">Price</th><th class="plain"></th></tr></thead><tbody>${
+        [...groups.values()].filter(g => g[0].sale != null).map(g => {
+          const k = String(g[0].sale), live = g.filter(x => x.status === "sold");
+          const row = `<tr><td class="num">${esc(k)}</td><td>${g.map(x => `<div class="t"${x.status === "canceled" ? ' style="text-decoration:line-through"' : ""}>${esc(x.title || x.code)}</div><div class="a">${esc([x.code, x.source].filter(Boolean).join(" · "))}${x.status === "canceled" ? ` · <span class="pill bad">Canceled${x.customer ? " · " + esc(x.customer) : ""}</span>${x.cancel_id && F.manager ? ` <button class="btn sm" type="button" data-fundo="${esc(x.cancel_id)}">Undo</button>` : ""}` : ""}</div>`).join("")}</td>
+            <td class="num">${money(g.reduce((a, x) => a + (+x.price || 0), 0))}</td><td class="num">${live.length && F.manager ? `<button class="btn sm" type="button" data-fcx="${esc(k)}">${fOpen === k ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
+          if (fOpen !== k || !live.length) return row;
+          return row + `<tr><td colspan="4"><div class="box">
+            ${live.map(x => `<label style="flex-direction:row;gap:8px;text-transform:none;font:14px var(--f-ui);color:var(--ink)"><input type="checkbox" data-fl="${x.id}" checked> ${esc(x.title || x.code)} · ${money(x.price)}</label>`).join("")}
+            <div class="fg"><label>Customer<input id="fWho" placeholder="Username or name"></label>
+              <label>Reason<select id="fWhy"><option>Buyer canceled</option><option>Didn't pay</option><option>Shipping problem</option><option>Other</option></select></label>
+              <label>Notes<input id="fNote" placeholder="Optional"></label></div>
+            <div class="row"><button class="btn pri" type="button" id="fGo">Cancel sale</button><span id="fMsg" class="how"></span></div></div></td></tr>`;
+        }).join("")}</tbody></table></div>`}
+      <p class="how">${can.length ? `${can.length} book${can.length === 1 ? "" : "s"} canceled.` : "Nothing canceled."} ${F.manager ? "" : "Only an owner or manager can cancel sales."} Cancellations here go to the database; the Workspace also marks them in the Used Books sheet.</p>
+      <h3>Giveaways${gN ? ` <span class="how">${gN} book${gN === 1 ? "" : "s"} · ${esc(bySrc)}</span>` : ""}</h3>
+      <p class="how">Used books are counted by source, not by title. The ISBN and title are optional.</p>
+      ${gs.length ? `<div class="tbl"><table><thead><tr><th class="plain">Date</th><th class="plain">Type</th><th class="plain">Source</th><th class="plain num">Qty</th><th class="plain">Recipient</th><th class="plain"></th></tr></thead><tbody>${
+        gs.map(g => `<tr><td>${dfmt(g.date)}</td><td>${esc(g.type)}</td><td>${esc(g.source || "—")}${g.title || g.isbn ? `<div class="a">${esc([g.title, g.isbn].filter(Boolean).join(" · "))}</div>` : ""}</td><td class="num">${int(g.qty)}</td><td>${esc(g.who || "")}${g.note ? `<div class="a">${esc(g.note)}</div>` : ""}</td><td class="num"><button class="btn sm" type="button" data-frm="${esc(g.id)}">Remove</button></td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No giveaways logged for this show.</p>`}
+      <div class="box">
+        <div class="row" id="fTypes">${GTYPES.map(t => `<button class="btn sm${t.name === fType ? " pri" : ""}" type="button" data-ft="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>
+        <div class="fg">
+          <label>Source<select id="gSrc">${(F.sources || []).map(x => `<option value="${esc(x.name)}">${esc(x.name)} · ${money(x.cost)}${x.share ? " · consignment" : ""}</option>`).join("")}</select></label>
+          <label>How many<input id="gQty" type="number" min="1" step="1" value="1"></label>
+          ${GTYPES.find(t => t.name === fType).sale ? `<label>Sale #<input id="gSale" inputmode="numeric"></label>` : ""}
+          <label>${esc(GTYPES.find(t => t.name === fType).who)}${GTYPES.find(t => t.name === fType).whoReq ? "" : " (optional)"}<input id="gWho"></label>
+          ${GTYPES.find(t => t.name === fType).event ? `<label>Event<input id="gEv" placeholder="Birthday…"></label>` : ""}
+          <label>Date<input id="gDate" type="date" value="${todayISO()}" max="${todayISO()}"></label>
+          <label>ISBN (optional)<input id="gIsbn" inputmode="numeric"></label>
+          <label>Title (optional)<input id="gTitle"></label>
+          <label>Notes<input id="gNote"></label>
+        </div>
+        <div class="row"><button class="btn pri" type="button" id="gGo">Save giveaway</button><span id="gMsg" class="how"></span></div>
+      </div>`;
+  }
+  $("drawerCard").addEventListener("click", async e => {
+    const b = e.target.closest("button"); if (!b || !F || !$("ful") || !$("ful").contains(b)) return;
+    const c = sb();
+    if (b.dataset.ft) { fType = b.dataset.ft; fulDraw(); return; }
+    if (b.dataset.fcx) { fOpen = fOpen === b.dataset.fcx ? "" : b.dataset.fcx; fulDraw(); if ($("fWho")) $("fWho").focus(); return; }
+    if (b.dataset.fundo || b.dataset.frm) {
+      if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = b.dataset.fundo ? "Yes, undo" : "Yes, remove"; b.classList.add("pri"); return; }
+      b.disabled = true;
+      const { error } = b.dataset.fundo ? await c.rpc("used_cancel_undo", { p_id: b.dataset.fundo }) : await c.rpc("used_giveaway_remove", { p_id: b.dataset.frm });
+      if (error) { b.disabled = false; b.textContent = error.message; return; }
+      fulLoad(fShowId); return;
+    }
+    if (b.id === "fGo") {
+      const who = $("fWho").value.trim(), msg = $("fMsg");
+      const ids = [...document.querySelectorAll("[data-fl]")].filter(x => x.checked).map(x => +x.dataset.fl);
+      if (!ids.length) { msg.innerHTML = `<span class="no">Tick at least one book.</span>`; return; }
+      if (!who) { msg.innerHTML = `<span class="no">Enter the customer.</span>`; return; }
+      b.disabled = true; msg.textContent = "Saving…";
+      const id = tagId(), today = todayISO();
+      for (const [i, sid] of ids.entries()) {
+        const x = F.sales.find(y => y.id === sid);
+        const { error } = await c.rpc("used_cancel", { p: { id: `${id}-${i + 1}`, show: F.show, sale: x.sale, code: x.code, title: x.title, price: x.price, source: x.source, customer: who, reason: $("fWhy").value, notes: $("fNote").value.trim(), by: by(), date: today } });
+        if (error) { b.disabled = false; msg.innerHTML = `<span class="no">${esc(error.message)}</span>`; return; }
+      }
+      fulLoad(fShowId); return;
+    }
+    if (b.id === "gGo") {
+      const t = GTYPES.find(x => x.name === fType), msg = $("gMsg"), bad = m => { msg.innerHTML = `<span class="no">${m}</span>`; };
+      const src = (F.sources || []).find(x => x.name === $("gSrc").value), qty = Math.round(+$("gQty").value), who = $("gWho").value.trim(), d = $("gDate").value;
+      const ev = t.event ? $("gEv").value.trim() : "", isbn = $("gIsbn").value.replace(/[^0-9X]/gi, ""), sale = t.sale ? $("gSale").value.trim() : "";
+      if (!src) return bad("Pick the source.");
+      if (!(qty > 0)) return bad("Enter how many books.");
+      if (t.whoReq && !who) return bad(`Enter the ${t.who.toLowerCase()}.`);
+      if (t.event && !ev) return bad("Enter the event.");
+      if (!d || d > todayISO()) return bad("Pick a date that isn’t in the future.");
+      if (isbn && isbn.length !== 10 && isbn.length !== 13) return bad("That ISBN doesn’t look right.");
+      b.disabled = true; msg.textContent = "Saving…";
+      const { error } = await c.rpc("used_giveaway_save", { p: { id: tagId(), date: d, type: t.name, source: src.name, qty, cost: src.cost, isbn, title: $("gTitle").value.trim(), show: F.show, sale, who, note: [ev, $("gNote").value.trim()].filter(Boolean).join(" · "), by: by() } });
+      if (error) { b.disabled = false; return bad(esc(error.message)); }
+      fulLoad(fShowId);
+    }
+  });
   $("showsTbl").addEventListener("click", e => { const r = e.target.closest(".trow"); if (r) openShow(r.dataset.id); });
   $("showsTbl").addEventListener("keydown", e => { if (e.key === "Enter") { const r = e.target.closest(".trow"); if (r) openShow(r.dataset.id); } });
   $("drawer").addEventListener("click", e => { if (e.target === $("drawer")) $("drawer").hidden = true; });
