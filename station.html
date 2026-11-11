@@ -215,10 +215,14 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
         <p class="sub" id="lySize"></p>
       </div>
       <div class="ctrls">
-        <fieldset><legend>Label</legend>
+        <fieldset><legend>Label · this computer's printer</legend>
+          <p class="sub" style="margin:2px 0 4px">These four settings are saved on this computer only, since each computer's printer can need its own. Hot-Label on the Mac uses 2.125 × 1 turned.</p>
           <div class="cr"><label for="lyW">Width (in)</label><input type="number" id="lyW" step="0.05" min="1" max="4"></div>
           <div class="cr"><label for="lyH">Height (in)</label><input type="number" id="lyH" step="0.05" min="0.5" max="6"></div>
           <div class="cr"><label for="lyM">Edge space (in)</label><input type="number" id="lyM" step="0.01" min="0" max="0.5"></div>
+          <div class="cr"><label for="lyRot">Turn the chit</label><select id="lyRot"><option value="none">Don't turn</option><option value="cw">Turn right (clockwise)</option><option value="ccw">Turn left (counter-clockwise)</option></select></div>
+        </fieldset>
+        <fieldset><legend>Look · every computer</legend>
           <div class="cr"><label for="lyLayout">Layout</label><select id="lyLayout"><option value="side">Buyer # on the left</option><option value="stacked">Buyer # and price on top</option></select></div>
           <div class="cr"><label for="lyNumFont">Buyer # font</label><select id="lyNumFont"></select></div>
           <div class="cr"><label for="lyTextFont">Text font</label><select id="lyTextFont"></select></div>
@@ -464,6 +468,10 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   const clone = o => JSON.parse(JSON.stringify(o));
   const mergeChit = v => { const d = clone(CHIT_DEFAULT); if (v && typeof v === "object") for (const k of Object.keys(d)) { if (v[k] == null) continue; d[k] = (typeof d[k] === "object") ? { ...d[k], ...v[k] } : v[k]; } return d; };
   let chit = clone(CHIT_DEFAULT), chitFetched = 0;
+  // Label size, edge space and turning belong to each computer's printer, so they're kept on that computer.
+  const LABEL_DEFAULT = { width: 2, height: 1, margin: 0.06, rotate: "none" };
+  const localLabel = () => ({ ...LABEL_DEFAULT, ...(store.get("label", null) || {}) });
+  const effective = c => ({ ...c, ...localLabel() });
   async function loadChit(force) {
     if (!force && Date.now() - chitFetched < 20000) return;
     const { data, error } = await sb.from("app_settings").select("value").eq("key", "chit_layout").maybeSingle();
@@ -480,7 +488,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   }
   function chitDoc(c, d) {
     // d: { number, user, price, title, date, cancelled }
-    const W = +c.width || 2, H = +c.height || 1, M = Math.max(0, +c.margin || 0);
+    const W = +c.width || 2, H = +c.height || 1, M = Math.max(0, +c.margin || 0), rot = c.rotate === "cw" || c.rotate === "ccw" ? c.rotate : "";
     const st = (f, font) => `font-family:${fam(font)};font-size:${+f.size}pt;font-weight:${f.bold ? 800 : 400};`;
     const numSize = d.number.length > 3 ? +c.number.size * 0.78 : +c.number.size;
     const clamp = n => `overflow:hidden;display:-webkit-box;-webkit-line-clamp:${n};-webkit-box-orient:vertical;word-break:break-word;`;
@@ -493,10 +501,10 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
       ? `<div class="row">${num}${price}</div>${user}${title}${date}`
       : `<div class="side">${num}<div class="col">${user}${price}</div></div>${title}${date}`;
     return `<!doctype html><html><head><meta charset="utf-8"><style>
-      @page { size: ${W}in ${H}in; margin: 0; }
+      @page { size: ${rot ? H : W}in ${rot ? W : H}in; margin: 0; }
       html, body { margin: 0; padding: 0; background: #fff; }
-      body { width: ${W}in; height: ${H}in; overflow: hidden; color: #000; }
-      .c { box-sizing: border-box; width: ${W}in; height: ${H}in; padding: ${M}in ${M + 0.02}in; display: flex; flex-direction: column; gap: .02in; ${c.border ? "border: 1.5pt solid #000;" : ""} }
+      body { width: ${rot ? H : W}in; height: ${rot ? W : H}in; overflow: hidden; color: #000; position: relative; }
+      .c { box-sizing: border-box; width: ${W}in; height: ${H}in; ${rot === "cw" ? `position:absolute;top:0;left:0;transform-origin:0 0;transform:translateX(${H}in) rotate(90deg);` : rot === "ccw" ? `position:absolute;top:0;left:0;transform-origin:0 0;transform:translateY(${W}in) rotate(-90deg);` : ""} padding: ${M}in ${M + 0.02}in; display: flex; flex-direction: column; gap: .02in; ${c.border ? "border: 1.5pt solid #000;" : ""} }
       .side { flex: 1; min-height: 0; display: flex; gap: .08in; align-items: center; }
       .side .col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
       .row { display: flex; justify-content: space-between; align-items: center; gap: .08in; }
@@ -510,7 +518,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
              price: money(sale.subtotal ?? sale.total), title: withTitle && its.length ? its.map(itemTitle).join(" + ") : "",
              date: fmtDate(saleTime(sale), chit.date.format), cancelled: isCancelled(sale) };
   }
-  const chitHtml = (sale, withTitle) => chitDoc(chit, chitData(sale, withTitle));
+  const chitHtml = (sale, withTitle) => chitDoc(effective(chit), chitData(sale, withTitle));
   function enqueue(sale, kind) {
     const key = sale.id + ":" + kind;
     if (queued.has(key)) return;
@@ -571,7 +579,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
     return d;
   }
   function fillForm() {
-    $("lyW").value = draft.width; $("lyH").value = draft.height; $("lyM").value = draft.margin;
+    $("lyW").value = draft.width; $("lyH").value = draft.height; $("lyM").value = draft.margin; $("lyRot").value = draft.rotate || "none";
     $("lyLayout").value = draft.layout; $("lyNumFont").value = draft.numFont; $("lyTextFont").value = draft.textFont; $("lyBorder").checked = !!draft.border;
     document.querySelectorAll("#layoutForm .fr").forEach(row => {
       const f = draft[row.dataset.f];
@@ -581,6 +589,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   function readForm() {
     const num = (id, d) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : d; };
     draft.width = Math.min(4, Math.max(1, num("lyW", 2))); draft.height = Math.min(6, Math.max(.5, num("lyH", 1))); draft.margin = Math.min(.5, Math.max(0, num("lyM", .06)));
+    draft.rotate = $("lyRot").value;
     draft.layout = $("lyLayout").value; draft.numFont = $("lyNumFont").value; draft.textFont = $("lyTextFont").value; draft.border = $("lyBorder").checked;
     document.querySelectorAll("#layoutForm .fr").forEach(row => {
       const f = draft[row.dataset.f];
@@ -594,13 +603,14 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
     });
   }
   function drawPreview() {
-    const f = $("prevFrame"), wPx = draft.width * 96, hPx = draft.height * 96;
+    const turned = draft.rotate === "cw" || draft.rotate === "ccw";
+    const f = $("prevFrame"), wPx = (turned ? draft.height : draft.width) * 96, hPx = (turned ? draft.width : draft.height) * 96;
     f.style.width = wPx + "px"; f.style.height = hPx + "px";
     const stageW = Math.max(200, $("prevStage").clientWidth - 36);
     const scale = Math.max(1, Math.min(4, stageW / wPx, 360 / hPx));
     f.style.transform = `scale(${scale})`;
     $("prevStage").style.height = (hPx * scale + 36) + "px";
-    const sizeNote = `Actual size ${draft.width} × ${draft.height} in, shown ${scale.toFixed(1)}× larger. Change the size here only if the labels in the printer change.`;
+    const sizeNote = `Chit ${draft.width} × ${draft.height} in${turned ? `, turned to print on a ${draft.height} × ${draft.width} in page` : ""}, shown ${scale.toFixed(1)}× larger.`;
     $("lySize").textContent = sizeNote; $("lySize").style.color = "";
     f.onload = () => {
       // Warn when something is cut off, so it's caught here instead of on a printed chit.
@@ -615,9 +625,9 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   const canEdit = () => { const m = meRef(); return !!m && (m.role === "owner" || m.role === "manager"); };
   $("layoutBtn").onclick = async () => {
     await loadChit(true);
-    draft = clone(chit); fillForm();
-    $("lySave").disabled = !canEdit();
-    $("lyMsg").textContent = canEdit() ? "" : "Only owners and managers can save a new layout. You can still preview and test.";
+    draft = clone(effective(chit)); fillForm();
+    $("lySave").disabled = false;
+    $("lyMsg").textContent = canEdit() ? "" : "Only owners and managers can change the look for every computer. Label settings still save on this computer.";
     $("lyMsg").className = "msg" + (canEdit() ? "" : " warn");
     $("layoutDlg").showModal();
     drawPreview();
@@ -626,13 +636,16 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   $("layoutForm").addEventListener("change", () => { readForm(); drawPreview(); });
   const closeLayout = () => { $("layoutDlg").close(); refocus(); };
   $("lyClose").onclick = $("lyCancel").onclick = closeLayout;
-  $("lyReset").onclick = () => { draft = clone(CHIT_DEFAULT); fillForm(); drawPreview(); $("lyMsg").textContent = "Back to the default layout. Save to keep it."; $("lyMsg").className = "msg"; };
-  $("lyTest").onclick = () => { readForm(); printNow(chitDoc(draft, sampleData($("lyPrevTitle").checked))); $("lyMsg").textContent = "Test chit sent to this computer's printer."; $("lyMsg").className = "msg ok"; };
+  $("lyReset").onclick = () => { draft = { ...clone(CHIT_DEFAULT), ...LABEL_DEFAULT }; fillForm(); drawPreview(); $("lyMsg").textContent = "Back to the default layout. Save to keep it."; $("lyMsg").className = "msg"; };
+  $("lyTest").onclick = () => { readForm(); printNow(chitDoc({ ...draft }, sampleData($("lyPrevTitle").checked))); $("lyMsg").textContent = "Test chit sent to this computer's printer."; $("lyMsg").className = "msg ok"; };
   $("lySave").onclick = async () => {
     readForm();
-    const { error } = await sb.from("app_settings").update({ value: JSON.stringify(draft) }).eq("key", "chit_layout");
+    store.set("label", { width: draft.width, height: draft.height, margin: draft.margin, rotate: draft.rotate });
+    if (!canEdit()) { setMsg("Label settings saved on this computer.", "ok"); closeLayout(); return; }
+    const look = clone(draft); delete look.rotate;
+    const { error } = await sb.from("app_settings").update({ value: JSON.stringify(look) }).eq("key", "chit_layout");
     if (error) { $("lyMsg").textContent = "Couldn't save: " + error.message; $("lyMsg").className = "msg bad"; return; }
-    chit = clone(draft); chitFetched = Date.now();
+    chit = mergeChit(look); chitFetched = Date.now();
     setMsg("Chit layout saved. Every station uses it from the next chit.", "ok");
     closeLayout();
   };
