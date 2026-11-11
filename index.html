@@ -113,7 +113,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 <main class="gate" id="pending" hidden>
   <div class="card">
     <div><span class="eyebrow">Reliant Distribution</span><h2>Almost there</h2></div>
-    <p>You're signed in as <b id="pendingEmail"></b>, but this account hasn't been given a role yet. Ask the owner to set it up, then sign in again.</p>
+    <p>You're signed in as <b id="pendingEmail"></b>, but this account hasn't been approved yet. Ask an owner or manager to approve it in Settings, then press Check again.</p>
+    <button class="btn primary" type="button" id="pendingRetry">Check again</button>
     <button class="btn" type="button" data-signout>Sign out</button>
   </div>
 </main>
@@ -124,7 +125,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     <div class="home-in">
       <div class="home-head">
         <div><span class="eyebrow">Reliant Distribution</span><h1>Workspace</h1></div>
-        <div class="acct"><span class="who" id="who"></span><button class="btn" type="button" data-signout>Sign out</button></div>
+        <div class="acct"><span class="who" id="who"></span><button class="btn" type="button" id="settingsBtn" hidden>Settings</button><button class="btn" type="button" data-signout>Sign out</button></div>
       </div>
       <div class="secs" id="secs"></div>
       <div class="sub">
@@ -188,6 +189,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     $("who").innerHTML = `<b></b> · ${me.role[0].toUpperCase() + me.role.slice(1)}`;
     $("who").querySelector("b").textContent = me.name;
     drawTiles(me);
+    $("settingsBtn").hidden = !MANAGER.includes(me.role);
     if ($("section").hidden) show("home");
   }
   function drawTiles(me) {
@@ -225,6 +227,9 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     $("sectionFrame").src = "about:blank";
     show("home");
   }
+  $("settingsBtn").onclick = () => openSection({ id: "settings", title: "Settings", url: "settings.html" });
+  window.RELIANT.onStaffChanged = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };
+  $("pendingRetry").onclick = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };
   $("homeBtn").onclick = () => { if (location.hash) history.back(); else closeSection(); };
   addEventListener("popstate", () => { if (!$("section").hidden) closeSection(); });
 
@@ -234,7 +239,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     signup = !signup;
     $("signinBtn").textContent = signup ? "Create account" : "Sign in";
     $("modeBtn").textContent = signup ? "Already have an account? Sign in" : "First time? Create your account";
-    $("signinIntro").textContent = signup ? "Choose a password of at least 8 characters. The owner gives your account its role afterwards." : "Sign in with your work email and password.";
+    $("signinIntro").textContent = signup ? "Use the email an owner added for you, and choose a password of at least 8 characters. An owner or manager then approves your account." : "Sign in with your work email and password.";
     $("password").autocomplete = signup ? "new-password" : "current-password";
     setMsg("");
   };
@@ -247,7 +252,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
         const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
         if (error) throw error;
         if (data.session) { setMsg(""); await refresh(data.session); }
-        else setMsg("Account created. If an email arrives, open its link; otherwise the owner will confirm the account. Then sign in here.");
+        else setMsg("Account created. Ask an owner or manager to approve it in Settings, then sign in here. (If a confirmation email arrives, you can open its link too.)");
       } else {
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -256,7 +261,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
       }
     } catch (err) {
       const m = String(err && err.message || err);
-      setMsg(/confirm/i.test(m) ? "This account hasn't been confirmed yet. Ask the owner to confirm it, then try again."
+      setMsg(/confirm/i.test(m) ? "This account hasn't been approved yet. Ask an owner or manager to approve it in Settings, then try again."
         : /invalid login/i.test(m) ? "That email and password don't match." : m, true);
     } finally { $("signinBtn").disabled = false; }
   };

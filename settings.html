@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --cloth: #10261f; --cloth-2: #173329; --cloth-3: #21443a;
+  --paper: #efe7d4; --paper-dim: #b9b29f; --gilt: #d2a54a; --rule: #2f5348;
+  --on-accent: #10261f; --bad: #f0b49f; --good: #9fd4a8;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--cloth); color: var(--paper); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 56px; display: flex; flex-direction: column; gap: 26px; }
+h1 { margin: 0; font: 400 clamp(30px, 5vw, 44px)/1.05 var(--f-display); }
+h2 { margin: 0; font: 400 24px/1.1 var(--f-display); }
+.eyebrow { font: 500 12px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+.sub { color: var(--paper-dim); font-size: 14px; margin: 6px 0 0; max-width: 70ch; }
+.sech { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 12px; }
+.sech .d { color: var(--paper-dim); font-size: 14px; }
+.btn { font: 600 14px var(--f-ui); color: var(--paper); background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+.btn:hover:not(:disabled) { border-color: var(--gilt); }
+.btn.primary { background: var(--gilt); color: var(--on-accent); border-color: var(--gilt); }
+.btn.warn { color: var(--bad); }
+.btn.warn.armed { background: #4a2219; border-color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+input, select { font: 500 15px var(--f-ui); color: var(--paper); background: var(--cloth); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; min-width: 0; width: 100%; }
+select:disabled, input:disabled { opacity: .6; }
+label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--paper-dim); }
+.msg { font-size: 14px; color: var(--paper-dim); min-height: 1.3em; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--good); }
+#loadMsg:empty { display: none; }
+
+.add { display: grid; grid-template-columns: 1fr 1.4fr 1fr auto; gap: 10px; align-items: end; background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; }
+.steps { margin: 10px 0 0; padding-left: 20px; color: var(--paper-dim); font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+.steps b { color: var(--paper); }
+
+.people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.person { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px 12px; background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; }
+.person.off { opacity: .6; }
+.person .stat { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.person .stat .s { font: 13px var(--f-mono); color: var(--paper-dim); margin-right: auto; }
+.person .stat .s.wait { color: var(--gilt); }
+.person .stat .s b { color: var(--paper); font-weight: 500; }
+.tag { line-height: 1.4; font: 600 10px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--on-accent); background: var(--gilt); border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 2px; }
+
+.levels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.level { background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; }
+.level b { font: 400 20px var(--f-display); display: block; margin-bottom: 2px; }
+.level span { color: var(--paper-dim); font-size: 14px; }
+.others { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.others li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; border: 1px dashed var(--rule); border-radius: 10px; }
+.others li .e { margin-right: auto; overflow-wrap: anywhere; }
+.others li .w { font: 13px var(--f-mono); color: var(--paper-dim); }
+
+@media (max-width: 720px) {
+  .add, .person { grid-template-columns: 1fr; }
+  .levels { grid-template-columns: 1fr; }
+  .add .btn { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Workspace</span>
+    <h1>Settings</h1>
+    <p class="sub">Who can open the Workspace, the name it shows for them, and what they can get into. Passwords stay private: each person chooses their own.</p>
+  </header>
+
+  <div class="msg bad" id="loadMsg" role="status"></div>
+
+  <section id="addSec" hidden>
+    <div class="sech"><h2>Add a person</h2><span class="d">Give their email access</span></div>
+    <form class="add" id="addForm" autocomplete="off">
+      <label class="f">Name<input id="aName" type="text" maxlength="60" placeholder="First and last name"></label>
+      <label class="f">Email<input id="aEmail" type="email" maxlength="200" placeholder="name@example.com"></label>
+      <label class="f">Access level<select id="aRole"></select></label>
+      <button class="btn primary" type="submit" id="aGo">Add</button>
+    </form>
+    <div class="msg" id="addMsg" role="status"></div>
+    <ol class="steps">
+      <li>Add their email here.</li>
+      <li>They open the Workspace, choose <b>First time? Create your account</b>, and use that same email with a password of their own.</li>
+      <li>Their name here shows <b>Signed up, needs your OK</b>. Check with them that it was them, then press <b>Approve</b>.</li>
+    </ol>
+  </section>
+
+  <section id="peopleSec" hidden>
+    <div class="sech"><h2>People</h2><span class="d" id="peopleCount"></span></div>
+    <ol class="people" id="people"></ol>
+  </section>
+
+  <section id="othersSec" hidden>
+    <div class="sech"><h2>Other sign-ups</h2><span class="d">Accounts made with an email that isn't on the list. They can't see anything.</span></div>
+    <ul class="others" id="others"></ul>
+  </section>
+
+  <section>
+    <div class="sech"><h2>Access levels</h2></div>
+    <div class="levels">
+      <div class="level"><b>Owner</b><span>Everything, including Settings and changing other owners.</span></div>
+      <div class="level"><b>Manager</b><span>Everything, including Settings, but can't add, change or remove owners.</span></div>
+      <div class="level"><b>Operator</b><span>Show day (Show Prep, Book Spotlight, Show Station), plus Inventory and Shows.</span></div>
+      <div class="level"><b>Scanner</b><span>Orders &amp; Receiving, plus Inventory and Shows.</span></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const R = (() => { try { return window.parent.RELIANT; } catch { return null; } })();
+  const sb = R && R.sb;
+  const LEVELS = [["owner", "Owner"], ["manager", "Manager"], ["operator", "Operator"], ["scanner", "Scanner"]];
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const when = t => t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+  const errText = e => String((e && (e.message || e.details)) || e || "Something went wrong").replace(/^.*?ERROR:\s*/, "");
+  const setMsg = (el, t, kind) => { el.textContent = t; el.className = "msg" + (kind ? " " + kind : ""); };
+  let data = null, myRole = null;
+
+  if (!sb) { setMsg($("loadMsg"), "Open Settings from the Workspace home screen.", "bad"); return; }
+
+  const roleOptions = (sel, current, lockOwner) => LEVELS
+    .filter(([v]) => v !== "owner" || myRole === "owner" || current === "owner")
+    .map(([v, l]) => `<option value="${v}" ${v === current ? "selected" : ""} ${v === "owner" && lockOwner ? "disabled" : ""}>${l}</option>`).join("");
+
+  async function load() {
+    const { data: d, error } = await sb.rpc("staff_list");
+    if (error) { setMsg($("loadMsg"), /owner or manager/i.test(error.message) ? "Settings is for owners and managers." : "Couldn't load Settings: " + errText(error), "bad"); return; }
+    setMsg($("loadMsg"), "");
+    data = d; myRole = d.me_role;
+    $("aRole").innerHTML = roleOptions(null, "operator");
+    $("addSec").hidden = false; $("peopleSec").hidden = false;
+    draw();
+  }
+
+  function statusOf(p) {
+    if (!p.active) return { t: "Removed · can't sign in", cls: "" };
+    if (p.linked) return p.last_sign_in ? { t: `Can sign in · last signed in <b>${esc(when(p.last_sign_in))}</b>`, cls: "" } : { t: "Approved · hasn't signed in yet", cls: "" };
+    if (p.signup_at) return { t: `Signed up ${esc(when(p.signup_at))} · needs your OK`, cls: "wait", approve: true };
+    return { t: "Waiting for them to create their account", cls: "" };
+  }
+
+  function draw() {
+    const staff = data.staff || [];
+    const active = staff.filter(p => p.active).length;
+    $("peopleCount").textContent = `${active} with access${staff.length > active ? ` · ${staff.length - active} removed` : ""}`;
+    $("people").innerHTML = staff.map(p => {
+      const st = statusOf(p);
+      const ownerLocked = p.role === "owner" && myRole !== "owner";   // managers can't change owners
+      const lockRole = p.is_me || ownerLocked || !p.active;
+      const lockAll = ownerLocked;
+      const emailLocked = lockAll || (p.linked && p.active);
+      return `<li class="person ${p.active ? "" : "off"}" data-id="${esc(p.id)}">
+        <label class="f"><span>Name${p.is_me ? '<span class="tag">You</span>' : ""}</span><input data-k="name" value="${esc(p.name)}" maxlength="60" ${lockAll ? "disabled" : ""}></label>
+        <label class="f">Email<input data-k="email" type="email" value="${esc(p.email || "")}" maxlength="200" ${emailLocked ? 'disabled title="They already have an account under this email. Remove them first to change it."' : ""}></label>
+        <label class="f">Access level<select data-k="role" ${lockRole ? "disabled" : ""}>${roleOptions(null, p.role, false)}</select></label>
+        <div class="stat">
+          <span class="s ${st.cls}">${st.t}</span>
+          <button class="btn primary" type="button" data-a="save" hidden>Save</button>
+          ${st.approve && !lockAll ? '<button class="btn primary" type="button" data-a="approve">Approve</button>' : ""}
+          ${p.is_me || lockAll ? "" : p.active ? '<button class="btn warn" type="button" data-a="remove">Remove</button>' : '<button class="btn" type="button" data-a="restore">Restore</button>'}
+        </div>
+        <div class="msg" data-k="msg" style="grid-column:1/-1;min-height:0"></div>
+      </li>`;
+    }).join("");
+    const others = data.others || [];
+    $("othersSec").hidden = !others.length;
+    $("others").innerHTML = others.map(o => `<li><span class="e">${esc(o.email)}</span><span class="w">signed up ${esc(when(o.signup_at))}</span><button class="btn" type="button" data-email="${esc(o.email)}">Add to the list</button></li>`).join("");
+  }
+
+  const rowVals = li => ({ name: li.querySelector('[data-k="name"]').value, email: li.querySelector('[data-k="email"]').value, role: li.querySelector('[data-k="role"]').value });
+  const person = id => (data.staff || []).find(p => p.id === id);
+  function dirty(li) {
+    const p = person(li.dataset.id), v = rowVals(li);
+    return v.name.trim() !== p.name || v.email.trim().toLowerCase() !== (p.email || "") || v.role !== p.role;
+  }
+  $("people").addEventListener("input", e => {
+    const li = e.target.closest("li.person"); if (!li) return;
+    li.querySelector('[data-a="save"]').hidden = !dirty(li);
+    setMsg(li.querySelector('[data-k="msg"]'), "");
+  });
+  $("people").addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.matches("input")) { const b = e.target.closest("li.person").querySelector('[data-a="save"]'); if (!b.hidden) b.click(); }
+  });
+
+  async function save(p, v, active, li, okText) {
+    const m = li.querySelector('[data-k="msg"]');
+    li.querySelectorAll("button").forEach(b => b.disabled = true);
+    const { error } = await sb.rpc("staff_save", { p_id: p.id, p_email: v.email, p_name: v.name, p_role: v.role, p_active: active });
+    if (error) { li.querySelectorAll("button").forEach(b => b.disabled = false); setMsg(m, errText(error), "bad"); return false; }
+    await load(); tellHome();
+    const nli = $("people").querySelector(`li[data-id="${CSS.escape(p.id)}"]`);
+    if (nli && okText) setMsg(nli.querySelector('[data-k="msg"]'), okText, "ok");
+    return true;
+  }
+
+  $("people").addEventListener("click", async e => {
+    const b = e.target.closest("button[data-a]"); if (!b) return;
+    const li = b.closest("li.person"), p = person(li.dataset.id), a = b.dataset.a, m = li.querySelector('[data-k="msg"]');
+    if (a === "save") { await save(p, rowVals(li), p.active, li, "Saved."); return; }
+    if (a === "remove") {
+      if (!b.classList.contains("armed")) {
+        b.classList.add("armed"); b.textContent = "Click again to remove";
+        setMsg(m, `${p.name} won't be able to sign in or see anything. You can restore them later.`);
+        setTimeout(() => { if (b.isConnected) { b.classList.remove("armed"); b.textContent = "Remove"; setMsg(m, ""); } }, 5000);
+        return;
+      }
+      await save(p, { name: p.name, email: p.email, role: p.role }, false, li, "Removed.");
+      return;
+    }
+    if (a === "restore") { await save(p, { name: p.name, email: p.email, role: p.role }, true, li, "Restored."); return; }
+    if (a === "approve") {
+      b.disabled = true;
+      const { error } = await sb.rpc("staff_approve", { p_id: p.id });
+      if (error) { b.disabled = false; setMsg(m, errText(error), "bad"); return; }
+      await load(); tellHome();
+      const nli = $("people").querySelector(`li[data-id="${CSS.escape(p.id)}"]`);
+      if (nli) setMsg(nli.querySelector('[data-k="msg"]'), `Approved. ${p.name} can sign in now.`, "ok");
+    }
+  });
+
+  $("others").addEventListener("click", e => {
+    const b = e.target.closest("button[data-email]"); if (!b) return;
+    $("aEmail").value = b.dataset.email; $("aName").value = "";
+    setMsg($("addMsg"), "Type their name and pick an access level, then press Add. Approve them in People afterwards.");
+    $("addSec").scrollIntoView({ behavior: "smooth", block: "start" }); $("aName").focus();
+  });
+
+  $("addForm").onsubmit = async e => {
+    e.preventDefault();
+    const name = $("aName").value.trim(), email = $("aEmail").value.trim();
+    if (!name) { setMsg($("addMsg"), "Type their name.", "bad"); $("aName").focus(); return; }
+    if (!email) { setMsg($("addMsg"), "Type their email.", "bad"); $("aEmail").focus(); return; }
+    $("aGo").disabled = true;
+    const { error } = await sb.rpc("staff_save", { p_id: null, p_email: email, p_name: name, p_role: $("aRole").value, p_active: true });
+    $("aGo").disabled = false;
+    if (error) { setMsg($("addMsg"), errText(error), "bad"); return; }
+    $("aName").value = ""; $("aEmail").value = "";
+    await load();
+    const added = (data.staff || []).find(p => (p.email || "") === email.toLowerCase());
+    setMsg($("addMsg"), added && added.signup_at
+      ? `${name} is on the list and has already signed up. Press Approve on their row below.`
+      : `${name} is on the list. Send them the Workspace link and ask them to choose "First time? Create your account" with ${email}.`, "ok");
+  };
+
+  // let the home screen update the name shown at the top
+  function tellHome() { try { window.parent.RELIANT.onStaffChanged && window.parent.RELIANT.onStaffChanged(); } catch {} }
+
+  load();
+})();
+</script>
+</body>
+</html>
