@@ -345,14 +345,14 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
       card.innerHTML = `<span class="lbl">${sameArmed ? "Same sale · next scan adds to" : "Next scan goes to"}</span>
         <span class="num ${b ? "" : "q"}">${b ? "#" + b.buyer_number : "?"}</span>
         <span class="who"><div class="user">${b ? esc(b.username || b.display_name || "Buyer") : "Buyer not sent by the platform"}</div>
-        <div class="meta">${money(t.total ?? t.subtotal)} · ${tm(saleTime(t))}${sameArmed ? " · " + itemsOf(t).length + " book" + (itemsOf(t).length === 1 ? "" : "s") + " so far" : ""}</div></span>`;
+        <div class="meta">${money(t.subtotal ?? t.total)} · ${tm(saleTime(t))}${sameArmed ? " · " + itemsOf(t).length + " book" + (itemsOf(t).length === 1 ? "" : "s") + " so far" : ""}</div></span>`;
     } else {
       card.innerHTML = `<span class="lbl">Next scan goes to</span><span class="wait">${sameArmed ? "No sale has a book yet." : showId ? "Waiting for the next sale…" : "No show yet. Sales appear here as soon as they happen."}</span>`;
     }
 
     const live = sales.filter(s => !isCancelled(s));
     const waiting = live.filter(s => !itemsOf(s).length).length;
-    const total = live.reduce((n, s) => n + Number(s.total ?? s.subtotal ?? 0), 0);
+    const total = live.reduce((n, s) => n + Number(s.subtotal ?? s.total ?? 0), 0);
     $("stats").innerHTML = `<span><b>${live.length}</b> sales</span><span><b>${buyers.length}</b> buyers</span><span><b>${items.length}</b> books</span><span class="${waiting ? "w" : ""}"><b>${waiting}</b> waiting for a book</span><span><b>${money(total)}</b></span>`;
 
     $("buyers").innerHTML = buyers.length ? buyers.map(b => {
@@ -368,7 +368,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
       return `<li class="${s.id === tid ? "target" : ""} ${c ? "cancel" : ""}">
         <span class="badge ${b ? "" : "q"}">${b ? "#" + b.buyer_number : "?"}</span>
         <span><span class="u">${esc(b ? (b.username || b.display_name) : "No buyer sent")}</span>${its.length > 1 ? `<span class="tag lot">LOT ${its.length}</span>` : ""}${c ? `<span class="tag bad">cancelled</span>` : ""}${s.flag ? `<span class="tag warn">${esc(s.flag)}</span>` : ""}
-          <div class="m">${money(s.total ?? s.subtotal)} · ${tm(saleTime(s))}</div><div class="bk">${books}</div></span>
+          <div class="m">${money(s.subtotal ?? s.total)} · ${tm(saleTime(s))}</div><div class="bk">${books}</div></span>
         <button class="btn small" type="button" data-print="${s.id}" title="Print this chit again">Print</button></li>`;
     }).join("") : `<li class="empty" style="display:block">No sales in this show yet.</li>`;
   }
@@ -507,7 +507,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   function chitData(sale, withTitle) {
     const b = buyerOf(sale), its = itemsOf(sale);
     return { number: b ? "#" + b.buyer_number : "?", user: b ? (b.username || b.display_name || "Buyer") : "No buyer",
-             price: money(sale.total ?? sale.subtotal), title: withTitle && its.length ? its.map(itemTitle).join(" + ") : "",
+             price: money(sale.subtotal ?? sale.total), title: withTitle && its.length ? its.map(itemTitle).join(" + ") : "",
              date: fmtDate(saleTime(sale), chit.date.format), cancelled: isCancelled(sale) };
   }
   const chitHtml = (sale, withTitle) => chitDoc(chit, chitData(sale, withTitle));
