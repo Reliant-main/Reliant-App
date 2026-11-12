@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Show Station · Reliant Workspace</title>
+<title>Ticket System · Reliant Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -145,7 +145,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
 <div class="wrap">
   <div class="topbar">
     <a class="btn" href="index.html">⌂ Home</a>
-    <div><span class="eyebrow">Shows · live</span><h1>Show Station</h1></div>
+    <div><span class="eyebrow">Shows · live</span><h1>Ticket System</h1></div>
     <span class="sp"></span>
     <span class="conn" id="printerStatus" title="Which computer is printing chits"><span class="dot" id="pDot"></span><span id="pTxt">Chit printer: checking…</span></span>
     <span class="conn" id="conn"><span class="dot" id="connDot"></span><span id="connTxt">Connecting…</span></span>
@@ -206,7 +206,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
 </div>
 <dialog id="layoutDlg" aria-labelledby="layoutTitle">
   <form method="dialog" id="layoutForm" autocomplete="off">
-    <div class="dlgHead"><div><span class="eyebrow">Show Station</span><h2 id="layoutTitle" class="dlgTitle">Chit layout</h2></div>
+    <div class="dlgHead"><div><span class="eyebrow">Ticket System</span><h2 id="layoutTitle" class="dlgTitle">Chit layout</h2></div>
       <button class="btn small" type="button" id="lyClose" aria-label="Close">✕</button></div>
     <div class="dlgGrid">
       <div class="prevBox">
@@ -270,7 +270,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   const fail = msg => {
     const d = document.createElement("div");
     d.className = "bridgeFail";
-    d.innerHTML = `<div><h2>Show Station</h2><p></p><p><a href="index.html">Go to the Workspace sign-in</a></p></div>`;
+    d.innerHTML = `<div><h2>Ticket System</h2><p></p><p><a href="index.html">Go to the Workspace sign-in</a></p></div>`;
     d.querySelector("p").textContent = msg;
     document.body.appendChild(d);
   };
@@ -711,7 +711,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   // ---------------------------------------------------------------- start
   (async () => {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { fail("Sign in on the Workspace home page first, then open the Show Station again."); return; }
+    if (!session) { fail("Sign in on the Workspace home page first, then open the Ticket System again."); return; }
     const { data: me, error } = await sb.rpc("my_staff");
     if (error) { fail("Couldn't check your account: " + error.message); return; }
     if (!me || !SHOW_CREW.includes(me.role)) { fail("Your account doesn't run shows. Ask the owner if it should."); return; }
