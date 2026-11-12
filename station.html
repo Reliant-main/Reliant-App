@@ -223,7 +223,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
           <div class="cr"><label for="lyRot">Turn the chit</label><select id="lyRot"><option value="none">Don't turn</option><option value="cw">Turn right (clockwise)</option><option value="ccw">Turn left (counter-clockwise)</option></select></div>
         </fieldset>
         <fieldset><legend>Look · every computer</legend>
-          <div class="cr"><label for="lyLayout">Layout</label><select id="lyLayout"><option value="side">Buyer # on the left</option><option value="stacked">Buyer # and price on top</option></select></div>
+          <div class="cr"><label for="lyLayout">Layout</label><select id="lyLayout"><option value="side">Buyer # on the left</option><option value="stacked">Buyer # and price on top</option><option value="ticket">Buyer # and price on the left, details on the right</option></select></div>
           <div class="cr"><label for="lyNumFont">Buyer # font</label><select id="lyNumFont"></select></div>
           <div class="cr"><label for="lyTextFont">Text font</label><select id="lyTextFont"></select></div>
           <div class="cr"><label class="chk"><input type="checkbox" id="lyBorder"> Border around the chit</label></div>
@@ -234,7 +234,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
           <div class="fr" data-f="user"><span>Username</span><input type="checkbox" data-k="show"><input type="number" data-k="size" step="0.5" min="5" max="30"><input type="checkbox" data-k="bold"><select data-k="lines" aria-label="Username lines"><option value="1">1 line</option><option value="2">2 lines</option><option value="3">3 lines</option></select></div>
           <div class="fr" data-f="price"><span>Price</span><input type="checkbox" data-k="show"><input type="number" data-k="size" step="0.5" min="5" max="40"><input type="checkbox" data-k="bold"><span></span></div>
           <div class="fr" data-f="title"><span>Book title</span><input type="checkbox" data-k="show"><input type="number" data-k="size" step="0.5" min="5" max="20"><input type="checkbox" data-k="bold"><select data-k="lines" aria-label="Title lines"><option value="1">1 line</option><option value="2">2 lines</option><option value="3">3 lines</option></select></div>
-          <div class="fr" data-f="date"><span>Date / time</span><input type="checkbox" data-k="show"><input type="number" data-k="size" step="0.5" min="5" max="20"><input type="checkbox" data-k="bold"><select data-k="format" aria-label="Date format"><option value="datetime">Date + time</option><option value="time">Time only</option><option value="date">Date only</option></select></div>
+          <div class="fr" data-f="date"><span>Date / time</span><input type="checkbox" data-k="show"><input type="number" data-k="size" step="0.5" min="5" max="20"><input type="checkbox" data-k="bold"><select data-k="format" aria-label="Date format"><option value="datetime24">Date + time (24-hour)</option><option value="time24">Time only (24-hour)</option><option value="datetime">Date + time</option><option value="time">Time only</option><option value="date">Date only</option></select></div>
           <p class="sub">The book title only prints on chits printed after a scan.</p>
         </fieldset>
       </div>
@@ -482,6 +482,10 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   function fmtDate(t, f) {
     if (!t) return "";
     const d = new Date(t);
+    const two = n => String(n).padStart(2, "0"), hm24 = `${two(d.getHours())}:${two(d.getMinutes())}`;
+    const md = `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
+    if (f === "datetime24") return `${md}, ${hm24}`;
+    if (f === "time24") return hm24;
     if (f === "time") return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     if (f === "date") return d.toLocaleDateString([], { month: "numeric", day: "numeric", year: "2-digit" });
     return dt(t);
@@ -492,12 +496,15 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
     const st = (f, font) => `font-family:${fam(font)};font-size:${+f.size}pt;font-weight:${f.bold ? 800 : 400};`;
     const numSize = d.number.length > 3 ? +c.number.size * 0.78 : +c.number.size;
     const clamp = n => `overflow:hidden;display:-webkit-box;-webkit-line-clamp:${n};-webkit-box-orient:vertical;word-break:break-word;`;
-    const num = c.number.show ? `<div class="n" style="font-family:${fam(c.numFont)};font-size:${numSize}pt;font-weight:${c.number.bold ? 900 : 400};line-height:.95">${esc(d.number)}</div>` : "";
+    let num = c.number.show ? `<div class="n" style="font-family:${fam(c.numFont)};font-size:${numSize}pt;font-weight:${c.number.bold ? 900 : 400};line-height:.95">${esc(d.number)}</div>` : "";
     const user = c.user.show ? `<div class="u" style="${st(c.user, c.textFont)}line-height:1.15;${clamp(c.user.lines || 2)}">${esc(d.user)}</div>` : "";
     const price = c.price.show ? `<div class="p" style="${st(c.price, c.textFont)}line-height:1.1">${esc(d.price)}</div>` : "";
     const title = c.title.show && d.title ? `<div class="t" style="${st(c.title, c.textFont)}line-height:1.12;${(c.title.lines || 1) > 1 ? clamp(c.title.lines) : "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"}">${esc(d.title)}</div>` : "";
     const date = c.date.show || d.cancelled ? `<div class="d" style="${st(c.date, c.textFont)}line-height:1.1">${c.date.show ? esc(d.date) : ""}${d.cancelled ? " · CANCELLED" : ""}</div>` : "";
-    const body = c.layout === "stacked"
+    if (c.layout === "ticket" && num) num = num.replace(">#", ">");   // the underline marks the buyer number, as on the sketch
+    const body = c.layout === "ticket"
+      ? `<div class="tk"><div class="tl">${num}${price}</div><div class="tr">${user}${title}${date}</div></div>`
+      : c.layout === "stacked"
       ? `<div class="row">${num}${price}</div>${user}${title}${date}`
       : `<div class="side">${num}<div class="col">${user}${price}</div></div>${title}${date}`;
     return `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -510,6 +517,10 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
       .row { display: flex; justify-content: space-between; align-items: center; gap: .08in; }
       .row .p { text-align: right; }
       .c > .u { flex: 1; min-height: 0; }
+      .tk { flex: 1; min-height: 0; display: flex; gap: .08in; }
+      .tk .tl { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; }
+      .tk .tl .n { text-decoration: underline; text-decoration-thickness: .06em; text-underline-offset: .08em; }
+      .tk .tr { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .02in; }
     </style></head><body><div class="c">${body}</div></body></html>`;
   }
   function chitData(sale, withTitle) {
