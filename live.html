@@ -353,6 +353,12 @@ body.tableMode .pl li.seen .t { opacity: .55; }
 .tvsell .chip.tv { border-color: var(--gilt); color: var(--paper); font-size: 15px; }
 .tvsell .already { color: var(--warn-ink); }
 .entry .check { display: flex; gap: 8px; align-items: center; font: 13px var(--f-ui); color: var(--paper-dim); }
+.tsbox { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.tsbox .tsshow { display: flex; gap: 6px; align-items: center; font: 13px var(--f-ui); color: var(--paper-dim); }
+.tsbox select { max-width: 260px; }
+.pending .tsbuy { font-weight: 700; }
+.pending .tsbuy .bn { display: inline-block; min-width: 1.6em; padding: 0 6px; margin-right: 4px; border-radius: 6px; background: var(--gilt); color: var(--cloth); text-align: center; }
+.slist .tstag { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 6px; font: 600 11px var(--f-ui); border: 1px solid currentColor; opacity: .85; }
 .entry .check input { accent-color: var(--gilt); }
 .slist li.nosale .pr { color: var(--paper-dim); }
 .slist li.nosale .ttl { opacity: .7; }
@@ -897,6 +903,9 @@ body.mode-display #btnHome2 { display: none !important; }
     <button class="btn" id="btnTvLayout" type="button">TV layout</button>
     <button class="btn" id="btnEditView" type="button">Hide / Unhide</button>
     <button class="btn" id="btnSwap" type="button" title="Swap the sales side and the playlist side">⇄ Swap sides</button>
+    <span class="themepick" title="Each studio computer runs its own show and its own TV. Pick a different studio on each computer."><label for="studioSel">Studio</label><select id="studioSel" aria-label="Studio">
+      <option value="1">Studio 1</option><option value="2">Studio 2</option><option value="3">Studio 3</option><option value="4">Studio 4</option>
+    </select></span>
     <a class="tvlink" id="tvLink" href="#" target="_blank" rel="noopener" data-hide="tvlink">Open TV window ↗</a>
   </header>
   <aside class="tvlpanel" id="tvlPanel" hidden aria-label="TV layout">
@@ -971,6 +980,11 @@ body.mode-display #btnHome2 { display: none !important; }
       <div class="pending" id="pending">Start a show to begin logging sales.</div>
       <label class="check" data-hide="tvSell"><input type="checkbox" id="tvSell"> A price with no scanned book goes to the book on the TV <span id="tvSellNote" style="color:var(--paper-dim)"></span></label>
       <label class="check" data-hide="autoNext"><input type="checkbox" id="autoNext"> After logging the book on the TV, move to the next playlist book</label>
+      <div class="tsbox" id="tsBox" data-hide="tslink">
+        <label class="check"><input type="checkbox" id="tsOn"> Log Ticket System sales here <span id="tsInfo" style="color:var(--paper-dim)"></span></label>
+        <label class="tsshow" id="tsShowRow" hidden>Ticket System show <select id="tsShow" aria-label="Ticket System show"></select></label>
+        <label class="check" id="tsPickRow" hidden><input type="checkbox" id="tsPick"> Table rounds: ask which lot each Ticket System sale bought (off: the lot with the book on the TV)</label>
+      </div>
     </div>
     <div class="saletabs" role="tablist">
       <button class="tab on" id="tabSales" type="button" role="tab" aria-selected="true">Sales <span id="salesCount">0</span></button>
@@ -2696,6 +2710,11 @@ body.mode-display #btnHome2 { display: none !important; }
   // ===================== Phase 2 =====================
   const MODE = location.hash === "#display" ? "display" : location.hash === "#solo" ? "solo" : "operator";
   const ARTIFACT_URL = location.href.split("#")[0];
+  // Studios: each studio computer runs its own show and TV. Studio 1 keeps the original storage names.
+  // A TV window on another computer gets its studio from the link (?studio=2).
+  const STUDIO = (() => { let v = null; try { v = new URLSearchParams(location.search).get("studio"); } catch {} if (!/^[1-4]$/.test(v || "")) v = store.get("spotlight.studio"); return /^[1-4]$/.test(v || "") ? v : "1"; })();
+  const SFX = STUDIO === "1" ? "" : "-s" + STUDIO;
+  const tvUrl = () => { try { const u = new URL(ARTIFACT_URL); u.searchParams.set("studio", STUDIO); u.hash = "display"; return u.href; } catch { return ARTIFACT_URL + "#display"; } };
   let dbPromise = null;
   function getDb() {
     if (!dbPromise) {
@@ -2724,7 +2743,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!db) { liveWriting = false; livePending = null; return; }
     while (livePending) {
       const cur = livePending; livePending = null;
-      try { await db.doc("live/state").set({ book: cur.book, grid: cur.grid || null, counter: cur.counter, upnext: cur.upnext, tvTheme: cur.tvTheme || "bookcloth", tvLayout: cur.tvLayout || null, at: Date.now() }); } catch {}
+      try { await db.doc("live/state" + SFX).set({ book: cur.book, grid: cur.grid || null, counter: cur.counter, upnext: cur.upnext, tvTheme: cur.tvTheme || "bookcloth", tvLayout: cur.tvLayout || null, at: Date.now() }); } catch {}
     }
     liveWriting = false;
   }
@@ -2734,22 +2753,22 @@ body.mode-display #btnHome2 { display: none !important; }
     const room = await getRoom();
     if (room) { try { await room.emit("nav", { dir, nid }); return; } catch {} }
     const db = await getDb();
-    if (db) { try { await db.doc("live/cmd").set({ dir, nid, seq: Date.now(), at: Date.now() }); } catch {} }
+    if (db) { try { await db.doc("live/cmd" + SFX).set({ dir, nid, seq: Date.now(), at: Date.now() }); } catch {} }
   }
 
   // ---------- window-to-window link (same computer) ----------
   let chan = null;
-  try { chan = typeof BroadcastChannel === "function" ? new BroadcastChannel("book-spotlight") : null; } catch { chan = null; }
+  try { chan = typeof BroadcastChannel === "function" ? new BroadcastChannel("book-spotlight" + SFX) : null; } catch { chan = null; }
   const seenMsgs = new Set();
   function post(msg) {
     msg = { ...msg, mid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), from: MODE };
     try { chan && chan.postMessage(msg); } catch {}
-    try { localStorage.setItem("spotlight.msg", JSON.stringify(msg)); } catch {}
+    try { localStorage.setItem("spotlight.msg" + SFX, JSON.stringify(msg)); } catch {}
   }
   function onMsg(fn) {
     const handle = m => { if (!m || !m.mid || seenMsgs.has(m.mid) || m.from === MODE) return; seenMsgs.add(m.mid); if (seenMsgs.size > 500) seenMsgs.clear(); fn(m); };
     if (chan) chan.onmessage = e => handle(e.data);
-    window.addEventListener("storage", e => { if (e.key === "spotlight.msg" && e.newValue) { try { handle(JSON.parse(e.newValue)); } catch {} } });
+    window.addEventListener("storage", e => { if (e.key === "spotlight.msg" + SFX && e.newValue) { try { handle(JSON.parse(e.newValue)); } catch {} } });
   }
   let lastBook = null, bcQueued = false;
   window.__wsBroadcast = () => scheduleBroadcast();
@@ -2794,7 +2813,7 @@ body.mode-display #btnHome2 { display: none !important; }
     const tvBook = solo || lastBook;
     if (!tvBook && !grid) return;
     const st = { type: "state", book: tvBook, grid, counter: $("counter").hidden ? "" : $("counter").innerHTML, upnext: $("upnext").hidden ? "" : $("upnext").innerHTML, tvTheme: window.__wsTvTheme || "bookcloth", tvLayout: window.__wsTvLayout || null };
-    try { localStorage.setItem("spotlight.liveState", JSON.stringify(st)); } catch {}
+    try { localStorage.setItem("spotlight.liveState" + SFX, JSON.stringify(st)); } catch {}
     post(st);
     writeLive(st);
     drawOnAir();
@@ -2867,13 +2886,13 @@ body.mode-display #btnHome2 { display: none !important; }
       $("counter").innerHTML = st.counter || ""; $("counter").hidden = !st.counter;
       $("upnext").innerHTML = st.upnext || ""; $("upnext").hidden = !st.upnext;
     };
-    try { apply(JSON.parse(localStorage.getItem("spotlight.liveState") || "null")); } catch {}
+    try { apply(JSON.parse(localStorage.getItem("spotlight.liveState" + SFX) || "null")); } catch {}
     if (!gotState) { $("dispWait").hidden = false; $("title").textContent = ""; }
     onMsg(m => { if (m.type === "state") apply(m); });
     post({ type: "hello" });
     getDb().then(db => {
       if (!db) { if (!gotState) $("dispWait").innerHTML = "This window can't connect to the Operator.<br>Reload it, and approve the page's storage if Claude asks."; return; }
-      db.doc("live/state").onSnapshot(snap => { if (snap.exists) apply(snap.data()); },
+      db.doc("live/state" + SFX).onSnapshot(snap => { if (snap.exists) apply(snap.data()); },
         () => { $("dispWait").hidden = false; $("dispWait").innerHTML = "Lost the connection to the Operator. Reload this window."; });
     });
     $("dispHint").hidden = false;
@@ -2919,7 +2938,12 @@ body.mode-display #btnHome2 { display: none !important; }
       $("btnPlFoot").onclick = () => { const c = !$("plFoot").classList.contains("collapsed"); setFoot(c); if (!c) (plBoxMode === "add" ? $("plScan") : $("plFind")).focus(); };
       setFoot(store.get("spotlight.plFootClosed") === "1");
     })();
-    $("tvLink").href = ARTIFACT_URL + "#display";
+    $("tvLink").href = tvUrl();
+    $("studioSel").value = STUDIO;
+    $("studioSel").onchange = () => {
+      const v = $("studioSel").value; store.set("spotlight.studio", v);
+      try { const u = new URL(location.href); u.searchParams.delete("studio"); location.href = u.href; } catch { location.reload(); }
+    };
     $("oaPrev").onclick = () => goBack();
     $("oaNextBtn").onclick = () => goNext();
     const navSeen = new Set();
@@ -2935,7 +2959,7 @@ body.mode-display #btnHome2 { display: none !important; }
     getDb().then(db => {
       if (!db) return;
       let first = true, lastSeq = 0;
-      db.doc("live/cmd").onSnapshot(snap => {
+      db.doc("live/cmd" + SFX).onSnapshot(snap => {
         const d = snap.exists ? snap.data() : null;
         if (first) { first = false; lastSeq = d ? d.seq : 0; return; }
         if (d && d.seq > lastSeq) { lastSeq = d.seq; if (Date.now() - d.at < 15000) navFrom(d.dir, d.nid); }
@@ -2946,6 +2970,8 @@ body.mode-display #btnHome2 { display: none !important; }
   }
 
   // ---------- sales ----------
+  const TSX = { on: store.get("spotlight.tsOn") === "1", pick: store.get("spotlight.tsPick") !== "0", list: [], sales: [], buyers: new Map(),
+    cur: null, done: new Set(), chan: null, chanShow: null, loading: false, again: false, busy: false };
   const S = { db: null, mode: "local", show: null, sales: [], reqs: [], unsubS: null, unsubR: null, bundle: null, pending: null, dup: null, failed: [], editing: null, delArm: null };
   const money = n => "$" + (Math.round((+n || 0) * 100) / 100).toFixed(2);
   const pad2 = n => String(n).padStart(2, "0");
@@ -3013,11 +3039,12 @@ body.mode-display #btnHome2 { display: none !important; }
     S.mode = S.db ? "db" : "local";
     if (!S.db) { $("salesBanner").hidden = false; $("salesBanner").textContent = "Sales are saving on this computer only (the page's online storage isn't available in this window). Export at the end of the show as usual."; }
     let curId = null;
-    if (S.db) { try { const d = await S.db.doc("meta/current").get(); curId = d.exists ? (d.data().showId || null) : null; } catch {} }
+    if (S.db) { try { const d = await S.db.doc("meta/current" + SFX).get(); curId = d.exists ? (d.data().showId || null) : null; } catch {} }
     else curId = store.get("spotlight.currentShow");
     if (curId) await openShow(curId);
     drawShow(); drawSales(); drawReqs(); drawDmgs();
     setSaleMode(saleMode);
+    tsStart();
   }
   async function openShow(id) {
     let show = null;
@@ -3048,7 +3075,7 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   function drawShow() {
     const on = !!S.show;
-    $("showName").innerHTML = on ? esc(S.show.sourceTab + (S.show.kind === "used" ? " · Used" : S.show.kind === "vintage" ? " · Vintage" : "")) + '<span class="rehTag">Rehearsal</span>' : "No show running";
+    $("showName").innerHTML = on ? esc((SFX ? "Studio " + STUDIO + " · " : "") + S.show.sourceTab + (S.show.kind === "used" ? " · Used" : S.show.kind === "vintage" ? " · Vintage" : "")) + '<span class="rehTag">Rehearsal</span>' : "No show running";
     document.body.classList.toggle("usedShow", on && isUsedKind(S.show.kind));
     if (on && isUsedKind(S.show.kind)) { if (saleMode === "table") setSaleMode("single"); loadUsedSources(); drawUsedBar(); }
     else document.body.classList.remove("speedOn");
@@ -3094,12 +3121,13 @@ body.mode-display #btnHome2 { display: none !important; }
       try { name = await nextShowName(iso); } finally { $("showGo").disabled = false; $("showErr").textContent = ""; }
       const show = { id, date: iso, platform: plat, sourceTab: name, kind, speed: false, rehearsal: true, startedAt: Date.now(), endedAt: null, exportedAt: null };
       try {
-        if (S.db) { await S.db.doc("shows/" + id).set(show); await S.db.doc("meta/current").set({ showId: id }); }
+        if (S.db) { await S.db.doc("shows/" + id).set(show); await S.db.doc("meta/current" + SFX).set({ showId: id }); }
         else store.set("spotlight.currentShow", id);
       } catch { $("showErr").textContent = "Couldn't start the show. Check the connection and try again."; return; }
       S.show = show; S.sales = []; S.reqs = []; S.dmgs = []; backup(); subscribe();
       $("showModal").hidden = true; drawShow(); drawSales(); drawReqs();
       $("saleScan").focus(); toast(`Show started: ${show.sourceTab}`);
+      TSX.cur = null; TSX.sales = []; TSX.done.clear(); TSX.chanShow = null; tsEnsureSince(); tsRefresh();
     } else {
       if (plat === S.show.platform) { $("showModal").hidden = true; return; }
       const upd = { platform: plat, sourceTab: isNumbered(S.show.sourceTab) ? S.show.sourceTab : tabName(S.show.date, plat) };
@@ -3119,12 +3147,12 @@ body.mode-display #btnHome2 { display: none !important; }
     const show = S.show;
     show.endedAt = Date.now();
     try {
-      if (S.db) { await S.db.doc("shows/" + show.id).update({ endedAt: show.endedAt }); await S.db.doc("meta/current").set({ showId: null }); }
+      if (S.db) { await S.db.doc("shows/" + show.id).update({ endedAt: show.endedAt }); await S.db.doc("meta/current" + SFX).set({ showId: null }); }
       else store.set("spotlight.currentShow", "");
     } catch { toast("Couldn't end the show online. Try again."); show.endedAt = null; return; }
     backup();
     if (S.unsubS) S.unsubS(); if (S.unsubR) S.unsubR();
-    S.show = null; S.pending = null; S.bundle = null;
+    S.show = null; S.pending = null; S.bundle = null; TSX.cur = null; T.awaitPick = null; tsDraw();
     $("endShowModal").hidden = true; drawShow(); drawSales(); drawReqs(); updateBundleBtn();
     openExport(show.id);
   });
@@ -3416,15 +3444,21 @@ body.mode-display #btnHome2 { display: none !important; }
     T.lots = T.lots.filter((_, i) => !keys.includes(i));
     T.sel.clear(); T.multi = false; T.awaitPick = null; $("salePrice").value = ""; tSave();
     drawTable(); drawPendingLine(); $("salePrice").focus();
-    const id = await logSale(items, total, false);
+    const ts = TSX.cur;
+    const id = await logSale(items, total, false, { ts });
+    if (!id && ts) {   // already logged elsewhere: the books go back on the table
+      const groups = []; items.forEach(it => { const g = it.lg && groups.find(x => x.lg === it.lg); if (g) g.books.push(it); else groups.push({ lg: it.lg, books: [it] }); });
+      putOnTable(groups.map(g => g.books.map(b => { const c = { ...b }; delete c.lg; delete c.round; return c; }))); return;
+    }
     const label = keys.length > 1 ? `lots ${keys.map(k => k + 1).join(" + ")} (${items.length} books)` : items.length > 1 ? `lot ${keys[0] + 1} (${items.length} books)` : `lot ${keys[0] + 1} · ${itemLabel(items[0])}`;
-    if (id) toast(`Logged ${money(total)} · ${label}`, { label: "Undo", run: () => returnToTable({ id, items }) }, 10000);
+    if (id) toast(`Logged ${money(total)} · ${label}${ts ? ` · Buyer ${ts.buyerNo ?? "?"}` : ""}`, { label: "Undo", run: () => returnToTable({ id, items, ts: ts ? { sale: ts.id } : null }) }, 10000);
   }
   // put a logged sale's books back on the table (lots kept together) and remove the sale
   async function returnToTable(s) {
     const items = (s.items || []).map(it => { const c = { ...it }; delete c.round; return c; });
     if (S.db) { try { await salesCol(S.show.id).doc(s.id).delete(); } catch { toast("Couldn't undo that. Try again."); return; } }
     else { S.sales = S.sales.filter(x => x.id !== s.id); backup(); }
+    if (s.ts) tsRelease(s.ts.sale, null);   // the Ticket System sale asks for its lot again
     const groups = [];
     items.forEach(it => { const g = it.lg && groups.find(x => x.lg === it.lg); if (g) g.books.push(it); else groups.push({ lg: it.lg, books: [it] }); });
     putOnTable(groups.map(g => g.books.map(b => { const c = { ...b }; delete c.lg; return c; })));
@@ -3452,11 +3486,18 @@ body.mode-display #btnHome2 { display: none !important; }
   function tableHint() {
     if (!S.show) return "Start a show to begin logging sales.";
     const nl = T.lots.length;
+    if (TSX.cur && !T.multi) {
+      const more = tsQueue().length - 1, moreTxt = more > 0 ? ` · <b>${more}</b> more waiting` : "";
+      if (!nl) return `${tsWho(TSX.cur)} · Load the table, then pick the lot they bought.${moreTxt} <button class="btn" type="button" id="tsSkip">Skip</button>`;
+      if (T.awaitPick == null) T.awaitPick = TSX.cur.price;
+      return `${tsWho(TSX.cur)} · <span class="pick">which lot? Press its number${nl > 9 ? " (1–9) or click it" : ` (1–${nl}) or click it`}.</span>${moreTxt} ${nl >= 2 ? `<button class="btn" type="button" id="tsBundle">Bundle lots</button> ` : ""}<button class="btn" type="button" id="tsSkip" title="Don't log this Ticket System sale here">Skip</button>`;
+    }
     if (T.awaitPick != null) return `<span class="pick">${money(T.awaitPick)} · which lot? Press its number${nl > 9 ? " (1–9) or click it" : ` (1–${nl}) or click it`}.</span> Esc cancels.`;
     if (!nl) return T.round ? `Round finished. Click ${loadLabel()}.` : `Click ${loadLabel()} to start.`;
     const bundleBtn = nl >= 2 ? ` <button class="btn" type="button" id="tbBundle">Bundle lots</button>` : "";
     if (T.multi) {
       const ks = [...T.sel].sort((a, b) => a - b).map(k => k + 1).join(", ");
+      if (TSX.cur) return `${tsWho(TSX.cur)} · <b>Bundling:</b> click each lot they bought${T.sel.size ? ` (<b>lots ${ks}</b>)` : ""}, then press Enter. <button class="btn" type="button" id="tbBundleCancel">Cancel</button>`;
       const n = T.sel.size;
       return `<b>Bundling:</b> click each lot to put together${n ? ` (<b>lot${n === 1 ? "" : "s"} ${ks}</b>)` : ""}. ${n >= 2 ? "Type one price and press Enter to sell them together (split evenly), or " : ""}<button class="btn" type="button" id="tbCombine"${n >= 2 ? "" : " disabled"}>Combine lots</button> <button class="btn" type="button" id="tbBundleCancel">Cancel</button>`;
     }
@@ -3467,9 +3508,12 @@ body.mode-display #btnHome2 { display: none !important; }
     return `Type the winning bid and press Enter, then press the lot's number. To sell or combine several lots together, click Bundle lots first. <b>R</b> + Enter ends the round (the rest are no sale).${bundleBtn}`;
   }
   $("pending").addEventListener("click", e => {
+    if (e.target.id === "tsSkip" && saleMode !== "table") { tsSkip(); return; }
     if (e.target.id === "tbCombine") combineSelected();
     else if (e.target.id === "tbBundle") { T.multi = true; drawTable(); drawPendingLine(); $("salePrice").focus(); }
-    else if (e.target.id === "tbBundleCancel") { T.multi = false; T.sel.clear(); drawTable(); drawPendingLine(); $("salePrice").focus(); }
+    else if (e.target.id === "tbBundleCancel") { T.multi = false; T.sel.clear(); if (TSX.cur) $("salePrice").value = ""; drawTable(); drawPendingLine(); $("salePrice").focus(); }
+    else if (e.target.id === "tsBundle") { T.awaitPick = null; T.multi = true; T.sel.clear(); $("salePrice").value = String(TSX.cur ? TSX.cur.price : ""); drawTable(); drawPendingLine(); $("salePrice").focus(); }
+    else if (e.target.id === "tsSkip") tsSkip();
   });
   // keyboard for table mode, ahead of the single-book handlers
   $("entry").addEventListener("keydown", e => {
@@ -3477,7 +3521,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (e.target.id === "salePrice") {
       if (T.awaitPick != null) {
         if (/^[1-9]$/.test(e.key)) { e.preventDefault(); e.stopPropagation(); const k = +e.key - 1; if (T.lots[k]) pickAndLog([k], T.awaitPick); return; }
-        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); T.awaitPick = null; drawPendingLine(); return; }
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (!TSX.cur) { T.awaitPick = null; drawPendingLine(); } return; }
         e.preventDefault(); e.stopPropagation(); return;
       }
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); $("salePrice").value = ""; T.sel.clear(); T.multi = false; drawTable(); drawPendingLine(); return; }
@@ -3552,6 +3596,14 @@ body.mode-display #btnHome2 { display: none !important; }
       };
       return;
     }
+    if (TSX.cur && S.show) {
+      const more = tsQueue().length - 1, moreTxt = more > 0 ? ` · <b>${more}</b> more waiting` : "";
+      const skip = ` <button class="btn" type="button" id="tsSkip" title="Don't log this Ticket System sale here">Skip</button>`;
+      if (S.pending) { setPending(`${tsWho(TSX.cur)} · <span class="chip">${esc(itemLabel(S.pending[0]))}</span> press Enter to log it${moreTxt}${skip}`); return; }
+      const tv = tvItem();
+      setPending(`${tsWho(TSX.cur)} · scan or type the book they bought${tv ? `, or press Enter for <span class="chip tv">${esc((tv.pos ? "#" + tv.pos + " · " : "") + itemLabel(tv))}</span>` : ""}${moreTxt}${skip}`);
+      return;
+    }
     if (S.pending) { setPending(`<span class="chip">${esc(itemLabel(S.pending[0]))}</span>${isUsedShow() ? usedHistory(S.pending[0]) : ""} type the price and press Enter (or R for no sale) · Esc cancels`); return; }
     if (S.show) setPending(isUsedShow() && !tvItem() ? (S.show.speed ? "Speed round: scan the book, then type its price, or R if it doesn't sell again." : "Scan the book, then type its price, or R for no sale.") : tvLine());
   }
@@ -3561,6 +3613,12 @@ body.mode-display #btnHome2 { display: none !important; }
     return S.sales.some(s => !s.rejected && now - s.loggedAt < 10000 && (s.items || []).some(i => i.isbn === isbn));
   }
   function acceptItem(it) {
+    if (TSX.cur && !S.bundle && saleMode !== "table" && S.show) {
+      const ts = TSX.cur;
+      $("salePrice").value = ""; S.pending = null;
+      logSale([{ ...it }], ts.price, false, { ts }).then(() => { drawPendingLine(); $(tvItem() ? "salePrice" : "saleScan").focus(); });
+      return;
+    }
     if (S.bundle) {
       if (S.bundle.length >= 4) { toast("A bundle holds up to 4 books"); return; }
       S.bundle.push(it); updateBundleBtn(); drawPendingLine();
@@ -3580,7 +3638,7 @@ body.mode-display #btnHome2 { display: none !important; }
     acceptItem(it);
   });
   $("salePrice").addEventListener("keydown", e => {
-    if (e.key === "Escape") { e.preventDefault(); S.pending = null; S.confirmAgain = false; $("salePrice").value = ""; drawPendingLine(); return; }
+    if (e.key === "Escape") { e.preventDefault(); S.pending = null; S.confirmAgain = false; $("salePrice").value = TSX.cur ? String(TSX.cur.price) : ""; drawPendingLine(); return; }
     if (e.key !== "Enter") return;
     e.preventDefault();
     const raw = $("salePrice").value.trim();
@@ -3607,8 +3665,8 @@ body.mode-display #btnHome2 { display: none !important; }
     const tvEntries = items.filter(it => it.eid != null);
     const advance = autoNext && tvEntries.some(it => it.eid === curId);
     const lastEid = tvEntries.length ? tvEntries.reduce((a, it) => idxOf(it.eid) > idxOf(a.eid) ? it : a).eid : null;
-    logSale(items.map(i => ({ ...i })), Math.round(n * 100) / 100, isR);
-    $("salePrice").value = ""; S.pending = null; S.bundle = null; updateBundleBtn();
+    logSale(items.map(i => ({ ...i })), Math.round(n * 100) / 100, isR, { ts: isR ? null : TSX.cur });
+    $("salePrice").value = isR && TSX.cur ? String(TSX.cur.price) : ""; S.pending = null; S.bundle = null; updateBundleBtn();
     if (advance && lastEid != null) nextAfter(lastEid);
     drawPendingLine();
     $(tvItem() ? "salePrice" : "saleScan").focus();
@@ -3738,14 +3796,22 @@ body.mode-display #btnHome2 { display: none !important; }
     const sold = prev.filter(s => !s.noSale).length, rs = prev.length - sold;
     return ` <span class="${sold ? "warn" : "already"}">${sold ? `Already sold tonight${sold > 1 ? " ×" + sold : ""}` : ""}${sold && rs ? " · " : ""}${rs ? `R earlier tonight${rs > 1 ? " ×" + rs : ""}` : ""}</span>`;
   }
-  async function logSale(items, total, noSale = false) {
+  async function logSale(items, total, noSale = false, opts = {}) {
     if (!S.show) return;
     if (isUsedShow()) items = stampUsed(items);
     const rec = { items, total, loggedAt: Date.now(), rejected: !!noSale, noSale: !!noSale, note: "" };
+    const ts = !noSale && opts.ts ? opts.ts : null;
+    if (ts) rec.ts = { sale: ts.id, show: ts.showId, buyer: ts.buyerNo, user: ts.user || "", order: ts.order || "" };
     const label = items.length > 1 ? `Bundle of ${items.length}` : itemLabel(items[0]);
-    toast(noSale ? `No sale (R) · ${label}` : `Logged ${money(total)} · ${label}`);
+    const ref = S.db ? salesCol(S.show.id).doc() : null;
+    if (ts) {   // claim the Ticket System sale first, so two screens can never log the same one
+      const r = await tsClaim(ts, ref ? ref.id : "l" + rec.loggedAt, total, items);
+      if (r === "taken") { tsDone(ts.id); toast(`Buyer ${ts.buyerNo ?? "?"}'s sale was already logged on another screen`); return null; }
+      if (r === "offline") rec.ts.unsynced = true;
+    }
+    toast(noSale ? `No sale (R) · ${label}` : `Logged ${money(total)} · ${label}${ts ? ` · Buyer ${ts.buyerNo ?? "?"}` : ""}`);
+    if (ts) tsDone(ts.id);
     if (S.db) {
-      const ref = salesCol(S.show.id).doc();
       rec.id = ref.id;
       try { await ref.set(Object.fromEntries(Object.entries(rec).filter(([k]) => k !== "id"))); }
       catch {
@@ -3768,8 +3834,170 @@ body.mode-display #btnHome2 { display: none !important; }
     else { Object.assign(s, fields); backup(); drawSales(); }
   }
   async function deleteSale(s) {
-    if (S.db) { try { await salesCol(S.show.id).doc(s.id).delete(); } catch { toast("Couldn't delete. Try again."); } }
+    if (S.db) { try { await salesCol(S.show.id).doc(s.id).delete(); } catch { toast("Couldn't delete. Try again."); return; } }
     else { S.sales = S.sales.filter(x => x !== s); backup(); drawSales(); }
+    if (s.ts) tsRelease(s.ts.sale, "skipped");
+  }
+
+
+  // ---------- Ticket System link ----------
+  // When "Log Ticket System sales here" is on, each platform sale the Ticket System receives (with its buyer number)
+  // is logged here: on the TV book, on the lot the operator picks, or on the next book scanned. Corrections made here
+  // (price, delete, back to the table) go back to the Ticket System so its chits can be reprinted.
+  const tsSb = () => (window.RELIANT && window.RELIANT.sb) || null;
+  const TS_PLAT = { WN: "Whatnot", TT: "TikTok", EB: "eBay" };
+  const tsPrice = x => Math.round(+(x.adj_price ?? x.subtotal ?? x.total ?? 0) * 100) / 100;
+  const tsWho = c => `<span class="tsbuy"><span class="bn">#${esc(String(c.buyerNo ?? "?"))}</span>${esc(c.user || "Buyer")} bought for ${money(c.price)}</span>`;
+  function tsDone(id) {
+    TSX.done.add(id);
+    if (TSX.cur && TSX.cur.id === id) { if ($("salePrice").value === String(TSX.cur.price)) $("salePrice").value = ""; TSX.cur = null; if (saleMode === "table") T.awaitPick = null; }
+    setTimeout(tsPump, 250); tsDraw();
+  }
+  function tsQueue() {
+    if (!TSX.on || !S.show || !S.show.tsShow) return [];
+    const since = (S.show.tsSince || 0) - 5000;
+    const mine = new Set(S.sales.filter(x => x.ts).map(x => x.ts.sale));
+    return TSX.sales.filter(x => !x.spotlight_state && !TSX.done.has(x.id) && !mine.has(x.id) && (x.status || "") !== "cancelled" && Date.parse(x.received_at) >= since);
+  }
+  async function tsRpc(fn, args) {
+    const sb = tsSb(); if (!sb) return { error: { message: "offline" } };
+    try { return await sb.rpc(fn, args); } catch (e) { return { error: e }; }
+  }
+  async function tsClaim(ts, ref, price, items) {
+    const { error } = await tsRpc("live_spotlight_link", { p_sale: ts.id, p_ref: ref, p_price: price,
+      p_items: items.map(it => ({ isbn: it.isbn || "", title: it.title || (it.found ? "" : itemLabel(it)) })) });
+    if (!error) return "ok";
+    if (String(error.message || "").includes("ALREADY")) return "taken";
+    toast("The Ticket System didn't get this sale's book. It's logged here; fix it in the Ticket System if needed.");
+    return "offline";
+  }
+  async function tsSetPrice(id, price) { const { error } = await tsRpc("live_spotlight_price", { p_sale: id, p_price: price }); if (error) toast("The Ticket System didn't get the new price. Try the change again."); else tsRefresh(); }
+  async function tsRelease(id, state) {
+    const { error } = await tsRpc("live_spotlight_release", { p_sale: id, p_state: state });
+    if (error) { toast("The Ticket System didn't get that change. Try again."); return; }
+    if (state) TSX.done.add(id); else TSX.done.delete(id);
+    tsRefresh();
+  }
+  async function tsSkip() {
+    const c = TSX.cur; if (!c) return;
+    TSX.cur = null; T.awaitPick = null; $("salePrice").value = "";
+    TSX.done.add(c.id); drawPendingLine();
+    toast(`Skipped Buyer ${c.buyerNo ?? "?"}'s ${money(c.price)} sale · it stays in the Ticket System`);
+    await tsRelease(c.id, "skipped");
+  }
+  async function tsSaveShow(fields) {
+    Object.assign(S.show, fields); backup();
+    try { if (S.db) await S.db.doc("shows/" + S.show.id).update(fields); } catch {}
+  }
+  // sales count from the moment logging is switched on for this show (or from the show's start)
+  function tsEnsureSince() {
+    if (!TSX.on || !S.show || S.show.tsSince) return;
+    tsSaveShow({ tsSince: Math.max(S.show.startedAt || 0, Date.now() - 120000) });
+  }
+  async function tsSetShow(id) {
+    TSX.cur = null; T.awaitPick = null; TSX.sales = []; TSX.done.clear();
+    await tsSaveShow({ tsShow: id || null });
+    tsRefresh();
+  }
+  function tsSubscribe(sid) {
+    const sb = tsSb(); if (!sb || TSX.chanShow === sid) return;
+    if (TSX.chan) { try { sb.removeChannel(TSX.chan); } catch {} }
+    TSX.chanShow = sid;
+    let t = null; const soon = () => { clearTimeout(t); t = setTimeout(tsRefresh, 150); };
+    TSX.chan = sb.channel("spotlight-ts-" + sid + "-" + STUDIO)
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_sales", filter: "live_show_id=eq." + sid }, soon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "live_buyers", filter: "live_show_id=eq." + sid }, soon)
+      .subscribe();
+  }
+  async function tsRefresh() {
+    const sb = tsSb();
+    if (!sb || !TSX.on || !S.show) { tsDraw(); tsPump(); return; }
+    if (TSX.loading) { TSX.again = true; return; }
+    TSX.loading = true;
+    try {
+      const plat = S.show.platform;
+      const { data: shows } = await sb.from("live_shows").select("id,platform_code,title,is_practice,created_at").order("created_at", { ascending: false }).limit(30);
+      TSX.list = (shows || []).filter(x => x.platform_code === plat || x.is_practice);
+      if (!S.show.tsShow) {   // link to the show whose first sale on this platform arrives after logging was switched on
+        const { data: hit } = await sb.from("live_sales").select("live_show_id").eq("platform_code", plat)
+          .gte("received_at", new Date((S.show.tsSince || Date.now()) - 5000).toISOString()).order("received_at", { ascending: false }).limit(1);
+        if (hit && hit[0] && hit[0].live_show_id) { await tsSaveShow({ tsShow: hit[0].live_show_id }); toast("Linked to the Ticket System show"); }
+      }
+      if (S.show.tsShow) {
+        const sid = S.show.tsShow;
+        const [a, b] = await Promise.all([
+          sb.from("live_sales").select("id,live_buyer_id,subtotal,total,adj_price,status,order_created_at,received_at,spotlight_state,spotlight_ref,platform_order_id")
+            .eq("live_show_id", sid).order("order_created_at", { ascending: true }).order("id"),
+          sb.from("live_buyers").select("id,buyer_number,username,display_name").eq("live_show_id", sid)]);
+        if (!a.error) TSX.sales = a.data || [];
+        if (!b.error) TSX.buyers = new Map((b.data || []).map(x => [x.id, x]));
+        // anything the database now says is handled no longer needs the "done" guard
+        TSX.sales.forEach(x => { if (x.spotlight_state) TSX.done.delete(x.id); });
+        tsSubscribe(sid);
+      } else TSX.sales = [];
+    } catch {} finally { TSX.loading = false; }
+    tsDraw(); tsPump();
+    if (TSX.again) { TSX.again = false; tsRefresh(); }
+  }
+  // take the oldest waiting sale and log it, or ask the operator which book it was
+  function tsPump() {
+    if (MODE !== "operator") return;
+    if (!TSX.on || !S.show) { if (TSX.cur) { TSX.cur = null; T.awaitPick = null; drawPendingLine(); } return; }
+    const q = tsQueue();
+    if (TSX.cur && !q.some(x => x.id === TSX.cur.id)) { TSX.cur = null; T.awaitPick = null; $("salePrice").value = ""; drawPendingLine(); }
+    if (TSX.busy || TSX.cur || !q.length) { tsDraw(); return; }
+    const x = q[0], b = TSX.buyers.get(x.live_buyer_id);
+    const cur = { id: x.id, showId: S.show.tsShow, price: tsPrice(x), buyerNo: b ? b.buyer_number : null, user: b ? (b.username || b.display_name || "") : "", order: x.platform_order_id || "" };
+    TSX.cur = cur;
+    if (saleMode === "table") {
+      T.multi = false; T.sel.clear();
+      if (!TSX.pick && tvSellOn() && T.lots.length) {
+        const k = T.lots.findIndex(l => l.books.some(it => it.eid != null && it.eid === curId));
+        if (k >= 0) { pickAndLog([k], cur.price); return; }
+      }
+      T.awaitPick = T.lots.length ? cur.price : null;
+      drawTable(); drawPendingLine(); $("salePrice").focus(); tsDraw();
+      return;
+    }
+    const tv = tvItem(), e = tv && tv.eid != null ? playlist[idxOf(tv.eid)] : null;
+    const busy = S.pending || S.bundle || S.dup || S.editing || S.confirmAgain;
+    if (tv && !busy && !(e && salesFor(e).length)) {
+      const advance = autoNext && tv.eid != null && tv.eid === curId;
+      TSX.busy = true;
+      logSale([{ ...tv }], cur.price, false, { ts: cur }).then(id => { if (id && advance) nextAfter(tv.eid); }).finally(() => { TSX.busy = false; drawPendingLine(); setTimeout(tsPump, 50); });
+      return;
+    }
+    $("salePrice").value = String(cur.price);
+    drawPendingLine(); $(S.pending || tv ? "salePrice" : "saleScan").focus(); tsDraw();
+  }
+  function tsDraw() {
+    const box = $("tsBox"); if (!box) return;
+    box.hidden = !tsSb() || MODE !== "operator";
+    $("tsOn").checked = TSX.on; $("tsPick").checked = TSX.pick;
+    $("tsPickRow").hidden = !TSX.on;
+    $("tsShowRow").hidden = !(TSX.on && S.show);
+    if (!TSX.on) { $("tsInfo").textContent = ""; return; }
+    if (!S.show) { $("tsInfo").textContent = "· starts with the next show"; return; }
+    const plat = TS_PLAT[S.show.platform] || S.show.platform;
+    const n = tsQueue().length;
+    $("tsInfo").textContent = !S.show.tsShow ? `· waiting for the first ${plat} sale` : n ? `· ${n} waiting` : "· all caught up";
+    const lbl = x => `${TS_PLAT[x.platform_code] || x.platform_code} · ${x.title || "started " + new Date(x.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}${x.is_practice ? " (practice)" : ""}`;
+    const opts = [`<option value="">Link to the next ${esc(plat)} sale</option>`].concat(TSX.list.map(x => `<option value="${x.id}">${esc(lbl(x))}</option>`));
+    if (S.show.tsShow && !TSX.list.some(x => x.id === S.show.tsShow)) opts.push(`<option value="${S.show.tsShow}">Linked show</option>`);
+    const sel = $("tsShow"), html = opts.join("");
+    if (sel.dataset.h !== html) { sel.innerHTML = html; sel.dataset.h = html; }
+    sel.value = S.show.tsShow ? String(S.show.tsShow) : "";
+  }
+  $("tsOn").onchange = e => {
+    TSX.on = e.target.checked; store.set("spotlight.tsOn", TSX.on ? "1" : "0");
+    if (TSX.on) { tsEnsureSince(); tsRefresh(); toast("Ticket System sales will be logged here"); }
+    else { TSX.cur = null; T.awaitPick = null; $("salePrice").value = ""; drawPendingLine(); tsDraw(); toast("Ticket System sales are no longer logged here"); }
+  };
+  $("tsPick").onchange = e => { TSX.pick = e.target.checked; store.set("spotlight.tsPick", TSX.pick ? "1" : "0"); };
+  $("tsShow").onchange = e => { const v = +e.target.value || null; if (S.show && v !== (S.show.tsShow || null)) { if (!v) tsSaveShow({ tsSince: Date.now() - 5000 }); tsSetShow(v); } };
+  function tsStart() {
+    tsEnsureSince(); tsRefresh();
+    if (!TSX.timer) TSX.timer = setInterval(() => { if (TSX.on && S.show) tsRefresh(); }, 8000);   // safety net, and finds the show before it's linked
   }
 
   function statsOf(sales) {
@@ -3798,9 +4026,10 @@ body.mode-display #btnHome2 { display: none !important; }
     ul.innerHTML = ordered.map((s, k) => ({ s, n: k + 1 })).reverse().map(({ s, n }) => {
       const items = s.items || [];
       const per = items.length > 1 && !s.noSale ? splitCents(Math.round(s.total * 100), items.length).map(c => money(c / 100)) : null;
-      const ttl = items.length > 1
+      const tsTag = s.ts ? `<span class="tstag" title="From the Ticket System${s.ts.user ? ": " + esc(s.ts.user) : ""}${s.ts.unsynced ? " · not yet sent to the Ticket System" : ""}">Buyer ${esc(String(s.ts.buyer ?? "?"))}${s.ts.unsynced ? " ⚠" : ""}</span>` : "";
+      const ttl = tsTag + (items.length > 1
         ? `${items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}<b>${s.noSale ? "Lot" : "Bundle"} of ${items.length}</b><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copies</span> ` : ""}${items.map((it, i) => `${esc((it.pos ? "#" + it.pos + " " : "") + itemLabel(it))}${per ? " " + per[i] : ""}`).join(" · ")}</span>`
-        : `${items[0] && items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}${items[0] && items[0].pos ? `<span class="pos">#${items[0].pos}</span>` : ""}<span class="${items[0] && !items[0].found && !items[0].used ? "miss" : ""}">${esc(itemLabel(items[0] || {}))}</span><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copy</span> ` : ""}${esc([fixAuthor(items[0]?.author || ""), items[0]?.isbn].filter(Boolean).join(" · "))}${s.note ? " · " + esc(s.note) : ""}${items[0] && items[0].used ? usedTags(items[0]) : ""}</span>`;
+        : `${items[0] && items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}${items[0] && items[0].pos ? `<span class="pos">#${items[0].pos}</span>` : ""}<span class="${items[0] && !items[0].found && !items[0].used ? "miss" : ""}">${esc(itemLabel(items[0] || {}))}</span><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copy</span> ` : ""}${esc([fixAuthor(items[0]?.author || ""), items[0]?.isbn].filter(Boolean).join(" · "))}${s.note ? " · " + esc(s.note) : ""}${items[0] && items[0].used ? usedTags(items[0]) : ""}</span>`);
       if (S.editing && S.editing.id === s.id) {
         return `<li data-id="${esc(s.id)}"><span class="n">#${n}</span><span class="tm">${timeOf(s.loggedAt)}</span><span class="ttl">${ttl}</span><span></span><span></span>
           <div class="edit"><input id="editInput" value="${esc(S.editing.kind === "price" ? (s.noSale ? "R" : String(s.total)) : (s.note || ""))}" placeholder="${S.editing.kind === "price" ? "New price or R" : "Note"}" aria-label="${S.editing.kind === "price" ? "New price" : "Note"}"><button class="btn primary" type="button" data-a="save">Save</button><button class="btn" type="button" data-a="cancel">Cancel</button></div></li>`;
@@ -3837,10 +4066,11 @@ body.mode-display #btnHome2 { display: none !important; }
   function commitEdit(s) {
     const v = $("editInput").value.trim(), kind = S.editing.kind; S.editing = null;
     if (kind === "price") {
-      if (/^r$/i.test(v)) { updateSale(s, { total: 0, noSale: true, rejected: true }); drawSales(); return; }
+      if (/^r$/i.test(v)) { updateSale(s, { total: 0, noSale: true, rejected: true }); if (s.ts) tsRelease(s.ts.sale, "skipped"); drawSales(); return; }
       const n = parseFloat(v.replace(/[$,\s]/g, ""));
       if (!(n > 0)) { toast("Type a price like 8 or 8.50, or R for no sale"); drawSales(); return; }
       updateSale(s, s.noSale ? { total: Math.round(n * 100) / 100, noSale: false, rejected: false } : { total: Math.round(n * 100) / 100 });
+      if (s.ts) tsSetPrice(s.ts.sale, Math.round(n * 100) / 100);
     } else updateSale(s, { note: v.slice(0, 200) });
     drawSales();
   }
