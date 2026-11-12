@@ -152,6 +152,14 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   </div>
 
   <div class="printbar">
+    <label class="chk">App
+      <select id="platPick" aria-label="Which app this page follows" title="Pick the app this studio streams on. The page only shows and prints that app's shows.">
+        <option value="">All apps</option>
+        <option value="WN">Whatnot only</option>
+        <option value="TT">TikTok only</option>
+        <option value="EB">eBay only</option>
+      </select>
+    </label>
     <label class="chk">Show
       <select id="showPick" aria-label="Show"></select>
     </label>
@@ -278,7 +286,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   if (!window.supabase || !cfg) { fail("The Workspace couldn't load. Check the internet connection and reload."); return; }
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
 
-  let shows = [], showId = null, sales = [], items = [], buyers = [], sameArmed = false, results = [], lastSaleTouched = null, lastQuery = "";
+  let shows = [], showId = null, sales = [], items = [], buyers = [], sameArmed = false, results = [], lastSaleTouched = null, lastQuery = "", practiceJust = false;
 
   // ---------------------------------------------------------------- settings
   $("printer").checked = store.get("printer", false);
@@ -287,6 +295,8 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   $("printer").onchange = () => { store.set("printer", $("printer").checked); refocus(); };
   $("chitMode").onchange = () => { store.set("chitMode", $("chitMode").value); refocus(); };
   $("follow").onchange = () => { store.set("follow", $("follow").checked); refocus(); };
+  $("platPick").value = store.get("plat", "");
+  $("platPick").onchange = async () => { store.set("plat", $("platPick").value); shows = []; showId = null; store.set("show", null); sameArmed = false; await loadShows(); await loadShow(); refocus(); };
   $("showPick").onchange = () => { showId = +$("showPick").value || null; store.set("show", showId); sameArmed = false; loadShow(); refocus(); };
 
   const setMsg = (t, kind) => { $("msg").textContent = t; $("msg").className = "msg" + (kind ? " " + kind : ""); };
@@ -294,16 +304,21 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
 
   // ---------------------------------------------------------------- data
   async function loadShows() {
-    const { data, error } = await sb.from("live_shows").select("id,platform_code,platform_show_id,title,is_practice,created_at").order("created_at", { ascending: false }).limit(25);
+    const { data: all, error } = await sb.from("live_shows").select("id,platform_code,platform_show_id,title,is_practice,created_at").order("created_at", { ascending: false }).limit(60);
     if (error) { setMsg("Couldn't load shows: " + error.message, "bad"); return; }
-    const newest = data[0] && data[0].id;
-    const hadNew = shows.length && newest && !shows.some(s => s.id === newest);
+    // App lock: a studio's page only lists (and follows) its own app's shows. Practice shows stay visible everywhere,
+    // but the page only jumps to a new practice show when this page made it.
+    const plat = $("platPick").value;
+    const data = all.filter(s => !plat || s.platform_code === plat || s.is_practice).slice(0, 25);
+    const follow = data.filter(s => !s.is_practice || practiceJust);
+    const newest = follow[0] ? follow[0].id : (data[0] && data[0].id);
+    const hadNew = shows.length && follow[0] && !shows.some(s => s.id === follow[0].id);
     shows = data;
     if (!showId || !shows.some(s => s.id === showId) || (hadNew && $("follow").checked)) {
       const saved = store.get("show", null);
       showId = (hadNew && $("follow").checked) ? newest : (shows.some(s => s.id === saved) ? saved : newest || null);
     }
-    $("showPick").innerHTML = shows.length ? shows.map(s => `<option value="${s.id}">${esc(showLabel(s))}</option>`).join("") : `<option value="">No shows yet</option>`;
+    $("showPick").innerHTML = shows.length ? shows.map(s => `<option value="${s.id}">${esc(showLabel(s))}</option>`).join("") : `<option value="">${plat ? "No " + esc(PLAT[plat]) + " shows yet" : "No shows yet"}</option>`;
     if (showId) $("showPick").value = String(showId);
   }
   const showLabel = s => (PLAT[s.platform_code] || s.platform_code) + " · " + (s.title || ("started " + new Date(s.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })));
@@ -442,7 +457,9 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   async function practice(repeat) {
     const { error } = await sb.rpc("live_practice_sale", { p_repeat: repeat });
     if (error) { setMsg(error.message, "bad"); return; }
-    await loadShows(); await loadShow(); refocus();
+    practiceJust = true;
+    try { await loadShows(); } finally { practiceJust = false; }
+    await loadShow(); refocus();
   }
   $("pNew").onclick = () => practice(false);
   $("pRepeat").onclick = () => practice(true);
@@ -696,7 +713,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
   const myKey = store.get("deviceKey", null) || (() => { const k = Math.random().toString(36).slice(2, 10); store.set("deviceKey", k); return k; })();
   const deviceName = () => /Mac/i.test(navigator.platform || navigator.userAgent) ? "Mac" : /Win/i.test(navigator.platform || navigator.userAgent) ? "Windows" : "another computer";
   let pres = null;
-  function presenceState() { return { printer: $("printer").checked, visible: document.visibilityState === "visible", device: deviceName() }; }
+  function presenceState() { return { printer: $("printer").checked, visible: document.visibilityState === "visible", device: deviceName(), plat: $("platPick").value }; }
   function startPresence() {
     pres = sb.channel("station-presence", { config: { presence: { key: myKey } } });
     pres.on("presence", { event: "sync" }, drawPrinter)
@@ -704,11 +721,14 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
     const retrack = () => { if (pres) pres.track(presenceState()); drawPrinter(); };
     document.addEventListener("visibilitychange", retrack);
     $("printer").addEventListener("change", retrack);
+    $("platPick").addEventListener("change", retrack);
   }
   function drawPrinter() {
     const box = $("printerStatus");
     const all = pres ? Object.values(pres.presenceState()).flat() : [];
-    const printers = all.filter(p => p.printer);
+    // Only count printers following the same app as this page (each studio has its own printer).
+    const myPlat = $("platPick").value;
+    const printers = all.filter(p => p.printer && (!myPlat || !p.plat || p.plat === myPlat));
     box.className = "conn";
     if (!printers.length) { $("pDot").className = "dot down"; box.classList.add("bad"); $("pTxt").textContent = "No computer is printing chits"; return; }
     const hidden = printers.filter(p => !p.visible), names = [...new Set(printers.map(p => p.device))].join(" + ");
