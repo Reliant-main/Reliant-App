@@ -118,6 +118,11 @@ details.practice .acts { margin-top: 10px; }
 .bridgeFail a { color: var(--gilt); }
 dialog#layoutDlg { width: min(980px, calc(100vw - 24px)); max-height: calc(100vh - 24px); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
 dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
+dialog#srcDlg { width: min(620px, calc(100vw - 24px)); max-height: calc(100vh - 24px); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
+#srcDlg fieldset { margin-top: 12px; }
+#srcCodes .cr { grid-template-columns: 1fr auto; }
+#srcDlg a { color: inherit; }
 .dlgHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .dlgTitle { font: 400 28px var(--f-display); color: var(--ink); text-transform: none; letter-spacing: 0; margin: 2px 0 10px; }
 .dlgGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; }
@@ -175,6 +180,7 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
       </select>
     </label>
     <button class="btn small" type="button" id="layoutBtn">Chit layout…</button>
+    <button class="btn small" type="button" id="srcBtn">Sale sources…</button>
   </div>
 
   <div class="grid">
@@ -255,6 +261,27 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
       <button class="btn" type="button" id="lyCancel">Cancel</button>
       <button class="btn primary" type="button" id="lySave">Save layout</button>
     </div>
+  </form>
+</dialog>
+<dialog id="srcDlg" aria-labelledby="srcTitle">
+  <form method="dialog" autocomplete="off">
+    <div class="dlgHead"><div><span class="eyebrow">Ticket System</span><h2 id="srcTitle" class="dlgTitle">Sale sources</h2></div>
+      <button class="btn small" type="button" id="srcClose" aria-label="Close">✕</button></div>
+    <p class="sub">Pick where each app's tickets come from. <b>Official connection</b> is the app's own sale feed. <b>Page reader</b> is the Reliant Page Reader extension reading sales off the live page, for apps without an official connection yet. Only one source makes tickets for an app, so a sale is never counted twice.</p>
+    <div class="srcRows" id="srcRows"></div>
+    <fieldset><legend>Page reader extensions</legend>
+      <p class="sub" style="margin:2px 0 6px">Each computer that runs the extension needs its own connection code. <a href="extension/reliant-page-reader.zip" download>Download the extension</a></p>
+      <div id="srcCodes"></div>
+      <div class="scanrow" style="margin-top:8px">
+        <input type="text" id="srcLabel" placeholder="Name this computer, like Studio 1 Mac" aria-label="Computer name">
+        <button class="btn primary" type="button" id="srcNew">Make a connection code</button>
+      </div>
+      <div id="srcNewCode" hidden>
+        <p class="sub" style="margin:8px 0 4px"><b>Copy this code now.</b> It's shown only once. Paste it into the extension's Connect box on that computer.</p>
+        <div class="scanrow"><input type="text" id="srcCode" readonly aria-label="Connection code"><button class="btn" type="button" id="srcCopy">Copy</button></div>
+      </div>
+    </fieldset>
+    <p class="msg" id="srcMsg"></p>
   </form>
 </dialog>
 <iframe id="printFrame" title="Chit printer" aria-hidden="true" tabindex="-1"></iframe>
@@ -679,6 +706,52 @@ dialog#layoutDlg::backdrop { background: rgba(0,0,0,.6); }
     setMsg("Chit layout saved. Every station uses it from the next chit.", "ok");
     closeLayout();
   };
+
+  // ---------------------------------------------------------------- sale sources + page reader
+  const SRC_APPS = [["WN", "Whatnot"], ["TT", "TikTok"], ["EB", "eBay"]];
+  async function drawSources() {
+    const mgr = canEdit();
+    const { data: st } = await sb.from("app_settings").select("value").eq("key", "sale_sources").maybeSingle();
+    let src = st && st.value; if (typeof src === "string") { try { src = JSON.parse(src); } catch { src = {}; } }
+    src = src || {};
+    $("srcRows").innerHTML = SRC_APPS.map(([k, n]) => `<div class="cr"><label for="src${k}">${n}</label>
+      <select id="src${k}" data-p="${k}" ${mgr ? "" : "disabled"}><option value="official">Official connection</option><option value="page">Page reader</option></select></div>`).join("");
+    SRC_APPS.forEach(([k]) => { $("src" + k).value = src[k] || (k === "WN" ? "official" : "page"); });
+    $("srcNew").disabled = !mgr; $("srcLabel").disabled = !mgr;
+    if (!mgr) { $("srcCodes").innerHTML = `<p class="sub">Only owners and managers can see and change these.</p>`; return; }
+    const { data: codes, error } = await sb.from("page_reader_codes").select("id,label,created_by,created_at,last_used_at,revoked_at").order("created_at", { ascending: false });
+    if (error) { $("srcCodes").innerHTML = `<p class="sub">Couldn't load connections: ${esc(error.message)}</p>`; return; }
+    const when = t => t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "never";
+    const live = (codes || []).filter(c => !c.revoked_at);
+    $("srcCodes").innerHTML = live.length ? live.map(c => `<div class="cr"><span>${esc(c.label || "Unnamed computer")} <span class="sub">· last used ${when(c.last_used_at)}</span></span>
+      <button class="btn small warn" type="button" data-revoke="${c.id}">Disconnect</button></div>`).join("") : `<p class="sub">No computers connected yet.</p>`;
+  }
+  $("srcBtn").onclick = async () => { $("srcMsg").textContent = ""; $("srcNewCode").hidden = true; $("srcDlg").showModal(); await drawSources(); };
+  $("srcClose").onclick = () => { $("srcDlg").close(); $("srcCode").value = ""; refocus(); };
+  $("srcRows").addEventListener("change", async e => {
+    const p = e.target.dataset.p; if (!p) return;
+    const { error } = await sb.rpc("set_sale_source", { p_platform: p, p_source: e.target.value });
+    $("srcMsg").textContent = error ? "Couldn't save: " + error.message : `${SRC_APPS.find(a => a[0] === p)[1]} tickets now come from the ${e.target.value === "page" ? "page reader" : "official connection"}.`;
+    $("srcMsg").className = "msg " + (error ? "bad" : "ok");
+  });
+  $("srcNew").onclick = async () => {
+    const { data, error } = await sb.rpc("page_reader_new_code", { p_label: $("srcLabel").value });
+    if (error) { $("srcMsg").textContent = "Couldn't make a code: " + error.message; $("srcMsg").className = "msg bad"; return; }
+    $("srcCode").value = data; $("srcNewCode").hidden = false; $("srcLabel").value = ""; $("srcMsg").textContent = "";
+    drawSources();
+  };
+  $("srcCopy").onclick = async () => {
+    try { await navigator.clipboard.writeText($("srcCode").value); $("srcMsg").textContent = "Copied."; $("srcMsg").className = "msg ok"; }
+    catch { $("srcCode").select(); $("srcMsg").textContent = "Press Ctrl+C (or Cmd+C) to copy."; $("srcMsg").className = "msg"; }
+  };
+  $("srcCodes").addEventListener("click", async e => {
+    const id = e.target.dataset.revoke; if (!id) return;
+    if (e.target.dataset.armed !== "1") { e.target.dataset.armed = "1"; e.target.textContent = "Click again to disconnect"; return; }
+    const { error } = await sb.from("page_reader_codes").update({ revoked_at: new Date().toISOString() }).eq("id", +id);
+    $("srcMsg").textContent = error ? "Couldn't disconnect: " + error.message : "Disconnected. That computer's extension stops working until it gets a new code.";
+    $("srcMsg").className = "msg " + (error ? "bad" : "ok");
+    drawSources();
+  });
 
   // ---------------------------------------------------------------- sound
   let ac = null;

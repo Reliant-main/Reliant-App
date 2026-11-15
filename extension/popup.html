@@ -1,0 +1,45 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Reliant Page Reader</title>
+<style>
+  :root { --bg:#10261f; --panel:#173329; --line:#2f5348; --fg:#efe7d4; --dim:#b9b29f; --gold:#d2a54a; --bad:#e07a5f; --ok:#7fae6a; }
+  body { margin:0; width:320px; background:var(--bg); color:var(--fg); font:13px system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { padding:14px; display:grid; gap:12px; }
+  h1 { font:600 15px system-ui; margin:0; color:var(--gold); }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; display:grid; gap:8px; }
+  .lbl { font:600 11px system-ui; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); }
+  input { width:100%; box-sizing:border-box; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px; font:12px ui-monospace, monospace; }
+  button { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px 10px; font:600 12px system-ui; cursor:pointer; }
+  button.on { background:var(--gold); color:var(--bg); border-color:var(--gold); }
+  .row { display:flex; gap:6px; } .row > * { flex:1; }
+  .dim { color:var(--dim); } .ok { color:var(--ok); } .bad { color:var(--bad); }
+  .stats { display:grid; grid-template-columns:1fr auto; gap:2px 8px; }
+</style></head>
+<body><main>
+  <h1>Reliant Page Reader</h1>
+  <section>
+    <div class="lbl">Connection</div>
+    <div id="connState" class="dim">Not connected</div>
+    <input id="code" placeholder="Paste the connection code from the Ticket System" autocomplete="off">
+    <button id="connect">Connect</button>
+  </section>
+  <section>
+    <div class="lbl">Mode</div>
+    <div class="row">
+      <button data-mode="off">Off</button>
+      <button data-mode="learn">Learning</button>
+      <button data-mode="read">Reading</button>
+    </div>
+    <div id="modeHelp" class="dim"></div>
+  </section>
+  <section>
+    <div class="lbl">This tab</div>
+    <div id="tab" class="dim">Open your live show page to use the reader.</div>
+  </section>
+  <section>
+    <div class="lbl">Activity</div>
+    <div class="stats" id="stats"></div>
+    <button id="reset">Clear activity</button>
+  </section>
+</main>
+<script src="popup.js"></script>
+</body></html>
