@@ -302,10 +302,9 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
     <div class="sect">
       <span class="lbl">Financial days</span>
       <div class="row2">
-        <div class="fld"><label for="sPay">Large payout (money in) $</label><input id="sPay" type="number" min="0" step="50"></div>
+        <div class="fld"><label for="sPay">Large money in $</label><input id="sPay" type="number" min="0" step="50"></div>
         <div class="fld"><label for="sBill">Large bill (money out) $</label><input id="sBill" type="number" min="0" step="50"></div>
       </div>
-      <label class="check"><input type="checkbox" id="sShowPay"> Show expected show payouts on the calendar</label>
       <div class="fld" style="max-width:240px"><label for="sDays">Alerts look ahead (days)</label><input id="sDays" type="number" min="0" max="30"></div>
     </div>
     <div class="err" id="setErr" role="alert"></div>
@@ -340,7 +339,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
   if (!sb && window.supabase && window.RELIANT_CONFIG) sb = window.supabase.createClient(window.RELIANT_CONFIG.supabaseUrl, window.RELIANT_CONFIG.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
 
   const today = ymd(new Date());
-  const D = { cats: [], events: [], done: new Set(), dayNotes: {}, settings: { big_payout: 2000, big_bill: 1000, show_payouts: true, alert_days: 3 }, dismissed: new Set(), payRows: [], plats: [], syncedAt: null, me: null };
+  const D = { cats: [], events: [], done: new Set(), dayNotes: {}, settings: { big_payout: 2000, big_bill: 1000, alert_days: 3 }, dismissed: new Set(), showRows: [], plats: [], syncedAt: null, me: null };
   const st = { month: today.slice(0, 7), day: today, range: ls.get("exec.range") || "7", plat: "all", from: addDays(today, -29), to: today, alertsAll: false };
 
   function setStatus(kind, t) { $("dot").className = "sdot " + kind; $("statusText").textContent = t; }
@@ -358,23 +357,25 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
       if (!s.session) { $("loading").hidden = true; setStatus("err", "Not signed in"); showMsg("Sign in on the Workspace home screen first, then open Executive.", true); return; }
       D.me = await q(sb.rpc("my_staff"));
       if (!D.me || D.me.role !== "owner") { $("loading").hidden = true; setStatus("err", "Owners only"); showMsg("Executive is for owner accounts only.", true); return; }
-      const [cats, events, done, notes, settings, dism, pay] = await Promise.all([
+      const [cats, events, done, notes, settings, dism, showsData, plats] = await Promise.all([
         q(sb.from("exec_categories").select("*").order("sort")),
         q(sb.from("exec_events").select("*").order("start_date")),
         q(sb.from("exec_event_done").select("event_id,occ_date")),
         q(sb.from("exec_day_notes").select("*")),
         q(sb.from("exec_settings").select("*").eq("id", 1).maybeSingle()),
         q(sb.from("exec_dismissed").select("key")),
-        q(sb.rpc("payouts_export"))
+        q(sb.rpc("shows_export")),
+        q(sb.from("platforms").select("code,name").order("code"))
       ]);
       D.cats = cats; D.events = events;
       D.done = new Set(done.map(d => d.event_id + "|" + d.occ_date));
       D.dayNotes = Object.fromEntries(notes.map(n => [n.day, n]));
       if (settings) D.settings = { ...settings, big_payout: num(settings.big_payout), big_bill: num(settings.big_bill) };
       D.dismissed = new Set(dism.map(d => d.key));
-      D.plats = pay.platforms || [];
-      D.syncedAt = pay.synced_at ? new Date(pay.synced_at) : null;
-      D.payRows = (pay.rows || []).map(r => ({ ...r, revenue: num(r.revenue), fees: num(r.fees), net_proceeds: num(r.net_proceeds), profit: num(r.profit), profit_after_giveaways: num(r.profit_after_giveaways), books_sold: num(r.books_sold), first_payout_amount: r.first_payout_amount == null ? null : num(r.first_payout_amount), final_payout_amount: num(r.final_payout_amount) }));
+      D.plats = plats || [];
+      D.syncedAt = showsData.synced_at ? new Date(showsData.synced_at) : null;
+      // shows_export rows: [id, name, date, platform, type, status, books, sales, canceled, R's, speed round, net, profit, giveaways, profit after giveaways]
+      D.showRows = (showsData.shows || []).map(a => ({ show_id: a[0], name: a[1], show_date: String(a[2]).slice(0, 10), platform_code: a[3], platform_name: platName(a[3]), show_type: a[4] || "new", books_sold: num(a[6]), revenue: num(a[7]), profit: num(a[12]) })).filter(r => r.books_sold > 0);
       showMsg("");
       setStatus("live", `Signed in as ${D.me.name} · show numbers copied from the sheets ${D.syncedAt ? D.syncedAt.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
       $("loading").hidden = true; $("app").hidden = false;
@@ -406,25 +407,8 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
   function occsIn(from, to) { return D.events.flatMap(ev => occurrences(ev, from, to)); }
   const isDone = o => D.done.has(o.ev.id + "|" + o.occ);
 
-  // expected payouts (from the Payouts section), one item per money movement
-  function payItems() {
-    const out = [];
-    for (const r of D.payRows) {
-      if (r.first_payout_date) {
-        out.push({ r, date: r.first_payout_date, amount: r.first_payout_amount, kind: "1st" });
-        if (r.payout_date) out.push({ r, date: r.payout_date, amount: r.final_payout_amount, kind: "final" });
-      } else if (r.payout_date) out.push({ r, date: r.payout_date, amount: r.net_proceeds, kind: "" });
-    }
-    return out;
-  }
-  function payByDay(from, to) {
-    const by = {};
-    payItems().forEach(p => { if (p.date >= from && p.date <= to) (by[p.date] = by[p.date] || []).push(p); });
-    return by;
-  }
-
   // a day's money color: green = big money in, red = big money out, gold = both; a manual day color wins
-  function dayMoney(day, occs, pays) {
+  function dayMoney(day, occs) {
     let inn = 0, out = 0, bigIn = false, bigOut = false;
     for (const o of occs) {
       const a = num(o.ev.amount), cat = catOf(o.ev.category);
@@ -434,14 +418,12 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
       else if (cat.financial && dir === "in" && a >= D.settings.big_payout && a > 0) bigIn = true;
       else if (cat.financial && dir === "out" && a >= D.settings.big_bill && a > 0) bigOut = true;
     }
-    const payTot = (pays || []).reduce((n, p) => n + num(p.amount), 0);
-    if (D.settings.show_payouts && payTot >= D.settings.big_payout && payTot > 0) bigIn = true;
-    return { bigIn, bigOut, inn: inn + (D.settings.show_payouts ? payTot : 0), out };
+    return { bigIn, bigOut, inn, out };
   }
-  function dayTint(day, occs, pays) {
+  function dayTint(day, occs) {
     const n = D.dayNotes[day];
     if (n && n.day_color) return { color: n.day_color, badge: n.day_label ? "" : "★" };
-    const m = dayMoney(day, occs, pays);
+    const m = dayMoney(day, occs);
     if (m.bigIn && m.bigOut) return { color: "var(--both)", badge: "$±" };
     if (m.bigIn) return { color: "var(--in)", badge: "$+" };
     if (m.bigOut) return { color: "var(--out)", badge: "$−" };
@@ -455,7 +437,6 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
     const cells = (first.getDay() + new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()) > 35 ? 42 : 35;
     const from = ymd(start), to = addDays(from, cells - 1);
     const occs = occsIn(from, to);
-    const pays = D.settings.show_payouts ? payByDay(from, to) : {};
     $("mName").textContent = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     let html = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(w => `<div class="wd">${w}</div>`).join("");
     for (let i = 0; i < cells; i++) {
@@ -463,8 +444,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
       const on = occs.filter(o => o.occ <= k && o.end >= k);
       const spans = on.filter(o => o.end > o.occ).sort((a, b) => a.occ < b.occ ? -1 : a.occ > b.occ ? 1 : a.ev.id - b.ev.id);
       const singles = on.filter(o => o.end === o.occ).sort((a, b) => (a.ev.start_time || "") < (b.ev.start_time || "") ? -1 : 1);
-      const p = pays[k] || [];
-      const tint = dayTint(k, on, p);
+      const tint = dayTint(k, on);
       const note = D.dayNotes[k];
       const cls = ["day", k.slice(0, 7) !== st.month && "out", k === today && "today", st.day === k && "sel", tint && "tinted"].filter(Boolean).join(" ");
       const dow = parse(k).getDay();
@@ -473,11 +453,10 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
         return `<div class="span ${o.occ === k ? "start" : "cont"} ${isStart ? "start" : ""} ${isEnd ? "end" : ""}" style="background:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)} · ${short(o.occ)}–${short(o.end)}">${isStart ? esc(o.ev.title) : "&nbsp;"}</div>`;
       }).join("");
       const lines = singles.map(o => `<span class="chip ${isDone(o) ? "done" : ""}"><i style="background:${esc(colorOf(o.ev))}"></i><span>${o.ev.start_time ? esc(fmtTime(o.ev.start_time).replace(":00", "").replace(" ", "").toLowerCase()) + " " : ""}${esc(o.ev.title)}${o.ev.amount ? " " + kmoney(num(o.ev.amount)) : ""}</span></span>`);
-      if (p.length) { const t = p.reduce((n, x) => n + num(x.amount), 0); lines.push(`<span class="chip auto"><i style="background:var(--in);opacity:.6"></i><span>Payouts ${kmoney(t)}</span></span>`); }
       const maxLines = Math.max(1, 3 - spans.length);
       const shown = lines.slice(0, maxLines).join("") + (lines.length > maxLines ? `<span class="more">+${lines.length - maxLines} more</span>` : "");
       const dots = on.slice(0, 6).map(o => `<i style="background:${esc(colorOf(o.ev))}"></i>`).join("") + (note && note.note ? `<i style="background:var(--ink-2)"></i>` : "");
-      const label = `${longDay(k)}${on.length ? `, ${on.length} event${on.length === 1 ? "" : "s"}` : ""}${p.length ? `, ${p.length} expected payout${p.length === 1 ? "" : "s"}` : ""}${tint ? ", financial day" : ""}`;
+      const label = `${longDay(k)}${on.length ? `, ${on.length} event${on.length === 1 ? "" : "s"}` : ""}${tint ? ", financial day" : ""}`;
       html += `<button class="${cls}" type="button" data-d="${k}" aria-label="${esc(label)}" ${tint ? `style="--tint:${tint.color}"` : ""}>
         <span class="n"><span>${parse(k).getDate()}</span>${tint && tint.badge ? `<span class="badge">${tint.badge}</span>` : note && note.note ? `<span title="Has notes">✎</span>` : ""}</span>
         ${note && note.day_label ? `<span class="dl">${esc(note.day_label)}</span>` : ""}
@@ -510,11 +489,10 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
   function renderNotes() {
     const k = st.day;
     const on = occsIn(k, k).sort((a, b) => (a.ev.start_time || "") < (b.ev.start_time || "") ? -1 : 1);
-    const pays = (payByDay(k, k)[k]) || [];
-    const shows = D.payRows.filter(r => r.show_date === k);
+    const shows = D.showRows.filter(r => r.show_date === k);
     const note = D.dayNotes[k] || {};
-    const tint = dayTint(k, on, D.settings.show_payouts ? pays : []);
-    const m = dayMoney(k, on, D.settings.show_payouts ? pays : []);
+    const tint = dayTint(k, on);
+    const m = dayMoney(k, on);
     const rel = k === today ? "Today" : daysBetween(today, k) === 1 ? "Tomorrow" : daysBetween(today, k) === -1 ? "Yesterday" : "";
     const ev = o => {
       const e = o.ev, c = catOf(e.category), done = isDone(o);
@@ -528,7 +506,6 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
         <div class="acts"><button class="btn sm" type="button" data-edit="${e.id}">Edit</button><button class="btn sm" type="button" data-done="${e.id}|${o.occ}">${done ? "Undo " + (dir === "out" ? "paid" : "done") : "Mark " + (dir === "out" ? "paid" : "done")}</button></div>
       </div>`;
     };
-    const payHtml = pays.length ? `<div class="sect"><span class="lbl">Expected payouts · ${money(pays.reduce((n, p) => n + num(p.amount), 0))}</span><table class="mini">${pays.map(p => `<tr><td>${esc(p.r.name)} <span class="tag">${esc(p.r.platform_code)}${p.kind === "1st" ? " 1st" : p.kind === "final" ? " final" : ""}</span></td><td class="r">${money(num(p.amount))}</td></tr>`).join("")}</table></div>` : "";
     const showHtml = shows.length ? `<div class="sect"><span class="lbl">Shows this day</span><table class="mini">${shows.map(r => `<tr><td>${esc(r.name)} <span class="tag">${esc(r.platform_name)}</span></td><td class="r">${money0(r.revenue)} sales · ${money0(r.profit)} profit</td></tr>`).join("")}</table></div>` : "";
     const swatch = PALETTE.map(c => `<button type="button" data-dc="${c}" style="background:${c}" aria-label="Color day ${c}" aria-pressed="${note.day_color === c}"></button>`).join("") + `<button type="button" class="clear" data-dc="" aria-pressed="${!note.day_color}">Auto</button>`;
     $("notes").innerHTML = `
@@ -537,7 +514,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
         ${m.inn || m.out ? `<div class="sub" style="margin-top:6px">${m.inn ? `<span style="color:var(--in)">+${money(m.inn)} in</span>` : ""}${m.inn && m.out ? " · " : ""}${m.out ? `<span style="color:var(--out)">−${money(m.out)} out</span>` : ""}</div>` : ""}
       </div><button class="btn primary sm" type="button" id="nAdd">+ Add</button></div>
       <div class="sect"><span class="lbl">Events · ${on.length}</span>${on.length ? on.map(ev).join("") : `<div class="none">Nothing scheduled. Press + Add, or double-click a day on the calendar.</div>`}</div>
-      ${payHtml}${showHtml}
+      ${showHtml}
       <div class="sect"><span class="lbl">Notes for this day</span>
         <textarea id="nNote" placeholder="Anything about this day: calls, decisions, reminders for the two of you">${esc(note.note || "")}</textarea>
         <div class="fld"><span class="lbl">Day color &amp; label</span><div class="swatches" id="nColors">${swatch}</div><input id="nLabel" maxlength="40" placeholder="Label shown on the calendar (optional)" value="${esc(note.day_label || "")}"></div>
@@ -682,20 +659,6 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
       if (d === 0) out.push({ key: `today|${e.id}|${o.occ}`, sort: 0, color: colorOf(e), t: `Today: ${e.title}${amt}`, d: e.start_time ? fmtTime(e.start_time) : catOf(e.category).name, ev: e, occ: o.occ });
       else if (e.significant && d > 0 && d <= ahead) out.push({ key: `sig|${e.id}|${o.occ}`, sort: d, color: colorOf(e), t: `${e.title}${amt}`, d: `Significant financial day ${when}.`, ev: e, occ: o.occ });
     }
-    // big expected show payouts
-    if (D.settings.show_payouts) {
-      const by = payByDay(today, addDays(today, ahead));
-      for (const [day, list] of Object.entries(by)) {
-        const t = list.reduce((n, p) => n + num(p.amount), 0);
-        if (t >= D.settings.big_payout && t > 0) {
-          const d = daysBetween(today, day);
-          out.push({ key: `pay|${day}`, sort: d + .2, color: "var(--in)", t: `Large payout ${d === 0 ? "expected today" : d === 1 ? "expected tomorrow" : "expected " + wkDay(day)}: ${money(t)}`, d: list.map(p => `${p.r.platform_code}${p.kind === "1st" ? " 1st" : p.kind === "final" ? " final" : ""} ${money0(num(p.amount))}`).join(" · "), day });
-        }
-      }
-    }
-    // payouts that should have landed already but are on a platform with no timing
-    const unset = D.payRows.filter(r => !r.payout_date && daysBetween(r.show_date, today) <= 14);
-    if (unset.length) out.push({ key: `unset|${unset.map(r => r.show_id).join(",")}`, sort: 50, color: "var(--warnfg)", t: `Payout timing not set for ${[...new Set(unset.map(r => r.platform_name))].join(", ")}`, d: `${unset.length} recent show${unset.length === 1 ? "" : "s"} won't show an expected payout date until it's set.` });
     return out.filter(a => !D.dismissed.has(a.key)).sort((a, b) => a.sort - b.sort);
   }
   function renderAlerts() {
@@ -706,7 +669,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
     $("btnAlertsAll").hidden = list.length <= 5;
     $("btnAlertsAll").textContent = st.alertsAll ? "Show fewer" : `Show all ${list.length}`;
     $("alerts").innerHTML = show.length ? show.map(a => `<div class="alert ${a.urgent ? "urgent" : ""}"><span class="bar" style="background:${esc(a.color)}"></span><div><div class="t">${esc(a.t)}</div>${a.d ? `<div class="d">${esc(a.d)}</div>` : ""}</div><div class="acts">${a.occ || a.day ? `<button class="btn sm" type="button" data-go="${esc(a.occ || a.day)}">Open day</button>` : ""}${a.key.startsWith("late|") ? `<button class="btn sm" type="button" data-paid="${a.ev.id}|${a.occ}">Mark paid</button>` : ""}<button class="btn sm" type="button" data-dismiss="${esc(a.key)}" aria-label="Clear this alert">Clear</button></div></div>`).join("")
-      : `<div class="none">All clear. Alerts show up here for reminders you set, bills not marked paid, promos starting, and large payouts.</div>`;
+      : `<div class="none">All clear. Alerts show up here for reminders you set, bills not marked paid, promos starting, and significant financial days coming up.</div>`;
   }
   $("btnAlertsAll").onclick = () => { st.alertsAll = !st.alertsAll; renderAlerts(); };
   $("btnBell").onclick = () => { $("alertsPanel").scrollIntoView({ behavior: "smooth", block: "start" }); };
@@ -745,7 +708,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
   $("rTo").onchange = () => { if ($("rTo").value) { st.to = $("rTo").value; renderReview(); } };
   function renderReview() {
     const [from, to] = rangeDates();
-    const inRange = D.payRows.filter(r => r.show_date >= from && r.show_date <= to);
+    const inRange = D.showRows.filter(r => r.show_date >= from && r.show_date <= to);
     const platsHere = [...new Map(inRange.map(r => [r.platform_code, r.platform_name]))];
     $("segPlat").innerHTML = `<button data-v="all" type="button">All platforms</button>` + platsHere.map(([c, n]) => `<button data-v="${esc(c)}" type="button">${esc(n)}</button>`).join("");
     if (st.plat !== "all" && !platsHere.some(([c]) => c === st.plat)) st.plat = "all";
@@ -784,7 +747,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
     catDraft = D.cats.map(c => ({ ...c }));
     drawCats();
     $("sPay").value = D.settings.big_payout; $("sBill").value = D.settings.big_bill;
-    $("sShowPay").checked = !!D.settings.show_payouts; $("sDays").value = D.settings.alert_days;
+    $("sDays").value = D.settings.alert_days;
     $("setErr").textContent = "";
     $("dlgSettings").showModal();
   };
@@ -802,7 +765,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
           await q(sb.from("exec_categories").insert({ code, ...row }));
         } else await q(sb.from("exec_categories").update(row).eq("code", c.code));
       }
-      const s = { big_payout: Math.max(0, num($("sPay").value)), big_bill: Math.max(0, num($("sBill").value)), show_payouts: $("sShowPay").checked, alert_days: Math.min(30, Math.max(0, Math.round(num($("sDays").value)))) };
+      const s = { big_payout: Math.max(0, num($("sPay").value)), big_bill: Math.max(0, num($("sBill").value)), alert_days: Math.min(30, Math.max(0, Math.round(num($("sDays").value)))) };
       await q(sb.from("exec_settings").update(s).eq("id", 1));
       D.settings = { ...D.settings, ...s };
       D.cats = await q(sb.from("exec_categories").select("*").order("sort"));

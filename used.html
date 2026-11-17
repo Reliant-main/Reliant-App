@@ -99,6 +99,12 @@ tr:last-child td { border-bottom: 0; }
 .ful .ok { color: var(--good); } .ful .no { color: var(--bad); }
 .btn.sm { padding: 4px 9px; font-size: 12px; }
 .btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.cons .due { font-weight: 600; color: var(--bad); }
+.cons .ok { color: var(--good); font-weight: 600; }
+.cons .payrow td { background: var(--accent-wash); }
+.cons .payrow input { font: 14px var(--f-ui); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.cons .grow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 720px) { .cons .hm { display: none; } }
 </style>
 </head>
 <body>
@@ -131,6 +137,10 @@ tr:last-child td { border-bottom: 0; }
     <div class="tbl" id="showsTbl"></div>
     <p class="how">Click a show for its speed-round and condition breakdown. Sell-through counts books sold out of books shown (sales plus R’s).</p>
   </section>
+  <section class="panel cons" id="consPanel" hidden>
+    <div class="ph"><div><h2>Consignors</h2><span class="sub">Owed each month: their share of the after-fees amount on every book they consigned. That share is counted as the book’s cost, so profit here is already after paying them.</span></div></div>
+    <div class="tbl" id="consBody"></div>
+  </section>
 </div>
 
 <div class="drawer" id="drawer" hidden><div class="card" id="drawerCard" role="dialog" aria-modal="true" aria-label="Show breakdown"></div></div>
@@ -158,8 +168,46 @@ tr:last-child td { border-bottom: 0; }
     $("err").hidden = true; D = data;
     const at = D.synced_at ? new Date(D.synced_at) : null;
     setStatus("live", `${int(D.loads.length)} load${D.loads.length === 1 ? "" : "s"} · ${int(D.shows.length)} shows · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
-    render();
+    render(); consRefresh();
   }
+
+  // ---------- consignors (moved here from the old Payouts section) ----------
+  let cons = null, consOpen = "";
+  const mLabel = m => { const [y, mm] = String(m).slice(0, 7).split("-").map(Number); return new Date(y, mm - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" }); };
+  async function consRefresh() {
+    const c = sb(); if (!c) return;
+    const { data, error } = await c.rpc("consignment_export");
+    cons = error ? null : (data || { consignors: [], months: [] });
+    drawCons();
+  }
+  function drawCons() {
+    const el = $("consPanel");
+    if (!cons || !(cons.consignors || []).length) { el.hidden = true; return; }
+    el.hidden = false;
+    const ms = (cons.months || []).map(r => ({ ...r, owed: +r.owed || 0, paid: +r.paid || 0, balance: +r.balance || 0, after_fees: +r.after_fees || 0, gross: +r.gross || 0, books: +r.books || 0 }));
+    const due = ms.reduce((n, r) => n + Math.max(0, r.balance), 0);
+    const sh = (cons.consignors || []).map(x => `${esc(x.name)} ${Math.round(x.share * 100)}%`).join(" · ");
+    $("consBody").innerHTML = (ms.length ? `<table><thead><tr><th class="plain">Month</th><th class="plain">Consignor</th><th class="plain num hm">Books</th><th class="plain num hm">Sold for</th><th class="plain num">After fees</th><th class="plain num">Owed</th><th class="plain num">Paid</th><th class="plain num">Balance</th><th class="plain"></th></tr></thead><tbody>${
+      ms.map(r => {
+        const key = r.code + "|" + r.month, open = consOpen === key;
+        const row = `<tr><td>${esc(mLabel(r.month))}</td><td>${esc(r.name)} <span class="sub">${Math.round((+r.share || 0) * 100)}%</span></td><td class="num hm">${int(r.books)}</td><td class="num hm">${money(r.gross)}</td><td class="num">${money(r.after_fees)}</td><td class="num">${money(r.owed)}</td><td class="num">${money(r.paid)}</td><td class="num ${r.balance > 0.004 ? "due" : "ok"}">${r.balance > 0.004 ? money(r.balance) : "Paid"}</td><td>${r.balance > 0.004 ? `<button class="btn sm" type="button" data-cpay="${esc(key)}">Record payment</button>` : ""}</td></tr>`;
+        return row + (open ? `<tr class="payrow"><td colspan="9"><div class="grow">Paid ${esc(r.name)} for ${esc(mLabel(r.month))}: $<input type="number" step="0.01" min="0" id="cAmt" value="${r.balance.toFixed(2)}" style="width:110px"> <input type="text" id="cNote" placeholder="Note (check #, etc.)" style="width:200px"> <button class="btn sm pri" type="button" data-csave="${esc(key)}">Save payment</button> <button class="btn sm" type="button" data-ccancel="1">Cancel</button> <span class="sub" id="cMsg"></span></div></td></tr>` : "");
+      }).join("")}</tbody></table>` : `<p class="sub">No consignment books sold yet (${sh}). Sales show up here once a vintage show’s rows reach the Used Books workbook and the nightly copy runs.</p>`)
+      + (ms.length ? `<p class="sub" style="margin:10px 0 0">${due > 0.004 ? `<b>${money(due)}</b> still owed in total.` : "Everyone is paid up."} Rates: ${sh} of the after-fees amount.</p>` : "");
+  }
+  $("consBody").addEventListener("click", async e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.cpay) { consOpen = b.dataset.cpay; drawCons(); const a = $("cAmt"); if (a) a.select(); return; }
+    if (b.dataset.ccancel) { consOpen = ""; drawCons(); return; }
+    if (b.dataset.csave) {
+      const [code, month] = b.dataset.csave.split("|"), amt = parseFloat($("cAmt").value);
+      if (!(amt > 0)) { $("cMsg").textContent = "Type the amount paid."; return; }
+      b.disabled = true; $("cMsg").textContent = "Saving…";
+      const { error } = await sb().rpc("consignment_pay", { p_code: code, p_month: month, p_amount: amt, p_notes: $("cNote").value.trim() || null });
+      if (error) { b.disabled = false; $("cMsg").textContent = "Couldn't save: " + error.message; return; }
+      consOpen = ""; await consRefresh();
+    }
+  });
   function render() {
     const S = D.shows.map(r => ({ id: r[0], name: r[1], date: r[2], plat: r[3], type: r[4], status: r[5], sold: +r[6] || 0, rev: +r[7] || 0, profit: r[8] == null ? null : +r[8], rej: +r[9] || 0, speed: +r[10] || 0 }));
     const tot = S.reduce((a, s) => ({ sold: a.sold + s.sold, rev: a.rev + s.rev, profit: a.profit + (s.profit || 0), rej: a.rej + s.rej, speed: a.speed + s.speed }), { sold: 0, rev: 0, profit: 0, rej: 0, speed: 0 });
