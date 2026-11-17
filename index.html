@@ -155,6 +155,9 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   const SHOW_CREW = ["owner", "manager", "operator"];
   // Grouped and ordered like the Workspace home: what to do first, on show day, and after.
   const GROUPS = [
+    { title: "Executive", desc: "Owners only", roles: ["owner"], items: [
+      { id: "executive", title: "Executive", desc: "Shared calendar and day notes, financial days and promos, alerts, and a quick review of recent shows.", url: "executive.html", roles: ["owner"] }
+    ] },
     { title: "Buy & stock", desc: "Get books in the door", items: [
       { id: "purchasing", title: "Purchasing", desc: "Build buy lists from sales, stock, price, ratings and profit, and keep the lists you send.", url: "purchasing.html", roles: MANAGER },
       { id: "orders", title: "Orders & Receiving", desc: "Supplier orders, what’s on the way, and confirming boxes when they arrive.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
@@ -194,7 +197,10 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   }
   function drawTiles(me) {
     const box = $("secs"); box.innerHTML = "";
-    GROUPS.forEach((g, gi) => {
+    let gn = 0;
+    GROUPS.forEach(g => {
+      if (g.roles && !g.roles.includes(me.role)) return;   // whole group hidden (Executive is owners only)
+      const gi = gn++;
       const sec = document.createElement("section"); sec.className = "sec";
       sec.innerHTML = `<div class="sech"><span class="secn">${gi + 1}</span><h3></h3><span class="secd"></span></div><div class="tiles"></div>`;
       sec.querySelector("h3").textContent = g.title;
