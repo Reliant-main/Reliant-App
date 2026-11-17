@@ -649,6 +649,14 @@ body.usedShow.speedOn .speedflag { display: block; }
   border-radius: 6px; padding: 10px 12px; font: 500 18px var(--f-mono);
 }
 .fld input:focus, .fld select:focus { outline: 2px solid var(--gilt); outline-offset: 1px; border-color: var(--gilt); }
+/* a Ticket System sale is ready: the next scan is the book that buyer bought */
+.fld input#saleScan.tsready { border: 2px solid var(--gilt); background: color-mix(in srgb, var(--gilt) 18%, var(--cloth)); box-shadow: 0 0 0 4px rgba(210,165,74,.35); animation: tsPulse 1.6s ease-in-out infinite; }
+.fld label.tsready { color: var(--gilt); font-weight: 600; }
+@keyframes tsPulse { 50% { box-shadow: 0 0 0 7px rgba(210,165,74,.12); } }
+@media (prefers-reduced-motion: reduce) { .fld input#saleScan.tsready { animation: none; } }
+/* a sale came in while you were mid-entry: it waits until you finish this book */
+.fld input#saleScan.tswait { border: 2px dashed var(--gilt); }
+.tswaitnote { color: var(--gilt); font-weight: 600; }
 .btn.on { background: var(--gilt); color: var(--on-accent); border-color: var(--gilt); font-weight: 600; }
 .pending { font-size: 15px; color: var(--paper); min-height: 22px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .pending .chip { font: 13px var(--f-mono); background: var(--cloth-3); border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; }
@@ -3575,7 +3583,25 @@ body.mode-display #btnHome2 { display: none !important; }
       toast(`Added to the table as lot ${T.lots.length}: ${itemLabel(it)}`);
     }
   }, true);
+  // How the scan bar looks: gold when a sale is ready for its book, dashed when a sale is waiting for you to finish
+  function tsWaitingCount() { return !TSX.cur && S.show && TSX.on ? tsQueue().length : 0; }
+  function tsWaitNote() {
+    const n = tsWaitingCount(); if (!n) return "";
+    const what = n === 1 ? "A sale is" : n + " sales are", it = n === 1 ? "it" : "them";
+    const stray = !S.pending && !S.bundle && $("salePrice").value.trim();
+    return ` <span class="tswaitnote">· ${what} waiting. ${stray ? `Clear the price box (Esc) to bring ${it} up.` : `${n === 1 ? "It comes" : "They come"} up when you finish this book.`}</span>`;
+  }
+  function markScan() {
+    const sc = $("saleScan"), lbl = document.querySelector('label[for="saleScan"]');
+    if (!sc || !lbl) return;
+    const ready = !!(TSX.cur && S.show && saleMode !== "table" && !S.bundle && !(S.pending && S.askTs));
+    const waiting = !ready && tsWaitingCount() > 0;
+    sc.classList.toggle("tsready", ready); sc.classList.toggle("tswait", waiting); lbl.classList.toggle("tsready", ready);
+    lbl.textContent = ready ? `Scan the book buyer #${TSX.cur.buyerNo ?? "?"} bought (${money(TSX.cur.price)})` : "Scan sold book, or type its title";
+    sc.placeholder = ready ? "Scan the sold book now" : waiting ? "A sale is waiting · finish this book first" : "Scan, or type a few words of the title";
+  }
   function drawPendingLine() {
+    markScan();
     if (saleMode === "table" && !S.dup) { tSync(); setPending(tableHint()); return; }
     if (S.dup) {
       setPending(`<span class="warn">${esc(itemLabel(S.dup))} was just logged. Log another sale of it?</span> <button class="btn" type="button" id="dupYes">Yes, log another</button> <button class="btn" type="button" id="dupNo">No</button>`);
@@ -3599,13 +3625,14 @@ body.mode-display #btnHome2 { display: none !important; }
     if (TSX.cur && S.show) {
       const more = tsQueue().length - 1, moreTxt = more > 0 ? ` · <b>${more}</b> more waiting` : "";
       const skip = ` <button class="btn" type="button" id="tsSkip" title="Don't log this Ticket System sale here">Skip</button>`;
+      if (S.pending && S.askTs) { setPending(`<span class="warn">${tsWho(TSX.cur)} came in as you scanned.</span> Is <span class="chip">${esc(itemLabel(S.pending[0]))}</span> what they bought? Press <b>Enter</b> for yes, or type a price or <b>R</b> to log this book on its own.${moreTxt}`); return; }
       if (S.pending) { setPending(`${tsWho(TSX.cur)} · <span class="chip">${esc(itemLabel(S.pending[0]))}</span> press Enter to log it${moreTxt}${skip}`); return; }
       const tv = tvItem();
       setPending(`${tsWho(TSX.cur)} · scan or type the book they bought${tv ? `, or press Enter for <span class="chip tv">${esc((tv.pos ? "#" + tv.pos + " · " : "") + itemLabel(tv))}</span>` : ""}${moreTxt}${skip}`);
       return;
     }
-    if (S.pending) { setPending(`<span class="chip">${esc(itemLabel(S.pending[0]))}</span>${isUsedShow() ? usedHistory(S.pending[0]) : ""} type the price and press Enter (or R for no sale) · Esc cancels`); return; }
-    if (S.show) setPending(isUsedShow() && !tvItem() ? (S.show.speed ? "Speed round: scan the book, then type its price, or R if it doesn't sell again." : "Scan the book, then type its price, or R for no sale.") : tvLine());
+    if (S.pending) { setPending(`<span class="chip">${esc(itemLabel(S.pending[0]))}</span>${isUsedShow() ? usedHistory(S.pending[0]) : ""} type the price and press Enter (or R for no sale) · Esc cancels${tsWaitNote()}`); return; }
+    if (S.show) setPending((isUsedShow() && !tvItem() ? (S.show.speed ? "Speed round: scan the book, then type its price, or R if it doesn't sell again." : "Scan the book, then type its price, or R for no sale.") : tvLine()) + tsWaitNote());
   }
   function recentlyLogged(isbn) {
     if (!isbn) return false;
@@ -3613,6 +3640,11 @@ body.mode-display #btnHome2 { display: none !important; }
     return S.sales.some(s => !s.rejected && now - s.loggedAt < 10000 && (s.items || []).some(i => i.isbn === isbn));
   }
   function acceptItem(it) {
+    if (TSX.cur && !S.bundle && saleMode !== "table" && S.show && (S.pending || (scanStartedAt && scanStartedAt < (TSX.cur.readyAt || 0) + TS_GRACE))) {
+      // this scan began before (or right as) the sale came up, so it may be a different book (an R): ask instead of guessing
+      S.pending = [it]; S.askTs = true; $("salePrice").value = ""; drawPendingLine(); $("salePrice").focus();
+      return;
+    }
     if (TSX.cur && !S.bundle && saleMode !== "table" && S.show) {
       const ts = TSX.cur;
       $("salePrice").value = ""; S.pending = null;
@@ -3627,8 +3659,19 @@ body.mode-display #btnHome2 { display: none !important; }
     }
     S.pending = [it]; drawPendingLine(); $("salePrice").focus();
   }
+  // A Ticket System sale never takes over a book you're in the middle of: it waits until the entry boxes are
+  // empty and you've stopped typing or scanning for a moment.
+  const TS_QUIET = 1500, TS_GRACE = 1200;
+  let lastEntryKey = 0, scanStartedAt = 0;
+  $("saleScan").addEventListener("input", () => { const now = Date.now(); if ($("saleScan").value.length <= 1 || now - lastEntryKey > 800) scanStartedAt = now; lastEntryKey = now; });
+  $("salePrice").addEventListener("input", () => { lastEntryKey = Date.now(); });
+  function entryBusy() {
+    const pv = $("salePrice").value.trim();
+    return !!(S.pending || S.bundle || S.dup || S.editing || S.confirmAgain || T.multi || $("saleScan").value.trim()
+      || pv || Date.now() - lastEntryKey < TS_QUIET);
+  }
   $("saleScan").addEventListener("keydown", e => {
-    if (e.key !== "Enter") { if (e.key === "Escape") { S.pending = null; S.dup = null; drawPendingLine(); } return; }
+    if (e.key !== "Enter") { if (e.key === "Escape") { S.pending = null; S.askTs = false; S.dup = null; drawPendingLine(); } return; }
     e.preventDefault();
     const val = $("saleScan").value; $("saleScan").value = "";
     if (!val.trim()) { if (S.bundle && S.bundle.length >= 2) $("salePrice").focus(); return; }
@@ -3638,12 +3681,19 @@ body.mode-display #btnHome2 { display: none !important; }
     acceptItem(it);
   });
   $("salePrice").addEventListener("keydown", e => {
-    if (e.key === "Escape") { e.preventDefault(); S.pending = null; S.confirmAgain = false; $("salePrice").value = TSX.cur ? String(TSX.cur.price) : ""; drawPendingLine(); return; }
+    if (e.key === "Escape") { e.preventDefault(); S.pending = null; S.askTs = false; S.confirmAgain = false; $("salePrice").value = TSX.cur ? String(TSX.cur.price) : ""; drawPendingLine(); return; }
     if (e.key !== "Enter") return;
     e.preventDefault();
     const raw = $("salePrice").value.trim();
+    if (!raw && S.askTs && S.pending && TSX.cur) {   // "yes, that's the book they bought"
+      const it = S.pending[0], ts = TSX.cur;
+      S.pending = null; S.askTs = false;
+      logSale([{ ...it }], ts.price, false, { ts }).then(() => { drawPendingLine(); $("saleScan").focus(); });
+      return;
+    }
     if (!raw) return;
     const isR = /^r$/i.test(raw);
+    const solo = !!S.askTs; S.askTs = false;   // a book logged on its own never takes the waiting sale
     let items = S.bundle || S.pending, fromTv = false;
     if (!items || !items.length) {
       const tv = tvItem();
@@ -3665,8 +3715,8 @@ body.mode-display #btnHome2 { display: none !important; }
     const tvEntries = items.filter(it => it.eid != null);
     const advance = autoNext && tvEntries.some(it => it.eid === curId);
     const lastEid = tvEntries.length ? tvEntries.reduce((a, it) => idxOf(it.eid) > idxOf(a.eid) ? it : a).eid : null;
-    logSale(items.map(i => ({ ...i })), Math.round(n * 100) / 100, isR, { ts: isR ? null : TSX.cur });
-    $("salePrice").value = isR && TSX.cur ? String(TSX.cur.price) : ""; S.pending = null; S.bundle = null; updateBundleBtn();
+    logSale(items.map(i => ({ ...i })), Math.round(n * 100) / 100, isR, { ts: isR || solo ? null : TSX.cur });
+    $("salePrice").value = isR && TSX.cur && !solo ? String(TSX.cur.price) : ""; S.pending = null; S.bundle = null; updateBundleBtn();
     if (advance && lastEid != null) nextAfter(lastEid);
     drawPendingLine();
     $(tvItem() ? "salePrice" : "saleScan").focus();
@@ -3946,8 +3996,13 @@ body.mode-display #btnHome2 { display: none !important; }
     const q = tsQueue();
     if (TSX.cur && !q.some(x => x.id === TSX.cur.id)) { TSX.cur = null; T.awaitPick = null; $("salePrice").value = ""; drawPendingLine(); }
     if (TSX.busy || TSX.cur || !q.length) { tsDraw(); return; }
+    if (entryBusy()) {   // you're in the middle of a book: the sale waits (shown on the scan bar) and comes up when you finish
+      drawPendingLine(); tsDraw();
+      clearTimeout(TSX.retry); TSX.retry = setTimeout(tsPump, 500);
+      return;
+    }
     const x = q[0], b = TSX.buyers.get(x.live_buyer_id);
-    const cur = { id: x.id, showId: S.show.tsShow, price: tsPrice(x), buyerNo: b ? b.buyer_number : null, user: b ? (b.username || b.display_name || "") : "", order: x.platform_order_id || "" };
+    const cur = { id: x.id, showId: S.show.tsShow, price: tsPrice(x), buyerNo: b ? b.buyer_number : null, user: b ? (b.username || b.display_name || "") : "", order: x.platform_order_id || "", readyAt: Date.now() };
     TSX.cur = cur;
     if (saleMode === "table") {
       T.multi = false; T.sel.clear();
