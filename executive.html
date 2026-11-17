@@ -68,6 +68,14 @@ header.top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20
 .monthbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .monthbar h2 { min-width: 9ch; }
 .monthbar .grow { flex: 1; }
+.viewbar { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-bottom: 10px; }
+.vchip { display: inline-flex; align-items: center; gap: 6px; font: 500 12.5px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.vchip i { width: 9px; height: 9px; border-radius: 3px; }
+.vchip[aria-pressed="true"] { color: var(--ink); background: var(--surface-2); border-color: var(--ink-2); }
+.vchip[aria-pressed="false"] i { opacity: .35; }
+.vchip.all[aria-pressed="true"] { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.viewnote { font-size: 12px; color: var(--gilt); }
+.viewbar .seg button { padding: 4px 10px; font-size: 12.5px; }
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .cal .wd { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: center; padding: 2px 0 6px; }
 .day { --tint: transparent; position: relative; min-height: 104px; border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px 6px; display: flex; flex-direction: column; gap: 3px; background: color-mix(in srgb, var(--tint) 20%, transparent); color: var(--ink); text-align: left; font: inherit; cursor: pointer; min-width: 0; overflow: hidden; }
@@ -227,6 +235,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
           <span class="grow"></span>
           <button class="btn primary" id="btnAdd" type="button">+ Add event</button>
         </div>
+        <div class="viewbar" id="viewbar" role="group" aria-label="What the calendar shows"></div>
         <div class="cal" id="cal"></div>
         <div class="legend" id="legend"></div>
       </section>
@@ -257,7 +266,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
     <div class="fld"><label for="fTitle">Title</label><input id="fTitle" required maxlength="140" placeholder="e.g. Rent due, TikTok 11.11 promo, Whatnot payout"></div>
     <div class="row2">
       <div class="fld"><label for="fCat">Type</label><select id="fCat"></select></div>
-      <div class="fld"><label for="fPlat">Platform</label><select id="fPlat"><option value="">None</option></select></div>
+      <div class="fld"><label for="fPlat">App / platform</label><select id="fPlat"><option value="">None</option></select></div>
     </div>
     <div class="fld"><span class="lbl">Color</span><div class="swatches" id="fSwatches"></div></div>
     <div class="row2">
@@ -340,7 +349,8 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
 
   const today = ymd(new Date());
   const D = { cats: [], events: [], done: new Set(), dayNotes: {}, settings: { big_payout: 2000, big_bill: 1000, alert_days: 3 }, dismissed: new Set(), showRows: [], plats: [], syncedAt: null, me: null };
-  const st = { month: today.slice(0, 7), day: today, range: ls.get("exec.range") || "7", plat: "all", from: addDays(today, -29), to: today, alertsAll: false };
+  const st = { month: today.slice(0, 7), day: today, range: ls.get("exec.range") || "7", plat: "all", from: addDays(today, -29), to: today, alertsAll: false, vtypes: null, vplat: ls.get("exec.vplat") || "all" };
+  try { const t = JSON.parse(ls.get("exec.vtypes") || "null"); if (Array.isArray(t) && t.length) st.vtypes = new Set(t); } catch {}
 
   function setStatus(kind, t) { $("dot").className = "sdot " + kind; $("statusText").textContent = t; }
   function showMsg(text, bad) { const m = $("msg"); m.hidden = !text; m.className = "msg" + (bad ? " bad" : ""); m.textContent = text || ""; }
@@ -436,7 +446,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
     const start = new Date(first); start.setDate(1 - first.getDay());
     const cells = (first.getDay() + new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()) > 35 ? 42 : 35;
     const from = ymd(start), to = addDays(from, cells - 1);
-    const occs = occsIn(from, to);
+    const occs = occsIn(from, to).filter(visible);
     $("mName").textContent = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     let html = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(w => `<div class="wd">${w}</div>`).join("");
     for (let i = 0; i < cells; i++) {
@@ -452,7 +462,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
         const isStart = o.occ === k || dow === 0, isEnd = o.end === k || dow === 6;
         return `<div class="span ${o.occ === k ? "start" : "cont"} ${isStart ? "start" : ""} ${isEnd ? "end" : ""}" style="background:${esc(colorOf(o.ev))}" title="${esc(o.ev.title)} · ${short(o.occ)}–${short(o.end)}">${isStart ? esc(o.ev.title) : "&nbsp;"}</div>`;
       }).join("");
-      const lines = singles.map(o => `<span class="chip ${isDone(o) ? "done" : ""}"><i style="background:${esc(colorOf(o.ev))}"></i><span>${o.ev.start_time ? esc(fmtTime(o.ev.start_time).replace(":00", "").replace(" ", "").toLowerCase()) + " " : ""}${esc(o.ev.title)}${o.ev.amount ? " " + kmoney(num(o.ev.amount)) : ""}</span></span>`);
+      const lines = singles.map(o => `<span class="chip ${isDone(o) ? "done" : ""}"><i style="background:${esc(colorOf(o.ev))}"></i><span>${o.ev.start_time ? esc(fmtTime(o.ev.start_time).replace(":00", "").replace(" ", "").toLowerCase()) + " " : ""}${o.ev.platform_code ? `<b>${esc(o.ev.platform_code)}</b> ` : ""}${esc(o.ev.title)}${o.ev.amount ? " " + kmoney(num(o.ev.amount)) : ""}</span></span>`);
       const maxLines = Math.max(1, 3 - spans.length);
       const shown = lines.slice(0, maxLines).join("") + (lines.length > maxLines ? `<span class="more">+${lines.length - maxLines} more</span>` : "");
       const dots = on.slice(0, 6).map(o => `<i style="background:${esc(colorOf(o.ev))}"></i>`).join("") + (note && note.note ? `<i style="background:var(--ink-2)"></i>` : "");
@@ -488,7 +498,8 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
   // ---------- notes panel (right side) ----------
   function renderNotes() {
     const k = st.day;
-    const on = occsIn(k, k).sort((a, b) => (a.ev.start_time || "") < (b.ev.start_time || "") ? -1 : 1);
+    const allOn = occsIn(k, k).sort((a, b) => (a.ev.start_time || "") < (b.ev.start_time || "") ? -1 : 1);
+    const on = allOn.filter(visible), hiddenN = allOn.length - on.length;
     const shows = D.showRows.filter(r => r.show_date === k);
     const note = D.dayNotes[k] || {};
     const tint = dayTint(k, on);
@@ -513,7 +524,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
         ${tint ? `<div style="margin-top:6px"><span class="ntag" style="background:${tint.color}">${note.day_color ? esc(note.day_label || "Marked day") : m.bigIn && m.bigOut ? "Big money in and out" : m.bigIn ? "Big money in" : "Big money out"}</span></div>` : ""}
         ${m.inn || m.out ? `<div class="sub" style="margin-top:6px">${m.inn ? `<span style="color:var(--in)">+${money(m.inn)} in</span>` : ""}${m.inn && m.out ? " · " : ""}${m.out ? `<span style="color:var(--out)">−${money(m.out)} out</span>` : ""}</div>` : ""}
       </div><button class="btn primary sm" type="button" id="nAdd">+ Add</button></div>
-      <div class="sect"><span class="lbl">Events · ${on.length}</span>${on.length ? on.map(ev).join("") : `<div class="none">Nothing scheduled. Press + Add, or double-click a day on the calendar.</div>`}</div>
+      <div class="sect"><span class="lbl">Events · ${on.length}${hiddenN ? ` <span class="viewnote">· ${hiddenN} more hidden by the view</span>` : ""}</span>${on.length ? on.map(ev).join("") : `<div class="none">${hiddenN ? "Nothing here in this view." : "Nothing scheduled. Press + Add, or double-click a day on the calendar."}</div>`}</div>
       ${showHtml}
       <div class="sect"><span class="lbl">Notes for this day</span>
         <textarea id="nNote" placeholder="Anything about this day: calls, decisions, reminders for the two of you">${esc(note.note || "")}</textarea>
@@ -621,6 +632,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
         D.events.push(saved);
       }
       $("dlgEvent").close();
+      if (!visible({ ev: row })) { st.vtypes = null; st.vplat = "all"; saveView(); }   // don't let a new event vanish behind the view filter
       st.day = row.start_date; st.month = row.start_date.slice(0, 7);
       renderAll();
     } catch (err) { $("evErr").textContent = "Couldn't save: " + (err.message || err); }
@@ -775,7 +787,37 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
     finally { $("setSave").disabled = false; }
   };
 
-  function renderAll() { renderAlerts(); renderCal(); renderNotes(); renderReview(); }
+  // ---------- view filter: which types and which app the calendar shows ----------
+  function visible(o) {
+    if (st.vtypes && !st.vtypes.has(o.ev.category)) return false;
+    if (st.vplat !== "all" && o.ev.platform_code !== st.vplat) return false;
+    return true;
+  }
+  function saveView() { ls.set("exec.vtypes", st.vtypes ? JSON.stringify([...st.vtypes]) : ""); ls.set("exec.vplat", st.vplat); }
+  function renderViewbar() {
+    const cats = D.cats.filter(c => c.active);
+    if (st.vtypes) { st.vtypes = new Set([...st.vtypes].filter(c => cats.some(x => x.code === c))); if (!st.vtypes.size) st.vtypes = null; }
+    if (st.vplat !== "all" && !D.plats.some(p => p.code === st.vplat)) st.vplat = "all";
+    const on = c => !st.vtypes || st.vtypes.has(c);
+    $("viewbar").innerHTML = `<span class="lbl">View</span><button type="button" class="vchip all" data-vt="*" aria-pressed="${!st.vtypes}">Everything</button>` +
+      cats.map(c => `<button type="button" class="vchip" data-vt="${esc(c.code)}" aria-pressed="${!!st.vtypes && on(c.code)}"><i style="background:${esc(c.color)}"></i>${esc(c.name)}</button>`).join("") +
+      `<span class="seg" style="margin-left:4px"><button type="button" data-vp="all" aria-pressed="${st.vplat === "all"}">All apps</button>${D.plats.map(p => `<button type="button" data-vp="${esc(p.code)}" aria-pressed="${st.vplat === p.code}">${esc(p.name)}</button>`).join("")}</span>` +
+      (st.vtypes || st.vplat !== "all" ? `<span class="viewnote">Filtered view · alerts still cover everything</span>` : "");
+  }
+  $("viewbar").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.vp) st.vplat = b.dataset.vp;
+    else if (b.dataset.vt === "*") st.vtypes = null;
+    else if (b.dataset.vt) {
+      const c = b.dataset.vt;
+      if (!st.vtypes) st.vtypes = new Set([c]);              // from Everything: show only this type
+      else if (st.vtypes.has(c)) { st.vtypes.delete(c); if (!st.vtypes.size) st.vtypes = null; }
+      else st.vtypes.add(c);                                  // add more types to the view
+    }
+    saveView(); renderViewbar(); renderCal(); renderNotes();
+  };
+
+  function renderAll() { renderAlerts(); renderViewbar(); renderCal(); renderNotes(); renderReview(); }
   $("btnRefresh").onclick = () => load();
   // keep "today" honest if the page stays open overnight
   setInterval(() => { if (ymd(new Date()) !== today) location.reload(); }, 60000);
