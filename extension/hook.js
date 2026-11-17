@@ -9,6 +9,10 @@
   });
   const HINT = /sold|purchas|order|winner|won\b|bought|buyer|checkout|auction|giveaway|claim/i;
   const MAX = 200000;
+  // Sales lists that readers parse as a whole (TikTok sends its full auction results every few seconds;
+  // a long show runs past 200,000 characters) are passed on uncut, up to 8 MB.
+  const WHOLE = /\/live_auction\/auction_result\/get/;
+  const WHOLE_MAX = 8000000;
   // binary frames (TikTok sends these): keep the readable pieces, like the "strings" tool
   function readable(buf) {
     const v = new Uint8Array(buf), out = []; let run = "";
@@ -23,9 +27,10 @@
   }
   function send(kind, text, url) {
     if (mode === "off" || !text) return;
-    if (text.length > MAX) text = text.slice(0, MAX);
+    const cap = WHOLE.test(String(url || "")) ? WHOLE_MAX : MAX;
+    if (text.length > cap) text = text.slice(0, cap);
     if (!HINT.test(text)) return;
-    window.postMessage({ __rprData: 1, kind, text, url: String(url || "").slice(0, 300), t: Date.now() }, "*");
+    window.postMessage({ __rprData: 1, kind, text, url: String(url || "").slice(0, 1000), t: Date.now() }, "*");
   }
   function inspect(kind, data, url) {
     try {

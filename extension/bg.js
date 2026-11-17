@@ -25,7 +25,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       else if (msg.type === "sale") {
         const j = await post(msg);
         if (j.skipped) await bump("skipped", 1, { lastSkip: j.skipped });
-        else await bump("sales", 1, { lastSale: `Buyer #${j.buyer_number ?? "?"} · ${msg.buyer && msg.buyer.username || ""} · $${msg.price ?? "?"}` });
+        else if (msg.update) await bump("updates", 1, msg.status === "cancelled" ? { lastSale: `Payment failed: ${msg.buyer && msg.buyer.username || "buyer"} · $${msg.price ?? "?"}` } : {});
+        else await bump("sales", 1, { lastSale: `Buyer #${j.buyer_number ?? "?"} · ${msg.buyer && msg.buyer.username || "buyer not shown yet"} · $${msg.price ?? "?"}` });
+      }
+      else if (msg.type === "heartbeat") {
+        const j = await post(msg);
+        await bump("checkins", 1, { lastCheckin: Date.now(), missing: (j.missing || []).length });
+        reply({ ok: true, missing: j.missing || [] });
+        return;
       }
       else if (msg.type === "error") await fail(`${msg.platform} reader: ${msg.message}`);
       reply({ ok: true });

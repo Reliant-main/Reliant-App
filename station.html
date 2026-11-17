@@ -141,6 +141,13 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
 .fr input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); justify-self: center; }
 .dlgActs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .dlgActs .sp { flex: 1; }
+.readerbar { border-radius: 10px; padding: 10px 14px; font-weight: 600; display: grid; gap: 4px; border: 1px solid var(--line, #2f5348); }
+.readerbar .row { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.readerbar .row .sub { font-weight: 400; opacity: .85; }
+.readerbar.ok { color: var(--accent); }
+.readerbar.warn { background: var(--warnbg); color: var(--warnfg); border-color: var(--warnfg); }
+.readerbar.bad { background: var(--badbg); color: var(--bad); border: 2px solid var(--bad); font-size: 18px; }
+.readerbar.bad .fallback { font-size: 15px; }
 #printFrame { position: fixed; width: 0; height: 0; border: 0; left: -9999px; top: 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -182,6 +189,8 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     <button class="btn small" type="button" id="layoutBtn">Chit layout…</button>
     <button class="btn small" type="button" id="srcBtn">Sale sources…</button>
   </div>
+
+  <div class="readerbar" id="readerBar" role="status" aria-live="assertive" hidden></div>
 
   <div class="grid">
     <section class="panel" aria-label="Scan">
@@ -814,6 +823,47 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
   // keep the cursor in the scan box
   document.addEventListener("click", e => { if (!e.target.closest("select,input,textarea,summary,a")) refocus(); });
 
+  // ---------------------------------------------------------------- page reader watch
+  // Apps whose tickets come from the page reader check in every ~20 s. If one goes quiet while a show is
+  // running, the bar turns red (with a sound) so the crew switches to one lot per purchase right away.
+  const READER_QUIET_S = 90, CHECKIN_LATE_S = 75, SHOW_OVER_S = 30 * 60;
+  let readerWasBad = false;
+  const ago = s => s < 60 ? `${Math.max(0, Math.round(s))}s` : `${Math.round(s / 60)} min`;
+  async function watchReaders() {
+    const [{ data: st }, { data: rows, error }] = await Promise.all([
+      sb.from("app_settings").select("value").eq("key", "sale_sources").maybeSingle(),
+      sb.from("page_reader_status").select("*")
+    ]);
+    const bar = $("readerBar");
+    if (error) { bar.hidden = true; return; }
+    const src = (st && st.value) || {}, plat = $("platPick").value, now = Date.now();
+    const live = (rows || []).filter(r => src[r.platform_code] === "page" && (!plat || r.platform_code === plat)
+                                      && (now - Date.parse(r.updated_at)) / 1000 < SHOW_OVER_S);
+    if (!live.length) { bar.hidden = true; readerWasBad = false; return; }
+    let worst = "ok";
+    const lines = live.map(r => {
+      const app = PLAT[r.platform_code] || r.platform_code, who = r.code_label ? ` (${esc(r.code_label)})` : "";
+      const hb = (now - Date.parse(r.updated_at)) / 1000;
+      const heard = r.feed_seen_at ? (now - Date.parse(r.feed_seen_at)) / 1000 : null;
+      const here = r.live_show_id && r.live_show_id === showId ? ` · ${sales.length} here` : "";
+      const listed = r.feed_total != null ? ` · ${app} lists ${r.feed_total} sales${here}` : "";
+      let level = "ok", text;
+      if (hb > CHECKIN_LATE_S) { level = "bad"; text = `${app} page reader${who} stopped checking in ${ago(hb)} ago. The computer, Chrome, or the ${app} tab may be closed or asleep.`; }
+      else if (heard == null || heard > READER_QUIET_S) { level = "bad"; text = heard == null ? `${app} page reader${who} can't hear ${app}'s sales list. Open the LIVE dashboard on the Auction tab.` : `${app} page reader${who} hasn't heard ${app}'s sales list for ${ago(heard)}. Keep the LIVE dashboard open on the Auction tab.`; }
+      else if (r.feed_missing > 0) { level = "warn"; text = `${r.feed_missing} ${app} sale${r.feed_missing === 1 ? "" : "s"} not in the Ticket System yet (resending)${listed}`; }
+      else if (r.page_visible === false) { level = "warn"; text = `${app} page reader${who}: the ${app} tab is hidden, so Chrome may slow it down. Keep it showing.${listed}`; }
+      else text = `${app} page reader${who}: hearing ${app} (${ago(heard)} ago)${listed}`;
+      if (level === "bad" || (level === "warn" && worst === "ok")) worst = level;
+      return `<div class="row"><span>${text}</span></div>`;
+    });
+    if (worst === "bad") lines.push(`<div class="row fallback">Use one lot per purchase until this turns green. Sales missed in the meantime come in by order number once the reader hears ${live.length === 1 ? (PLAT[live[0].platform_code] || "the app") : "the app"} again.</div>`);
+    bar.className = "readerbar " + worst;
+    bar.innerHTML = lines.join("");
+    bar.hidden = false;
+    if (worst === "bad" && !readerWasBad) { beep(false); setTimeout(() => beep(false), 450); setTimeout(() => beep(false), 900); }
+    readerWasBad = worst === "bad";
+  }
+
   // ---------------------------------------------------------------- start
   (async () => {
     const { data: { session } } = await sb.auth.getSession();
@@ -828,6 +878,8 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     // On first open, don't reprint chits that were already handled.
     await loadShow();
     subscribe();
+    watchReaders(); setInterval(() => watchReaders().catch(() => {}), 10000);
+    $("platPick").addEventListener("change", () => watchReaders().catch(() => {}));
     $("scan").focus();
   })();
 })();
