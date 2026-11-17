@@ -641,7 +641,8 @@ body.usedShow .modeseg, body.usedShow #tableBox, body.usedShow [data-hide="autoN
 body.usedShow.speedOn .speedflag { display: block; }
 .utag { font: 600 10px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; margin-left: 6px; color: var(--paper-dim); }
 .utag.sp { border-color: #c25a1c; color: #f08a4b; }
-.entry-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr) auto; gap: 10px; align-items: end; }
+.entry-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr) auto auto; gap: 10px; align-items: end; }
+body.tableMode .entry-row { grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr) auto; }
 .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .fld label { font: 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--paper-dim); }
 .fld input, .fld select {
@@ -657,6 +658,16 @@ body.usedShow.speedOn .speedflag { display: block; }
 /* a sale came in while you were mid-entry: it waits until you finish this book */
 .fld input#saleScan.tswait { border: 2px dashed var(--gilt); }
 .tswaitnote { color: var(--gilt); font-weight: 600; }
+/* R stack: a separate scan line for books that didn't sell, so they never share the sales box */
+.rejbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 10px; align-items: end; padding: 10px 12px; border: 2px solid var(--chili); border-radius: 8px; background: color-mix(in srgb, var(--chili) 10%, var(--cloth)); }
+.rejbar label { color: #f0b49f !important; }
+.rejbar input#rejScan { border-color: var(--chili); }
+.rejbar input#rejScan:focus { outline-color: var(--chili); border-color: var(--chili); }
+.rejbar .rejlog { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; min-height: 20px; }
+.rejbar .rejlog .chip { border-color: var(--chili); }
+.rejbar .rejlog .warn { color: #f0b49f; }
+#btnRej.on { background: var(--chili); border-color: var(--chili); color: #fff; }
+body.tableMode #btnRej, body.tableMode .rejbar { display: none !important; }
 .btn.on { background: var(--gilt); color: var(--on-accent); border-color: var(--gilt); font-weight: 600; }
 .pending { font-size: 15px; color: var(--paper); min-height: 22px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .pending .chip { font: 13px var(--f-mono); background: var(--cloth-3); border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; }
@@ -984,6 +995,13 @@ body.mode-display #btnHome2 { display: none !important; }
         <div class="fld"><label for="saleScan">Scan sold book, or type its title</label><input id="saleScan" type="text" autocomplete="off" spellcheck="false" placeholder="Scan, or type a few words of the title"></div>
         <div class="fld"><label for="salePrice" id="salePriceLbl">Price · R = no sale</label><input id="salePrice" type="text" autocomplete="off" placeholder="0.00 or R"></div>
         <button class="btn" id="btnBundle" type="button">Bundle</button>
+        <button class="btn" id="btnRej" type="button" title="Open a separate scan line for unsold books (R). Esc closes it.">R stack</button>
+      </div>
+      <div class="rejbar" id="rejBar" hidden>
+        <div class="fld"><label for="rejScan" id="rejLbl">R stack · scan each book that didn't sell</label><input id="rejScan" type="text" autocomplete="off" spellcheck="false" placeholder="Scan R books one after another"></div>
+        <button class="btn" id="rejUndo" type="button" disabled>Undo last</button>
+        <button class="btn" id="rejClose" type="button">Done</button>
+        <div class="rejlog" id="rejLog" aria-live="polite"></div>
       </div>
       <div class="pending" id="pending">Start a show to begin logging sales.</div>
       <label class="check" data-hide="tvSell"><input type="checkbox" id="tvSell"> A price with no scanned book goes to the book on the TV <span id="tvSellNote" style="color:var(--paper-dim)"></span></label>
@@ -3161,6 +3179,7 @@ body.mode-display #btnHome2 { display: none !important; }
     backup();
     if (S.unsubS) S.unsubS(); if (S.unsubR) S.unsubR();
     S.show = null; S.pending = null; S.bundle = null; TSX.cur = null; T.awaitPick = null; tsDraw();
+    if (REJ.open) { REJ.open = false; $("rejBar").hidden = true; $("btnRej").classList.remove("on"); }
     $("endShowModal").hidden = true; drawShow(); drawSales(); drawReqs(); updateBundleBtn();
     openExport(show.id);
   });
@@ -3883,6 +3902,47 @@ body.mode-display #btnHome2 { display: none !important; }
     if (S.db) { try { await salesCol(S.show.id).doc(s.id).update(fields); } catch { toast("Couldn't save that change. Try again."); } }
     else { Object.assign(s, fields); backup(); drawSales(); }
   }
+  // ---- R stack: a separate scan line for unsold books. Every scan there is logged straight away as an R
+  // (no price, no Enter in the price box), in the current round, and it never takes a Ticket System sale.
+  const REJ = { open: false, batch: [] };
+  const rejFocused = () => REJ.open && document.activeElement === $("rejScan");
+  function drawRej(msg, bad) {
+    const n = REJ.batch.length, round = isUsedShow() ? (S.show && S.show.speed ? "speed" : "main") : "";
+    $("rejLbl").textContent = `R stack · scan each book that didn't sell${round ? ` · counts in the ${round} round` : ""}`;
+    const last = REJ.batch.slice(-4).reverse().map(b => `<span class="chip">${esc(b.label)}</span>`).join("");
+    $("rejLog").innerHTML = (msg ? `<span class="${bad ? "warn" : ""}">${esc(msg)}</span> ` : "") + (n ? `<b>${n}</b> R${n === 1 ? "" : "'s"} this stack ${last}` : (msg ? "" : "Scan the unsold books one after another. Each scan is logged as an R. Esc or Done closes this."));
+    $("rejUndo").disabled = !n;
+  }
+  function rejOpen(on) {
+    if (on && !S.show) { toast("Start a show first"); return; }
+    REJ.open = on; $("rejBar").hidden = !on; $("btnRej").classList.toggle("on", on);
+    if (on) { REJ.batch = []; $("rejScan").value = ""; drawRej(); $("rejScan").focus(); }
+    else { if (REJ.batch.length) toast(`${REJ.batch.length} R${REJ.batch.length === 1 ? "" : "'s"} logged`); $("saleScan").focus(); setTimeout(tsPump, 50); }
+  }
+  $("btnRej").onclick = () => rejOpen(!REJ.open);
+  $("rejClose").onclick = () => rejOpen(false);
+  $("rejUndo").onclick = async () => {
+    const b = REJ.batch.pop(); if (!b) return;
+    const rec = S.sales.find(x => x.id === b.id);
+    if (rec) await deleteSale(rec);
+    drawRej(`Removed ${b.label}`); $("rejScan").focus();
+  };
+  $("rejScan").addEventListener("keydown", async e => {
+    if (e.key === "Escape") { e.preventDefault(); rejOpen(false); return; }
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const val = $("rejScan").value.trim(); $("rejScan").value = "";
+    if (!val || !S.show) return;
+    const it = isUsedShow() ? usedItem(val) : lookupIsbn(val);
+    if (!it) { drawRej(`"${val}" isn't in the loaded book list. Scan its barcode again, or log it from the main bar.`, true); return; }
+    const label = itemLabel(it), last = REJ.batch[REJ.batch.length - 1];
+    if (last && last.isbn === it.isbn && Date.now() - last.at < 3000) { drawRej(`${label} scanned twice · counted once`, true); return; }
+    const soldTonight = S.sales.some(x => !x.noSale && !x.rejected && (x.items || []).some(i => i.isbn === it.isbn));
+    const id = await logSale([{ ...it }], 0, true);
+    REJ.batch.push({ isbn: it.isbn, label, id, at: Date.now() });
+    drawRej(soldTonight ? `${label} already sold tonight. Logged as an R anyway; Undo last if that's wrong.` : "", soldTonight);
+  });
+
   async function deleteSale(s) {
     if (S.db) { try { await salesCol(S.show.id).doc(s.id).delete(); } catch { toast("Couldn't delete. Try again."); return; } }
     else { S.sales = S.sales.filter(x => x !== s); backup(); drawSales(); }
@@ -4011,7 +4071,7 @@ body.mode-display #btnHome2 { display: none !important; }
         if (k >= 0) { pickAndLog([k], cur.price); return; }
       }
       T.awaitPick = T.lots.length ? cur.price : null;
-      drawTable(); drawPendingLine(); $("salePrice").focus(); tsDraw();
+      drawTable(); drawPendingLine(); if (!rejFocused()) $("salePrice").focus(); tsDraw();
       return;
     }
     const tv = tvItem(), e = tv && tv.eid != null ? playlist[idxOf(tv.eid)] : null;
@@ -4023,7 +4083,7 @@ body.mode-display #btnHome2 { display: none !important; }
       return;
     }
     $("salePrice").value = String(cur.price);
-    drawPendingLine(); $(S.pending || tv ? "salePrice" : "saleScan").focus(); tsDraw();
+    drawPendingLine(); if (!rejFocused()) $(S.pending || tv ? "salePrice" : "saleScan").focus(); tsDraw();
   }
   function tsDraw() {
     const box = $("tsBox"); if (!box) return;
