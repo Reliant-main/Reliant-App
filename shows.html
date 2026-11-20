@@ -6,6 +6,7 @@
 <title>Shows</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="close-show.js"></script>
 <style>
 :root {
   --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
@@ -88,6 +89,9 @@ tr:last-child td { border-bottom: 0; }
 .tag { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: rgba(42,120,214,.16); color: #7fb2f0; }
 .tag.used { background: rgba(235,104,52,.16); color: #f0a07a; }
 .tag.vintage { background: rgba(210,165,74,.16); color: var(--gilt); }
+.btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+a.btn { text-decoration: none; display: inline-block; }
+.closebar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
 .soon { border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; color: var(--ink-2); }
 </style>
 </head>
@@ -102,7 +106,7 @@ tr:last-child td { border-bottom: 0; }
     <button class="btn" id="btnRefresh" type="button">Refresh</button>
   </header>
   <div class="notice bad" id="err" hidden></div>
-  <p class="soon"><b>Running a live show</b> (playlists, the TV display, logging sales and R’s, table shows and celeb shots) still happens in the current Workspace. It moves here as its own step closer to switch day. Shows logged there appear here after the nightly copy.</p>
+  <p class="soon"><b>Running a live show</b> (playlists, the TV display, logging sales and R’s, table shows and celeb shots) still happens in the current Workspace. It moves here as its own step closer to switch day. Shows logged there appear here after the nightly copy. Open a show to close it, or to go to its Fulfillment.</p>
 
   <section class="kpis" id="kpis" aria-label="Show totals"></section>
 
@@ -161,7 +165,8 @@ tr:last-child td { border-bottom: 0; }
     if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
     $("err").hidden = true; D = data;
     shows = D.shows.map(r => ({ id: r[0], name: r[1], date: r[2], plat: r[3], type: r[4], status: r[5], sold: +r[6] || 0, rev: +r[7] || 0,
-      canceled: +r[8] || 0, rejects: +r[9] || 0, speed: +r[10] || 0, net: r[11], profit: r[12], gcost: r[13], after: r[14] }));
+      canceled: +r[8] || 0, rejects: +r[9] || 0, speed: +r[10] || 0, net: r[11], profit: r[12], gcost: r[13], after: r[14],
+      closed: !!r[15], closer: r[16] || "", closedAt: r[17], test: !!r[18] }));
     const at = D.synced_at ? new Date(D.synced_at) : null;
     setStatus("live", `${int(shows.length)} shows · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
     render();
@@ -190,7 +195,7 @@ tr:last-child td { border-bottom: 0; }
     $("showsSub").textContent = `${int(list.length)} show${list.length === 1 ? "" : "s"} · ${int(list.reduce((a, s) => a + s.sold, 0))} books · ${money(list.reduce((a, s) => a + s.rev, 0))}`;
     const page = list.slice(0, S.shown);
     $("showsTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Show</th><th class="plain num">Sold</th><th class="plain num">Revenue</th><th class="plain num hide-sm">Avg</th><th class="plain num hide-sm">R’s</th><th class="plain num hide-sm">Canceled</th>${D.costs ? '<th class="plain num">Profit</th>' : ""}</tr></thead><tbody>${
-      page.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} ${typeTag(s.type)}${s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
+      page.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} ${typeTag(s.type)}${s.closed ? ' <span class="pill ok">Closed</span>' : s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}${s.test ? ' <span class="pill bad">Test</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
         <td class="num">${int(s.sold)}${s.speed ? `<div class="a">${int(s.speed)} speed</div>` : ""}</td><td class="num">${money(s.rev)}</td><td class="num hide-sm">${s.sold ? money(s.rev / s.sold) : "–"}</td>
         <td class="num hide-sm">${s.rejects ? int(s.rejects) : "–"}</td><td class="num hide-sm">${s.canceled ? int(s.canceled) : "–"}</td>${D.costs ? `<td class="num">${money(s.after)}</td>` : ""}</tr>`).join("")}</tbody></table>`
       : `<p class="empty">No shows match.</p>`;
@@ -222,6 +227,7 @@ tr:last-child td { border-bottom: 0; }
     $("drawerCard").innerHTML = `
       <div><button type="button" class="btn" id="closeD">✕ Close</button></div>
       <div><span class="eyebrow">${esc(PLAT[s.plat] || s.plat)} · ${dfmt(s.date)}</span><h2>${esc(s.name)} ${typeTag(s.type)}</h2></div>
+      ${closeBar(s)}
       <div class="kpis">
         <div class="kpi"><span class="k">Books sold</span><span class="v">${int(s.sold)}</span><span class="d">${s.speed ? int(s.speed) + " in the speed round" : "&nbsp;"}</span></div>
         <div class="kpi"><span class="k">Revenue</span><span class="v">${money(s.rev)}</span><span class="d">${s.sold ? money(s.rev / s.sold) + " average" : "&nbsp;"}</span></div>
@@ -237,6 +243,25 @@ tr:last-child td { border-bottom: 0; }
       ${data.giveaways.length ? `<div><h3 style="margin:0 0 6px;font:600 15px var(--f-ui)">Given away</h3>${data.giveaways.map(g => `<div class="a">${esc(g[0])} · ${int(g[2])} × ${esc(g[1])}${g[3] ? " · " + esc(g[3]) : ""}${D.costs && g[4] != null ? " · " + money(g[4]) : ""}</div>`).join("")}</div>` : ""}`;
     $("closeD").onclick = () => { $("drawer").hidden = true; };
   }
+  // ---------- close / reopen (owners and managers close; owners reopen) ----------
+  const CREW = ["owner", "manager", "operator"];
+  function closeBar(s) {
+    const role = D.role || "", mgr = role === "owner" || role === "manager";
+    const state = s.closed ? `<span class="pill ok">Closed</span> by ${esc(s.closer || "a manager")}${s.closedAt ? " on " + esc(new Date(s.closedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) : ""}`
+      : s.status === "live" ? `<span class="pill">Open · in Staging</span>` : `<span class="pill">Copied to the Roster</span> not closed in the App yet`;
+    const btns = [];
+    if (CREW.includes(role) && s.type === "new") btns.push(`<a class="btn" href="fulfillment.html?show=${s.id}">Fulfillment →</a>`);
+    if (s.closed) { if (role === "owner") btns.push(`<button class="btn" type="button" data-reopen="${s.id}">Reopen show</button>`); }
+    else if (CREW.includes(role)) btns.push(`<button class="btn${mgr ? " pri" : ""}" type="button" data-close="${s.id}">${mgr ? "Close show…" : "Closing summary"}</button>`);
+    return `<div class="closebar">${s.test ? '<span class="pill bad">Test show</span>' : ""}${state}${btns.join("")}</div>`;
+  }
+  $("drawerCard").addEventListener("click", e => {
+    const b = e.target.closest("[data-close],[data-reopen]"); if (!b) return;
+    const s = shows.find(x => x.id === +(b.dataset.close || b.dataset.reopen)); if (!s) return;
+    const done = async () => { await load(); openShow(s.id); };
+    if (b.dataset.close) window.ReliantClose.open({ sb: sb(), show: { id: s.id, name: s.name }, onDone: done });
+    else window.ReliantClose.reopen({ sb: sb(), show: { id: s.id, name: s.name }, onDone: done });
+  });
 
   $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S.tab = b.dataset.t; render(); });
   $("typeSel").onchange = e => { S.type = e.target.value; S.shown = 40; render(); };

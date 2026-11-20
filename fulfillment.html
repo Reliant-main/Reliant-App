@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fulfillment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="close-show.js"></script>
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+<style>
+.ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seltop { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; max-width: 100%; }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.seg { align-self: flex-start; display: inline-flex; flex-wrap: wrap; gap: 2px; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: var(--bg); }
+.seg button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 0; border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+.fg { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 10px; }
+.fl { display: flex; flex-direction: column; gap: 3px; font: 500 11px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.fl input, .fl select, input.inp { font: 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; text-transform: none; letter-spacing: 0; min-width: 0; }
+.box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ok { color: var(--good); } .no { color: var(--bad); }
+.msg { font-size: 13.5px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.results { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.results li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.results li:last-child { border-bottom: 0; } .results li:hover { background: var(--accent-wash); }
+.results .m { font: 12px var(--f-mono); color: var(--muted); }
+.picked { border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--accent-wash); }
+.picked .grow { flex: 1 1 220px; min-width: 0; }
+.statusline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
+td.big { font-weight: 700; font-size: 15px; }
+.strike { text-decoration: line-through; }
+#undoBar { display: none; position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 10px; background: var(--ink); color: var(--bg); box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100vw - 32px); }
+#undoBar .btn { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+details.cust { border-bottom: 1px solid var(--line); }
+details.cust summary { cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: 14px; padding: 8px; align-items: baseline; }
+details.cust summary span.num { font-variant-numeric: tabular-nums; }
+details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Fulfillment</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+    <button class="btn" id="btnRefresh" type="button">Refresh</button>
+  </header>
+  <div class="notice bad" id="err" hidden></div>
+  <div class="notice" id="testNote" hidden><b>Test mode until switch day.</b> Only the test show can be changed here. Real shows can be viewed but not changed, because the nightly copy still rebuilds them from the sheets. Giveaways outside a show also start on switch day.</div>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" data-t="show">New-book show</button>
+    <button type="button" role="tab" data-t="off">Giveaways outside a show</button>
+    <button type="button" role="tab" data-t="cust">Cancellations by customer</button>
+  </nav>
+
+  <!-- ONE SHOW -->
+  <div data-pane="show" style="display:contents">
+    <section class="panel">
+      <div class="ph">
+        <div class="ctrls"><label class="fl" style="min-width:min(380px,100%)">Show<select class="seltop" id="showSel" aria-label="Show"></select></label></div>
+        <div class="ctrls" id="showBtns"></div>
+      </div>
+      <div class="statusline" id="showState"></div>
+      <section class="kpis" id="kpis" aria-label="Show totals"></section>
+      <p class="how">Used and vintage shows have their cancellations and giveaways in Used Books.</p>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><div><h2>Sales</h2><span class="sub" id="salesSub"></span></div>
+        <button class="btn sm" type="button" id="salesTog" aria-expanded="true" aria-controls="salesBody">Hide sales</button></div>
+      <div id="salesBody" style="display:contents">
+        <input type="search" class="search" id="q" style="width:100%" placeholder="Search this show by title, ISBN or sale # (order number)" autocomplete="off" aria-label="Search the show's sales">
+        <div class="tbl"><table><thead><tr><th class="plain num">Sale #</th><th class="plain hide-sm">Time</th><th class="plain">Book(s)</th><th class="plain num">Price</th><th class="plain"></th></tr></thead><tbody id="salesTbl"></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><div><h2>Giveaways for this show</h2><span class="sub" id="giftSub"></span></div></div>
+      <div id="giftList"></div>
+      <div id="giftForm"></div>
+    </section>
+  </div>
+
+  <!-- OUTSIDE A SHOW -->
+  <div data-pane="off" style="display:contents" hidden>
+    <section class="panel">
+      <div><h2>Giveaways outside a show</h2><span class="sub">Guests, staff, life events sent between shows and other gifts. They come off the shelf but not off any show’s profit.</span></div>
+      <div id="offForm"></div>
+    </section>
+    <section class="panel"><h2>Recent giveaways outside a show</h2><div id="offList"></div></section>
+  </div>
+
+  <!-- BY CUSTOMER -->
+  <div data-pane="cust" style="display:contents" hidden>
+    <section class="panel">
+      <div class="ph"><div><h2>Cancellations by customer</h2><span class="sub" id="custSub">Every canceled new-book sale, grouped by buyer</span></div>
+        <input type="search" class="search" id="cq" placeholder="Search customers" autocomplete="off" aria-label="Search customers"></div>
+      <div id="custList"><p class="empty">Loading…</p></div>
+    </section>
+  </div>
+</div>
+<div id="undoBar" role="status" aria-live="polite"><span id="undoTxt"></span><button class="btn sm" type="button" id="undoBtn">Undo</button></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const money = v => v == null || !isFinite(v) ? "–" : (v < 0 ? "-$" : "$") + Math.abs(+v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dfmt = s => { if (!s) return "–"; const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return `${MON[m - 1]} ${d}, ${y}`; };
+  const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const PLAT = { TT: "TikTok", WN: "Whatnot", EB: "eBay" };
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  // The database connection: the home screen's when opened from it, otherwise this page's own (same sign-in)
+  let own = null;
+  const sb = () => {
+    try { if (window.parent !== window && window.parent.RELIANT && window.parent.RELIANT.sb) return window.parent.RELIANT.sb; } catch {}
+    if (!own && window.supabase && window.RELIANT_CONFIG) own = window.supabase.createClient(window.RELIANT_CONFIG.supabaseUrl, window.RELIANT_CONFIG.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
+    return own;
+  };
+  const GTYPES = [
+    { name: "Raffle", needShow: true, who: "Winner", whoReq: true, help: "Won in the platform’s raffle during a show." },
+    { name: "Over-MSRP bonus", needShow: true, who: "Customer", whoReq: true, sale: true, help: "Extra book and thank-you card for a buyer who paid over MSRP." },
+    { name: "Life event", who: "Customer", whoReq: true, event: true, help: "Birthday, graduation or another big day. Usually sent between shows." },
+    { name: "Other gift", who: "Given to", whoReq: false, help: "A gift to a guest, staff member or anyone else." }
+  ];
+
+  let L = null, D = null, showId = null, openSale = "", tab = "show", C = null, cOpen = "";
+  const P = new URLSearchParams(location.search);
+
+  function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
+  function showErr(t) { $("err").hidden = !t; $("err").textContent = t || ""; }
+
+  async function loadList() {
+    const c = sb(); if (!c) { setStatus("err", "Not signed in"); return; }
+    setStatus("busy", "Loading…"); $("btnRefresh").disabled = true;
+    const { data, error } = await c.rpc("ful_show_list");
+    $("btnRefresh").disabled = false;
+    if (error) { setStatus("err", "Couldn’t load"); showErr(/operator|sign in/i.test(error.message) ? "Sign in as an operator, manager or owner to use Fulfillment." : error.message); return; }
+    showErr(""); L = data;
+    $("testNote").hidden = L.live;
+    const want = +P.get("show") || showId;
+    if (!L.shows.some(s => s.id === want)) {
+      // a show opened from the Shows section may be older than this list; it's still loaded
+      showId = want || (L.shows[0] && L.shows[0].id) || null;
+    } else showId = want;
+    P.delete("show");
+    drawSel();
+    setStatus("live", `${int(L.shows.length)} new-book shows from the last 120 days · signed in as ${L.me || "staff"}`);
+    if (tab === "off") drawOff();
+    if (tab === "cust") loadCust();
+    await loadShow();
+  }
+  function drawSel() {
+    const opts = L.shows.map(s => `<option value="${s.id}">${esc(s.name)} · ${esc(PLAT[s.plat] || s.plat)}${s.test ? " · TEST" : ""}${s.closed ? " · closed" : ""} · ${int(s.sold)} sold${s.canceled ? `, ${int(s.canceled)} canceled` : ""}</option>`);
+    if (showId && !L.shows.some(s => s.id === showId) && D && D.show.id === showId) opts.unshift(`<option value="${showId}">${esc(D.show.name)}</option>`);
+    $("showSel").innerHTML = opts.join("") || `<option value="">No new-book shows yet</option>`;
+    if (showId) $("showSel").value = String(showId);
+  }
+  async function loadShow() {
+    if (!showId) { D = null; drawShow(); return; }
+    const id = showId;
+    const { data, error } = await sb().rpc("ful_show", { p_show: id });
+    if (id !== showId) return;
+    if (error) { showErr(error.message); return; }
+    D = data; if (!L.shows.some(s => s.id === id)) drawSel();
+    drawShow();
+  }
+
+  // ---------- one show ----------
+  function drawShow() {
+    if (!D) { $("kpis").innerHTML = ""; $("salesTbl").innerHTML = ""; $("giftList").innerHTML = ""; $("giftForm").innerHTML = ""; $("showState").textContent = ""; $("showBtns").innerHTML = ""; return; }
+    const s = D.show, t = D.totals;
+    const state = s.closed ? `<span class="pill ok">Closed</span> by ${esc(s.closed_by || "a manager")} ${s.closed_at ? "on " + esc(new Date(s.closed_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) : ""}`
+      : s.roster ? `<span class="pill">Copied to the Roster</span> not closed in the App yet` : `<span class="pill">Open</span>`;
+    const last = D.log[0];
+    $("showState").innerHTML = `${s.test ? '<span class="pill bad">Test show</span>' : ""} ${state} · ${esc(PLAT[s.plat] || s.plat)} · ${dfmt(s.date)}${last && last.action === "reopened" && !s.closed ? ` · reopened by ${esc(last.by)}: ${esc(last.reason)}` : ""}${!s.editable && !s.closed ? ` · <span class="a">${esc(s.why)}</span>` : ""}`;
+    $("showBtns").innerHTML = (s.closed ? (D.owner ? `<button class="btn" type="button" id="reopenBtn">Reopen show</button>` : `<span class="sub">Only an owner can reopen it.</span>`)
+      : `<button class="btn${D.manager ? " pri" : ""}" type="button" id="closeBtn">${D.manager ? "Close show…" : "Closing summary"}</button>`);
+    const k = [
+      ["Books sold", int(t.sold), money(t.revenue) + " revenue"],
+      ["Canceled", int(t.canceled), t.canceled ? money(t.canrev) + " · back on the shelf" : "none"],
+      ["Given away", int(t.given), t.given ? money(t.gcost) + " cost" : "none"],
+      ["Profit before giveaways", money(t.profit), "after fees and cost"],
+      ["Profit after giveaways", money(t.after), t.gcost ? "less " + money(t.gcost) : "no giveaways"]
+    ];
+    $("kpis").innerHTML = k.map(([kk, v, d]) => `<div class="kpi"><span class="k">${kk}</span><span class="v">${v}</span><span class="d">${esc(d)}</span></div>`).join("");
+    drawSales(); drawGifts();
+  }
+  function groups() {
+    const g = new Map();
+    for (const x of D.sales) { const k = x.sale != null ? "s" + x.sale : "n" + x.id; if (!g.has(k)) g.set(k, { key: k, sale: x.sale, time: x.time, lines: [] }); g.get(k).lines.push(x); }
+    return [...g.values()];
+  }
+  function drawSales() {
+    const s = D.show, G = groups(), qv = $("q").value.trim().toLowerCase(), digits = qv.replace(/[^0-9x]/g, "");
+    const list = G.filter(g => {
+      if (!qv) return true;
+      if (/^#?\d{1,6}$/.test(qv)) return String(g.sale) === qv.replace("#", "");
+      if (digits.length >= 10) return g.lines.some(l => l.isbn.toLowerCase().includes(digits) || (digits.length === 10 && l.isbn.slice(3, 12) === digits.slice(0, 9)));
+      const toks = qv.split(/\s+/);
+      return g.lines.some(l => toks.every(t => (l.title + " " + l.author + " " + l.isbn + " " + l.customer).toLowerCase().includes(t)));
+    });
+    const nb = D.sales.length;
+    $("salesSub").textContent = `${int(G.length)} sales · ${int(nb)} books${qv ? ` · ${int(list.length)} match` : ""}`;
+    $("salesTbl").innerHTML = list.length ? list.map(g => {
+      const live = g.lines.filter(l => l.status === "sold"), allCan = !live.length;
+      const total = g.lines.reduce((a, l) => a + (+l.price || 0), 0);
+      const main = `<tr${allCan ? ' style="opacity:.75"' : ""}><td class="num big">${g.sale != null ? esc(g.sale) : '<span class="a">–</span>'}</td><td class="hide-sm a">${esc(g.time || "")}</td>
+        <td>${g.lines.map(l => `<div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${esc(l.isbn)}${l.bundle ? " · bundle" : ""}${D.manager && l.status === "sold" && l.cost == null ? ' · <span class="pill">no cost</span>' : ""}${l.status === "canceled" ? ` · <span class="pill bad">Canceled${l.customer ? " · " + esc(l.customer) : ""}</span> ${esc(l.reason)}${l.cnote ? " · " + esc(l.cnote) : ""}${l.cby ? ` · by ${esc(l.cby)}` : ""}${s.editable && l.origin !== "cancel_tab" ? ` <button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}` : ""}</div>`).join("")}</td>
+        <td class="num">${money(total)}</td><td class="num">${live.length && s.editable ? `<button class="btn sm" type="button" data-cx="${esc(g.key)}">${openSale === g.key ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
+      if (openSale !== g.key || !live.length || !s.editable) return main;
+      return main + `<tr><td colspan="5"><div class="box">
+        <b>Cancel ${g.sale != null ? "sale #" + esc(g.sale) : "this sale"}</b>
+        ${live.map(l => `<label class="chk"><input type="checkbox" data-cl="${l.id}" checked> ${esc(l.title)} <span class="a">${money(l.price)}</span></label>`).join("")}
+        <div class="fg"><label class="fl">Customer<input id="cxWho" placeholder="Username or name" value="${esc(live[0].customer || "")}"></label>
+          <label class="fl">Reason<select id="cxWhy"><option>Buyer canceled</option><option>Didn't pay</option><option>Shipping problem</option><option>Other</option></select></label>
+          <label class="fl">Notes<input id="cxNote" placeholder="Optional"></label></div>
+        <div class="row"><button class="btn pri" type="button" id="cxGo">Cancel and put back on the shelf</button><span class="msg" id="cxMsg"></span></div></div></td></tr>`;
+    }).join("") : `<tr><td colspan="5" class="empty">${qv ? "No sale in this show matches that search." : "No sales in this show."}</td></tr>`;
+  }
+  function setSalesOpen(open) {
+    $("salesBody").style.display = open ? "contents" : "none";
+    $("salesTog").textContent = open ? "Hide sales" : "Show sales";
+    $("salesTog").setAttribute("aria-expanded", String(open));
+    ls.set("ful.salesOpen", open ? "1" : "0");
+  }
+  $("salesTog").onclick = () => setSalesOpen($("salesBody").style.display === "none");
+  setSalesOpen(ls.get("ful.salesOpen") !== "0");
+  $("q").addEventListener("input", () => D && drawSales());
+  $("salesTbl").addEventListener("click", async e => {
+    const cx = e.target.closest("[data-cx]");
+    if (cx) { openSale = openSale === cx.dataset.cx ? "" : cx.dataset.cx; drawSales(); if ($("cxWho")) $("cxWho").focus(); return; }
+    const un = e.target.closest("[data-undo]");
+    if (un) {
+      if (!un.dataset.armed) { un.dataset.armed = "1"; un.textContent = "Yes, undo"; un.classList.add("pri"); return; }
+      un.disabled = true;
+      const { error } = await sb().rpc("ful_cancel_undo", { p_sales: [+un.dataset.undo] });
+      if (error) { un.disabled = false; un.textContent = error.message; return; }
+      await loadShow(); return;
+    }
+    if (e.target.id === "cxGo") doCancel();
+  });
+  async function doCancel() {
+    const ids = [...document.querySelectorAll("[data-cl]")].filter(c => c.checked).map(c => +c.dataset.cl);
+    const who = $("cxWho").value.trim(), msg = $("cxMsg");
+    if (!ids.length) { msg.innerHTML = `<span class="no">Tick at least one book.</span>`; return; }
+    if (!who) { msg.innerHTML = `<span class="no">Enter the customer.</span>`; $("cxWho").focus(); return; }
+    $("cxGo").disabled = true; msg.textContent = "Saving…";
+    const { error } = await sb().rpc("ful_cancel", { p_sales: ids, p_customer: who, p_reason: $("cxWhy").value, p_notes: $("cxNote").value.trim() });
+    if (error) { $("cxGo").disabled = false; msg.innerHTML = `<span class="no">Not canceled. ${esc(error.message)}</span>`; return; }
+    openSale = ""; C = null;
+    await loadShow();
+    offerUndo(ids, who);
+  }
+  // 15-second Undo bar right after a cancellation is confirmed
+  let undoT = null;
+  function hideUndo() { clearInterval(undoT); undoT = null; $("undoBar").style.display = "none"; }
+  function offerUndo(ids, who) {
+    hideUndo();
+    let left = 15; const btn = $("undoBtn");
+    $("undoTxt").textContent = `Canceled ${ids.length} book${ids.length === 1 ? "" : "s"} for ${who}. ${ids.length === 1 ? "It’s" : "They’re"} back on the shelf.`;
+    btn.hidden = false; btn.disabled = false; btn.textContent = `Undo (${left})`; $("undoBar").style.display = "flex";
+    btn.onclick = async () => {
+      clearInterval(undoT); btn.disabled = true; btn.textContent = "Undoing…";
+      const { error } = await sb().rpc("ful_cancel_undo", { p_sales: ids });
+      if (error) { $("undoTxt").textContent = "Couldn’t undo: " + error.message; btn.hidden = true; setTimeout(hideUndo, 6000); return; }
+      $("undoTxt").textContent = "Cancellation undone. The sale is back as it was."; btn.hidden = true; C = null;
+      setTimeout(hideUndo, 3000); loadShow();
+    };
+    undoT = setInterval(() => { left--; if (left <= 0) hideUndo(); else btn.textContent = `Undo (${left})`; }, 1000);
+  }
+
+  // ---------- giveaways ----------
+  function giftTable(list, removable) {
+    if (!list.length) return `<p class="empty">No giveaways logged yet.</p>`;
+    return `<div class="tbl"><table><thead><tr><th class="plain">Date</th><th class="plain">Type</th><th class="plain">Book</th><th class="plain num">Qty</th><th class="plain">Recipient</th><th class="plain hide-sm">Notes</th>${list.some(g => g.cost != null) ? '<th class="plain num">Cost</th>' : ""}<th class="plain"></th></tr></thead><tbody>${
+      list.map(g => `<tr><td>${dfmt(g.date)}</td><td>${esc(g.type)}</td><td><div class="t">${esc(g.title)}</div><div class="a">${esc(g.isbn)}</div></td><td class="num">${int(g.qty)}</td>
+        <td>${esc(g.who)}${g.sale ? `<div class="a">sale #${esc(g.sale)}</div>` : ""}</td><td class="hide-sm a">${esc(g.note)}${g.by ? `<div>by ${esc(g.by)}${g.origin === "sheet" ? " · from the sheets" : ""}</div>` : ""}</td>
+        ${list.some(x => x.cost != null) ? `<td class="num">${money(g.cost)}</td>` : ""}<td class="num">${removable(g) ? `<button class="btn sm" type="button" data-grm="${g.id}">Remove</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  function drawGifts() {
+    const gs = D.giveaways, n = gs.reduce((a, g) => a + (+g.qty || 0), 0);
+    $("giftSub").textContent = gs.length ? `${int(n)} book${n === 1 ? "" : "s"}${D.manager ? " · " + money(D.totals.gcost) + " off this show’s profit" : ""}` : "";
+    $("giftList").innerHTML = giftTable(gs, () => D.show.editable) + `<p class="msg" id="giftMsg"></p>`;
+    if (!D.show.editable) { $("giftForm").innerHTML = D.show.closed ? `<p class="how">This show is closed, so giveaways can’t be added or removed.</p>` : `<p class="how">${esc(D.show.why)}</p>`; return; }
+    if ($("giftForm").dataset.show !== String(D.show.id)) { makeGiftForm($("giftForm"), { show: D.show.id }); $("giftForm").dataset.show = String(D.show.id); }
+    else if ($("giftForm")._refresh) $("giftForm")._refresh();
+  }
+  document.addEventListener("click", async e => {
+    const b = e.target.closest("[data-grm]"); if (!b) return;
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Yes, remove"; b.classList.add("pri"); return; }
+    b.disabled = true;
+    const { error } = await sb().rpc("ful_giveaway_remove", { p_id: +b.dataset.grm });
+    if (error) { b.disabled = false; b.textContent = error.message; return; }
+    if (tab === "off") { await loadList(); drawOff(); } else await loadShow();
+  });
+
+  function makeGiftForm(root, opts) {
+    const st = { type: opts.show ? "Raffle" : "Life event", pick: null, ev: null };
+    const types = opts.show ? GTYPES : GTYPES.filter(t => !t.needShow);
+    root.innerHTML = `<div class="box">
+      <b>Log a giveaway</b>
+      <div class="seg" role="group" aria-label="Giveaway type" data-g="types">${types.map(t => `<button type="button" data-type="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>
+      <p class="how" data-g="help"></p>
+      <input type="search" class="inp" data-g="q" placeholder="Find the book: title, author or ISBN (or scan)" autocomplete="off" aria-label="Find the book">
+      <ul class="results" data-g="res" hidden></ul>
+      <div class="picked" data-g="pick" hidden></div>
+      <div class="fg">
+        <label class="fl">How many books<input type="number" data-g="qty" min="1" step="1" value="1"></label>
+        <label class="fl" data-g="saleWrap">Went with sale #<select data-g="sale"></select></label>
+        <label class="fl"><span data-g="whoL">Recipient</span><input data-g="who" placeholder="Name or username"></label>
+        <label class="fl" data-g="evWrap">Event<input data-g="ev" placeholder="Birthday, graduation…"></label>
+        <label class="fl">Date given<input type="date" data-g="date"></label>
+        <label class="fl">Notes<input data-g="note" placeholder="Optional"></label>
+      </div>
+      <div data-g="ceWrap" hidden><div class="how" style="margin-bottom:4px">Upcoming customer events: pick one to fill it in and tick it done</div><div class="chips" data-g="ce"></div></div>
+      <div class="row"><button class="btn pri" type="button" data-g="go" disabled>Save giveaway</button><span class="msg" data-g="msg"></span></div>
+    </div>`;
+    const q = s => root.querySelector(`[data-g="${s}"]`);
+    q("date").value = todayISO(); q("date").max = todayISO();
+    const fillSales = () => {
+      const G = D && opts.show === D.show.id ? groups().filter(g => g.sale != null && g.lines.some(l => l.status === "sold")) : [];
+      const cur = q("sale").value;
+      q("sale").innerHTML = `<option value="">—</option>` + G.map(g => `<option value="${esc(g.sale)}">#${esc(g.sale)} · ${esc(g.lines.map(l => l.title).join(" + ").slice(0, 60))}</option>`).join("");
+      q("sale").value = cur;
+    };
+    const fillCE = () => {
+      const list = (L && L.events || []).filter(e => e.days >= -7).slice(0, 12);
+      q("ceWrap").hidden = !(st.type === "Life event" && list.length);
+      q("ce").innerHTML = list.map(c => `<button class="chips-b" type="button" data-ce="${c.id}" aria-pressed="${!!(st.ev && st.ev.id === c.id)}">${esc(c.user)} · ${esc(c.type === "Other" ? c.note || "event" : c.type)} · ${c.days === 0 ? "today" : c.days < 0 ? -c.days + " days ago" : "in " + c.days + " days"}</button>`).join("");
+      q("ce").querySelectorAll("[data-ce]").forEach(b => b.onclick = () => {
+        const c = list.find(x => x.id === +b.dataset.ce); st.ev = st.ev && st.ev.id === c.id ? null : c;
+        if (st.ev) { q("who").value = c.user; q("ev").value = c.type === "Other" ? c.note : c.type; }
+        fillCE();
+      });
+    };
+    const applyType = () => {
+      const t = GTYPES.find(x => x.name === st.type);
+      root.querySelectorAll("[data-type]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === st.type)));
+      q("help").textContent = t.help;
+      q("whoL").textContent = t.who + (t.whoReq ? "" : " (optional)");
+      q("evWrap").hidden = !t.event; q("saleWrap").hidden = !t.sale;
+      if (t.sale) fillSales();
+      if (!t.event) st.ev = null;
+      fillCE();
+    };
+    root.querySelectorAll("[data-type]").forEach(b => b.onclick = () => { st.type = b.dataset.type; applyType(); });
+    const pick = it => {
+      st.pick = it; q("res").hidden = true; q("q").value = ""; q("pick").hidden = false;
+      q("pick").innerHTML = `<div class="grow"><div class="t">${esc(it.title)}</div><div class="a">${esc([it.author, it.isbn, it.onhand != null ? int(it.onhand) + " on hand" : ""].filter(Boolean).join(" · "))}</div></div><button class="btn sm" type="button">Change</button>`;
+      q("pick").querySelector("button").onclick = () => { st.pick = null; q("pick").hidden = true; q("go").disabled = true; q("q").focus(); };
+      q("go").disabled = false; q("msg").textContent = ""; q("qty").focus(); q("qty").select();
+    };
+    let sT = null, sN = 0, hits = [];
+    q("q").addEventListener("input", () => {
+      clearTimeout(sT);
+      const v = q("q").value.trim();
+      if (v.length < 2) { q("res").hidden = true; return; }
+      sT = setTimeout(async () => {
+        const n = ++sN;
+        const { data, error } = await sb().rpc("ful_book_search", { p_q: v });
+        if (n !== sN) return;
+        hits = error ? [] : data;
+        q("res").hidden = false;
+        q("res").innerHTML = hits.length ? hits.map((h, i) => `<li data-i="${i}"><span><span class="t">${esc(h.title)}</span><div class="m">${esc([h.author, h.isbn].filter(Boolean).join(" · "))}</div></span><span class="m">${h.onhand != null ? int(h.onhand) + " on hand" : ""}</span></li>`).join("")
+          : `<li><span class="m">${error ? esc(error.message) : "No book matches."}</span></li>`;
+        if (hits.length === 1 && /^[0-9xX-]{10,17}$/.test(v)) pick(hits[0]);   // a scan picks the book straight away
+      }, 220);
+    });
+    q("res").addEventListener("click", e => { const li = e.target.closest("[data-i]"); if (li) pick(hits[+li.dataset.i]); });
+    q("go").onclick = async () => {
+      const t = GTYPES.find(x => x.name === st.type), it = st.pick, bad = m => { q("msg").innerHTML = `<span class="no">${esc(m)}</span>`; };
+      const qty = Math.round(+q("qty").value), who = q("who").value.trim(), ev = t.event ? q("ev").value.trim() : "", d = q("date").value;
+      if (!it) return bad("Pick the book first.");
+      if (!(qty > 0)) return bad("Enter how many books (1 or more).");
+      if (t.whoReq && !who) return bad(`Enter the ${t.who.toLowerCase()}.`);
+      if (t.event && !ev) return bad("Enter the event (birthday, graduation…).");
+      if (!d || d > todayISO()) return bad("Pick a date that isn’t in the future.");
+      q("go").disabled = true; q("msg").textContent = "Saving…";
+      const { error } = await sb().rpc("ful_giveaway_save", { p: { type: t.name, isbn: it.isbn, qty, show: opts.show || null, sale: t.sale ? q("sale").value : "", who,
+        note: [ev, q("note").value.trim()].filter(Boolean).join(" · "), date: d, event: st.ev ? st.ev.id : null } });
+      if (error) { q("go").disabled = false; return bad("Not saved. " + error.message); }
+      const done = st.ev;
+      q("msg").innerHTML = `<span class="ok">Saved: ${int(qty)} × ${esc(it.title)} (${esc(t.name.toLowerCase())}${who ? " · " + esc(who) : ""}).${done ? ` Ticked ${esc(done.user)}’s event done.` : ""}</span>`;
+      st.pick = null; st.ev = null; q("pick").hidden = true; q("qty").value = 1; q("who").value = ""; q("ev").value = ""; q("note").value = "";
+      if (done) L.events = L.events.filter(x => x.id !== done.id);
+      if (opts.show) await loadShow(); else { await loadList(); drawOff(); }
+    };
+    root._refresh = () => { applyType(); };
+    applyType();
+  }
+
+  // ---------- outside a show ----------
+  function drawOff() {
+    if (!L) return;
+    if (!L.live) { $("offForm").innerHTML = `<p class="how">Giveaways outside a show start on switch day. Until then the nightly copy reloads the sheet’s Giveaways tab, which would remove them.</p>`; }
+    else if (!$("offForm").dataset.made) { makeGiftForm($("offForm"), { show: null }); $("offForm").dataset.made = "1"; }
+    $("offList").innerHTML = giftTable(L.offshow, g => L.live || g.origin === "app");
+  }
+
+  // ---------- by customer ----------
+  async function loadCust() {
+    if (!C) {
+      $("custList").innerHTML = `<p class="empty">Loading…</p>`;
+      const { data, error } = await sb().rpc("ful_cancels_by_customer");
+      if (error) { $("custList").innerHTML = `<p class="notice bad">${esc(error.message)}</p>`; return; }
+      C = data;
+    }
+    const qv = $("cq").value.trim().toLowerCase();
+    const list = C.filter(c => !qv || c.customer.toLowerCase().includes(qv));
+    $("custSub").textContent = `${int(C.length)} customers · ${int(C.reduce((a, c) => a + c.books, 0))} canceled books`;
+    $("custList").innerHTML = list.length ? `<div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(3,auto);gap:14px;padding:0 8px 4px 8px" class="sub"><span>Customer</span><span>Books</span><span>Total</span><span>Last</span></div>` + list.slice(0, 300).map(c => `<details class="cust"${cOpen === c.customer ? " open" : ""} data-c="${esc(c.customer)}"><summary><span class="t">${esc(c.customer)} <span class="a">${int(c.shows)} show${c.shows === 1 ? "" : "s"}</span></span><span class="num">${int(c.books)}</span><span class="num">${money(c.total)}</span><span class="num a">${dfmt(c.last)}</span></summary>
+      <div class="items">${c.items.map(i => `<div>${dfmt(i.date)} · ${esc(i.show)} · ${esc(i.title)} · ${money(i.price)}${i.reason ? " · " + esc(i.reason) : ""}</div>`).join("")}</div></details>`).join("")
+      : `<p class="empty">${qv ? "No customer matches." : "No cancellations yet."}</p>`;
+  }
+  $("cq").addEventListener("input", () => C && loadCust());
+  $("custList").addEventListener("toggle", e => { const d = e.target.closest && e.target.closest("details"); if (d) cOpen = d.open ? d.dataset.c : (cOpen === d.dataset.c ? "" : cOpen); }, true);
+
+  // ---------- tabs, show picker, close / reopen ----------
+  function setTab(t) {
+    tab = t;
+    document.querySelectorAll("#tabs [data-t]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === t)));
+    document.querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== t);
+    if (t === "off") drawOff(); if (t === "cust") loadCust();
+  }
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (b) setTab(b.dataset.t); });
+  $("showSel").onchange = () => { showId = +$("showSel").value || null; openSale = ""; $("q").value = ""; loadShow(); };
+  $("showBtns").addEventListener("click", e => {
+    const show = D && { id: D.show.id, name: D.show.name };
+    const after = async () => { await loadList(); };
+    if (e.target.id === "closeBtn") window.ReliantClose.open({ sb: sb(), show, onDone: after });
+    if (e.target.id === "reopenBtn") window.ReliantClose.reopen({ sb: sb(), show, onDone: after });
+  });
+  $("btnRefresh").onclick = () => { C = null; loadList(); };
+  setTab("show");
+  loadList();
+})();
+</script>
+</body>
+</html>

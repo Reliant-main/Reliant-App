@@ -6,6 +6,7 @@
 <title>Used Books</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="close-show.js"></script>
 <style>
 :root {
   --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
@@ -98,6 +99,7 @@ tr:last-child td { border-bottom: 0; }
 .ful .box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
 .ful .ok { color: var(--good); } .ful .no { color: var(--bad); }
 .btn.sm { padding: 4px 9px; font-size: 12px; }
+.closebar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
 .btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
 .cons .due { font-weight: 600; color: var(--bad); }
 .cons .ok { color: var(--good); font-weight: 600; }
@@ -209,7 +211,7 @@ tr:last-child td { border-bottom: 0; }
     }
   });
   function render() {
-    const S = D.shows.map(r => ({ id: r[0], name: r[1], date: r[2], plat: r[3], type: r[4], status: r[5], sold: +r[6] || 0, rev: +r[7] || 0, profit: r[8] == null ? null : +r[8], rej: +r[9] || 0, speed: +r[10] || 0 }));
+    const S = D.shows.map(r => ({ id: r[0], name: r[1], date: r[2], plat: r[3], type: r[4], status: r[5], sold: +r[6] || 0, rev: +r[7] || 0, profit: r[8] == null ? null : +r[8], rej: +r[9] || 0, speed: +r[10] || 0, closed: !!r[11], closer: r[12] || "", closedAt: r[13] }));
     const tot = S.reduce((a, s) => ({ sold: a.sold + s.sold, rev: a.rev + s.rev, profit: a.profit + (s.profit || 0), rej: a.rej + s.rej, speed: a.speed + s.speed }), { sold: 0, rev: 0, profit: 0, rej: 0, speed: 0 });
     const b = D.benchmark || {};
     $("kpis").innerHTML = [
@@ -242,7 +244,7 @@ tr:last-child td { border-bottom: 0; }
 
     $("showsSub").textContent = `${int(S.length)} shows`;
     $("showsTbl").innerHTML = S.length ? `<table><thead><tr><th class="plain">Show</th><th class="plain num">Sold</th><th class="plain num hide-sm">Speed</th><th class="plain num">Revenue</th><th class="plain num hide-sm">Sell-through</th><th class="plain num">Profit</th></tr></thead><tbody>${
-      S.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} <span class="tag ${s.type}">${s.type === "vintage" ? "Vintage" : "Used"}</span>${s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
+      S.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} <span class="tag ${s.type}">${s.type === "vintage" ? "Vintage" : "Used"}</span>${s.closed ? ' <span class="pill ok">Closed</span>' : s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
         <td class="num">${int(s.sold)}</td><td class="num hide-sm">${s.speed ? int(s.speed) : "–"}</td><td class="num">${money(s.rev)}</td>
         <td class="num hide-sm">${s.rej ? Math.round(100 * s.sold / (s.sold + s.rej)) + "%" : "–"}</td><td class="num">${money(s.profit)}</td></tr>`).join("")}</tbody></table>`
       : `<p class="empty">No used or vintage shows yet.</p>`;
@@ -258,6 +260,8 @@ tr:last-child td { border-bottom: 0; }
     $("drawerCard").innerHTML = `
       <div><button type="button" class="btn" id="closeD">✕ Close</button></div>
       <div><span class="eyebrow">${esc(PLAT[s.plat] || s.plat)} · ${dfmt(s.date)}</span><h2>${esc(s.name)}</h2></div>
+      <div class="closebar">${s.closed ? `<span class="pill ok">Closed</span> by ${esc(s.closer || "a manager")}${s.closedAt ? " on " + esc(new Date(s.closedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) : ""}${D.owner ? ` <button class="btn" type="button" data-reopen="${s.id}">Reopen show</button>` : ""}`
+        : `${s.status === "live" ? '<span class="pill">Open · in Staging</span>' : '<span class="pill">Copied to the Roster</span> not closed in the App yet'} <button class="btn pri" type="button" data-close="${s.id}">Close show…</button>`}</div>
       <div class="bar3" role="img" aria-label="${int(main)} main round, ${int(s.speed)} speed round, ${int(s.rej)} unsold">
         <i style="width:${(100 * main / Math.max(1, s.sold + s.rej)).toFixed(1)}%;background:var(--accent)"></i><i style="width:${(100 * s.speed / Math.max(1, s.sold + s.rej)).toFixed(1)}%;background:var(--gilt)"></i></div>
       <p class="how">${int(main)} sold in the main round · ${int(s.speed)} in the speed round · ${int(s.rej)} R’s</p>
@@ -283,7 +287,8 @@ tr:last-child td { border-bottom: 0; }
     const { data, error } = await sb().rpc("used_show_detail", { p_show_id: id });
     if (fShowId !== id || !$("ful")) return;
     if (error || !data) { $("ful").innerHTML = `<p class="how">Couldn’t load fulfillment${error ? ": " + esc(error.message) : ""}.</p>`; return; }
-    F = data; fulDraw();
+    F = data; F.closed = !!((window.__S || []).find(x => x.id === id) || {}).closed; fulDraw();
+    if (F.closed) $("ful").insertAdjacentHTML("afterbegin", `<p class="how">This show is closed, so cancellations and giveaways can’t be changed. An owner can reopen it.</p>`);
   }
   const by = () => { try { const m = window.parent.RELIANT.staff || {}; return m.display_name || m.name || m.email || ""; } catch { return ""; } };
   function fulDraw() {
@@ -298,8 +303,8 @@ tr:last-child td { border-bottom: 0; }
         : `<div class="tbl"><table><thead><tr><th class="plain num">Sale #</th><th class="plain">Book(s)</th><th class="plain num">Price</th><th class="plain"></th></tr></thead><tbody>${
         [...groups.values()].filter(g => g[0].sale != null).map(g => {
           const k = String(g[0].sale), live = g.filter(x => x.status === "sold");
-          const row = `<tr><td class="num">${esc(k)}</td><td>${g.map(x => `<div class="t"${x.status === "canceled" ? ' style="text-decoration:line-through"' : ""}>${esc(x.title || x.code)}</div><div class="a">${esc([x.code, x.source].filter(Boolean).join(" · "))}${x.status === "canceled" ? ` · <span class="pill bad">Canceled${x.customer ? " · " + esc(x.customer) : ""}</span>${x.cancel_id && F.manager ? ` <button class="btn sm" type="button" data-fundo="${esc(x.cancel_id)}">Undo</button>` : ""}` : ""}</div>`).join("")}</td>
-            <td class="num">${money(g.reduce((a, x) => a + (+x.price || 0), 0))}</td><td class="num">${live.length && F.manager ? `<button class="btn sm" type="button" data-fcx="${esc(k)}">${fOpen === k ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
+          const row = `<tr><td class="num">${esc(k)}</td><td>${g.map(x => `<div class="t"${x.status === "canceled" ? ' style="text-decoration:line-through"' : ""}>${esc(x.title || x.code)}</div><div class="a">${esc([x.code, x.source].filter(Boolean).join(" · "))}${x.status === "canceled" ? ` · <span class="pill bad">Canceled${x.customer ? " · " + esc(x.customer) : ""}</span>${x.cancel_id && F.manager && !F.closed ? ` <button class="btn sm" type="button" data-fundo="${esc(x.cancel_id)}">Undo</button>` : ""}` : ""}</div>`).join("")}</td>
+            <td class="num">${money(g.reduce((a, x) => a + (+x.price || 0), 0))}</td><td class="num">${live.length && F.manager && !F.closed ? `<button class="btn sm" type="button" data-fcx="${esc(k)}">${fOpen === k ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
           if (fOpen !== k || !live.length) return row;
           return row + `<tr><td colspan="4"><div class="box">
             ${live.map(x => `<label style="flex-direction:row;gap:8px;text-transform:none;font:14px var(--f-ui);color:var(--ink)"><input type="checkbox" data-fl="${x.id}" checked> ${esc(x.title || x.code)} · ${money(x.price)}</label>`).join("")}
@@ -308,12 +313,12 @@ tr:last-child td { border-bottom: 0; }
               <label>Notes<input id="fNote" placeholder="Optional"></label></div>
             <div class="row"><button class="btn pri" type="button" id="fGo">Cancel sale</button><span id="fMsg" class="how"></span></div></div></td></tr>`;
         }).join("")}</tbody></table></div>`}
-      <p class="how">${can.length ? `${can.length} book${can.length === 1 ? "" : "s"} canceled.` : "Nothing canceled."} ${F.manager ? "" : "Only an owner or manager can cancel sales."} Cancellations here go to the database; the Workspace also marks them in the Used Books sheet.</p>
+      <p class="how">${can.length ? `${can.length} book${can.length === 1 ? "" : "s"} canceled.` : "Nothing canceled."} ${F.manager ? "" : "Only staff with show access can cancel sales."} Cancellations here go to the database; the Workspace also marks them in the Used Books sheet.</p>
       <h3>Giveaways${gN ? ` <span class="how">${gN} book${gN === 1 ? "" : "s"} · ${esc(bySrc)}</span>` : ""}</h3>
       <p class="how">Used books are counted by source, not by title. The ISBN and title are optional.</p>
       ${gs.length ? `<div class="tbl"><table><thead><tr><th class="plain">Date</th><th class="plain">Type</th><th class="plain">Source</th><th class="plain num">Qty</th><th class="plain">Recipient</th><th class="plain"></th></tr></thead><tbody>${
-        gs.map(g => `<tr><td>${dfmt(g.date)}</td><td>${esc(g.type)}</td><td>${esc(g.source || "—")}${g.title || g.isbn ? `<div class="a">${esc([g.title, g.isbn].filter(Boolean).join(" · "))}</div>` : ""}</td><td class="num">${int(g.qty)}</td><td>${esc(g.who || "")}${g.note ? `<div class="a">${esc(g.note)}</div>` : ""}</td><td class="num"><button class="btn sm" type="button" data-frm="${esc(g.id)}">Remove</button></td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No giveaways logged for this show.</p>`}
-      <div class="box">
+        gs.map(g => `<tr><td>${dfmt(g.date)}</td><td>${esc(g.type)}</td><td>${esc(g.source || "—")}${g.title || g.isbn ? `<div class="a">${esc([g.title, g.isbn].filter(Boolean).join(" · "))}</div>` : ""}</td><td class="num">${int(g.qty)}</td><td>${esc(g.who || "")}${g.note ? `<div class="a">${esc(g.note)}</div>` : ""}</td><td class="num">${F.closed ? "" : `<button class="btn sm" type="button" data-frm="${esc(g.id)}">Remove</button>`}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No giveaways logged for this show.</p>`}
+      <div class="box"${F.closed ? " hidden" : ""}>
         <div class="row" id="fTypes">${GTYPES.map(t => `<button class="btn sm${t.name === fType ? " pri" : ""}" type="button" data-ft="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>
         <div class="fg">
           <label>Source<select id="gSrc">${(F.sources || []).map(x => `<option value="${esc(x.name)}">${esc(x.name)} · ${money(x.cost)}${x.share ? " · consignment" : ""}</option>`).join("")}</select></label>
@@ -329,6 +334,13 @@ tr:last-child td { border-bottom: 0; }
         <div class="row"><button class="btn pri" type="button" id="gGo">Save giveaway</button><span id="gMsg" class="how"></span></div>
       </div>`;
   }
+  $("drawerCard").addEventListener("click", e => {
+    const b = e.target.closest("[data-close],[data-reopen]"); if (!b) return;
+    const s = window.__S.find(x => x.id === +(b.dataset.close || b.dataset.reopen)); if (!s) return;
+    const done = async () => { await load(); openShow(s.id); };
+    if (b.dataset.close) window.ReliantClose.open({ sb: sb(), show: { id: s.id, name: s.name }, onDone: done });
+    else window.ReliantClose.reopen({ sb: sb(), show: { id: s.id, name: s.name }, onDone: done });
+  });
   $("drawerCard").addEventListener("click", async e => {
     const b = e.target.closest("button"); if (!b || !F || !$("ful") || !$("ful").contains(b)) return;
     const c = sb();
