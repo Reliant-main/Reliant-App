@@ -54,6 +54,10 @@ $("newShow").onclick = async () => {
   const r = tab && await chrome.tabs.sendMessage(tab.id, { type: "newShow", platform: $("newShow").dataset.p }).catch(() => null);
   $("tab").textContent = r && r.ok ? "New show started. The next sale gets buyer #1." : "Couldn't start a new show on this tab.";
 };
+$("openPanel").onclick = async () => {
+  try { const w = await chrome.windows.getCurrent(); await chrome.sidePanel.open({ windowId: w.id }); window.close(); }
+  catch (e) { $("tab").textContent = "Couldn't open the sidebar. Update Chrome, then try again."; }
+};
 $("reset").onclick = async () => { await chrome.storage.local.set({ stats: {} }); draw(); };
 chrome.storage.onChanged.addListener(draw);
 draw();

@@ -365,7 +365,7 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     if (!showId) { sales = []; items = []; buyers = []; draw(); return; }
     const sid = showId;
     const [s, i, b] = await Promise.all([
-      sb.from("live_sales").select("id,live_buyer_id,total,subtotal,adj_price,spotlight_state,status,flag,order_created_at,received_at,chit_printed_at,title_chit_printed_at,transaction_type").eq("live_show_id", sid).order("order_created_at", { ascending: true }).order("id"),
+      sb.from("live_sales").select("id,live_buyer_id,total,subtotal,adj_price,spotlight_state,status,flag,order_created_at,received_at,chit_printed_at,title_chit_printed_at,transaction_type,reprint_requested_at").eq("live_show_id", sid).order("order_created_at", { ascending: true }).order("id"),
       sb.from("live_sale_items").select("id,live_sale_id,isbn,item_text,scan_code,in_book_list,entry_method,scanned_at,books(title,author)").eq("live_show_id", sid).order("scanned_at").order("id"),
       sb.from("live_buyers").select("id,buyer_number,username,display_name,platform_buyer_id").eq("live_show_id", sid).order("buyer_number")
     ]);
@@ -596,10 +596,10 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     if (printing) return;
     printing = true;
     while (queue.length) {
-      const { sale, kind } = queue.shift();
+      const { sale, kind, reprint } = queue.shift();
       try {
         await loadChit(false);
-        await sb.rpc("live_mark_printed", { p_sale: sale.id, p_kind: kind });
+        if (!reprint) await sb.rpc("live_mark_printed", { p_sale: sale.id, p_kind: kind });
         await printNow(chitHtml(sale, kind === "title"));
       } catch (e) { setMsg("A chit didn't print: " + (e.message || e), "bad"); }
     }
@@ -614,7 +614,25 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
       f.srcdoc = html;
     });
   }
+  // "Print another chit" from the sidebar: the first printing computer to claim it prints it once.
+  const reprintClaiming = new Set();
+  async function pickupReprints() {
+    if (!$("printer").checked) return;
+    for (const s of sales) {
+      if (!s.reprint_requested_at || reprintClaiming.has(s.id)) continue;
+      reprintClaiming.add(s.id);
+      try {
+        const { data } = await sb.from("live_sales").update({ reprint_requested_at: null }).eq("id", s.id).not("reprint_requested_at", "is", null).select("id");
+        if (data && data.length) {
+          const kind = itemsOf(s).length && $("chitMode").value !== "sale" ? "title" : "sale";
+          queue.push({ sale: s, kind, reprint: true }); pump();
+          setMsg("Printing another chit (asked for from the sidebar)", "ok");
+        }
+      } finally { reprintClaiming.delete(s.id); }
+    }
+  }
   function autoPrint() {
+    pickupReprints().catch(() => {});
     if (!$("printer").checked) return;
     const mode = $("chitMode").value, now = Date.now();
     for (const s of sales) {

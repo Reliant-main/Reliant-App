@@ -20,6 +20,7 @@ async function fail(msg) { await bump("errors", 1, { lastError: msg, lastErrorAt
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   (async () => {
     try {
+      if (msg.type === "panel" || msg.type === "buyer" || msg.type === "reprint") { reply({ ok: true, ...(await post(msg)) }); return; }
       if (msg.type === "hello") { reply({ ok: true, ...(await post({ type: "hello" })) }); return; }
       if (msg.type === "capture") { const j = await post(msg); await bump("captures", j.stored || 0, j.full ? { lastError: "Learning limit reached for this hour" } : {}); }
       else if (msg.type === "sale") {

@@ -1,0 +1,74 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Reliant Tickets</title>
+<style>
+  :root { --bg:#10261f; --panel:#173329; --line:#2f5348; --fg:#efe7d4; --dim:#b9b29f; --gold:#d2a54a; --bad:#e07a5f; --ok:#7fae6a; --warn:#f2c35a; --badbg:#3a1d1d; --warnbg:#3a2e12; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 10px 10px 8px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+  .top { display: flex; gap: 6px; align-items: center; }
+  h1 { font: 600 15px system-ui; margin: 0; color: var(--gold); flex: 1; }
+  select, button { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: 600 12px system-ui; cursor: pointer; }
+  button.on { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+  button.small { padding: 3px 7px; font-size: 11px; }
+  .status { border-radius: 8px; padding: 7px 9px; font-weight: 600; border: 1px solid var(--line); }
+  .status.ok { color: var(--ok); } .status.warn { background: var(--warnbg); color: var(--warn); border-color: var(--warn); }
+  .status.bad { background: var(--badbg); color: var(--bad); border: 2px solid var(--bad); }
+  .status .sub { display: block; font-weight: 400; color: var(--dim); margin-top: 2px; }
+  .status.bad .sub, .status.warn .sub { color: inherit; opacity: .9; }
+  main { padding: 8px 10px 80px; display: grid; gap: 10px; }
+  .lbl { font: 600 11px system-ui; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin: 2px 0 4px; }
+  .alerts { display: grid; gap: 6px; }
+  .alert { border-radius: 8px; padding: 7px 9px; display: flex; gap: 8px; align-items: center; }
+  .alert.bad { background: var(--badbg); color: var(--bad); border: 1px solid var(--bad); }
+  .alert.warn { background: var(--warnbg); color: var(--warn); border: 1px solid var(--warn); }
+  .alert .t { flex: 1; } .alert b { color: var(--fg); }
+  ol.sales { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  ol.sales li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; display: grid; grid-template-columns: 42px 1fr auto; gap: 2px 8px; align-items: center; cursor: pointer; }
+  ol.sales li:hover { border-color: var(--gold); }
+  ol.sales li.cancel { opacity: .6; } ol.sales li.cancel .u { text-decoration: line-through; }
+  .num { font: 700 18px system-ui; color: var(--gold); grid-row: span 2; text-align: center; }
+  .num.q { color: var(--warn); }
+  .u { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: var(--dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .right { display: grid; gap: 4px; justify-items: end; grid-row: span 2; }
+  .price { font-weight: 700; }
+  .chip { font: 600 10px system-ui; border-radius: 10px; padding: 1px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .chip.paid { color: var(--ok); } .chip.wait { color: var(--warn); } .chip.fail { color: var(--bad); } .chip.none { color: var(--dim); }
+  .empty { color: var(--dim); padding: 14px 4px; text-align: center; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px; display: grid; gap: 6px; }
+  .buyerhead { display: flex; gap: 10px; align-items: baseline; }
+  .buyerhead .num { grid-row: auto; font-size: 26px; }
+  .buyerhead .u { font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; } td { padding: 3px 2px; border-top: 1px solid var(--line); vertical-align: top; }
+  td.r { text-align: right; white-space: nowrap; }
+  .dim { color: var(--dim); } .ok { color: var(--ok); } .bad { color: var(--bad); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  details summary { cursor: pointer; color: var(--dim); font-weight: 600; }
+  .note { color: var(--dim); font-size: 12px; }
+</style></head>
+<body>
+<header>
+  <div class="top">
+    <h1>Reliant Tickets</h1>
+    <select id="plat" title="Which app's show to follow"><option value="TT">TikTok</option><option value="WN">Whatnot</option><option value="EB">eBay</option></select>
+    <button id="sound" class="small" title="Sound for failed payments and when the reader stops hearing the app">Sound off</button>
+  </div>
+  <div class="status" id="status">Connecting…</div>
+</header>
+<main>
+  <section id="alertsBox" hidden><div class="lbl">Payments</div><div class="alerts" id="alerts"></div></section>
+  <section id="listBox"><div class="lbl" id="listLbl">Sales</div><ol class="sales" id="sales"></ol></section>
+  <section id="buyerBox" hidden></section>
+  <details id="settings">
+    <summary>Settings</summary>
+    <div class="card" style="margin-top:6px">
+      <div class="lbl">Page reader on this computer</div>
+      <div class="row"><button data-mode="off">Off</button><button data-mode="learn">Learning</button><button data-mode="read">Reading</button></div>
+      <div class="note" id="modeNote"></div>
+      <div class="row"><button id="newShow" title="Buyer numbers start again at 1. A stream restart within 45 minutes carries on in the same show by itself.">Start a new show</button></div>
+      <div class="note">Chits print on the computer with “This computer prints chits” ticked in the Ticket System. Print another chit sends the chit there.</div>
+    </div>
+  </details>
+</main>
+<script src="sidepanel.js"></script>
+</body></html>
