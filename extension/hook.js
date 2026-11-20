@@ -55,6 +55,27 @@
     ["CONNECTING", "OPEN", "CLOSING", "CLOSED"].forEach(k => { try { Object.defineProperty(Wrapped, k, { value: NativeWS[k] }); } catch {} });
     window.WebSocket = Wrapped;
   }
+  // Server-sent events (eBay Live may push auction updates this way): also listen to every named event the page listens to
+  const NativeES = window.EventSource;
+  if (NativeES) {
+    const addL = NativeES.prototype.addEventListener;
+    NativeES.prototype.addEventListener = function (type, fn, ...rest) {
+      try {
+        this.__rprTypes = this.__rprTypes || new Set();
+        if (!this.__rprTypes.has(type)) { this.__rprTypes.add(type); addL.call(this, type, e => inspect("sse", e.data, this.url)); }
+      } catch {}
+      return addL.call(this, type, fn, ...rest);
+    };
+    const WrappedES = function (...args) {
+      const es = new NativeES(...args);
+      try { es.addEventListener("message", () => {}); } catch {}
+      return es;
+    };
+    WrappedES.prototype = NativeES.prototype;
+    Object.setPrototypeOf(WrappedES, NativeES);
+    try { Object.defineProperty(WrappedES, "name", { value: "EventSource" }); } catch {}
+    window.EventSource = WrappedES;
+  }
   // fetch
   const nativeFetch = window.fetch;
   if (nativeFetch) {

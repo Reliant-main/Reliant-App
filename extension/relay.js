@@ -30,11 +30,22 @@
   setInterval(() => { sentThisMin = 0; if (seen.size > 5000) seen = new Set(); }, 60000);
   function learn(kind, sample) {
     if (!learning() || !sample) return;
-    const key = kind + ":" + sample.slice(0, 400);
+    // repeats are spotted on the whole sample, so a sales list that keeps the same start but changes further down is still kept
+    let h = 0; for (let i = 0; i < sample.length; i++) h = (h * 31 + sample.charCodeAt(i)) | 0;
+    const key = kind + ":" + sample.length + ":" + h;
     if (seen.has(key) || sentThisMin > 240) return;
     seen.add(key); sentThisMin++;
     batch.push({ kind, sample: sample.slice(0, 8000) });
   }
+  // Some apps (eBay) redraw sold rows without any data we can see: while learning, record the page's sales panel
+  // as text every 5 s whenever it changes, so the win, buyer and payment steps show up in the recording.
+  let lastSnap = "";
+  setInterval(() => {
+    const r = R();
+    if (!learning() || !r || !r.snapshot) return;
+    let t = ""; try { t = r.snapshot() || ""; } catch {}
+    if (t && t !== lastSnap) { lastSnap = t; learn("snap", t); }
+  }, 5000);
   setInterval(() => {
     if (!batch.length) return;
     const items = batch.splice(0, 60);

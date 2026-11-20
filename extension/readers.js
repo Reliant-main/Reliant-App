@@ -73,6 +73,17 @@
     EB: {
       name: "eBay",
       ready: false,
+      // Learning only (not enough recorded yet to read sales): on eBay Live host pages, the listing rows
+      // ("PAID #033 - title $2.00 🏆 buyer PAID 1 bid") plus any line about a win, sold or bid, as plain text.
+      snapshot() {
+        if (!/\/ebaylive\//.test(location.pathname) || !document.body) return "";
+        const rows = [...document.querySelectorAll('[aria-roledescription="sortable"]')]
+          .map(el => (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).filter(t => /#\d{1,4}\b/.test(t));
+        const lines = (document.body.innerText || document.body.textContent || "").split("\n").map(t => t.trim())
+          .filter(t => t && t.length < 200 && /🏆|\bwon\b|\bsold\b|winner|\bbids?\b|unpaid|awaiting/i.test(t));
+        const out = (rows.length ? "ROWS\n" + rows.join("\n") + "\n" : "") + (lines.length ? "LINES\n" + [...new Set(lines)].join("\n") : "");
+        return out.slice(0, 7900);
+      },
       showKey: () => "EB-" + (pathKey(/\/live\/(?:[\w-]+\/)?([\w-]+)/) || pathKey(/\/([\w-]+)\/?$/) || "page") + "-" + today(),
       fromData(kind, text, url) { return []; },
       fromNode(node) { return []; },

@@ -1,30 +1,70 @@
 {
   "manifest_version": 3,
   "name": "Reliant Page Reader",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Reads sales off your Whatnot, TikTok and eBay live pages and sends them to the Reliant Ticket System.",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "https://*.whatnot.com/*",
     "https://*.tiktok.com/*",
     "https://*.ebay.com/*",
     "https://vmpysxfmfyvwheqbuicj.supabase.co/*"
   ],
-  "background": { "service_worker": "bg.js" },
-  "action": { "default_popup": "popup.html", "default_title": "Reliant Page Reader" },
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Reliant Page Reader"
+  },
   "content_scripts": [
     {
-      "matches": ["https://*.whatnot.com/*", "https://*.tiktok.com/*", "https://*.ebay.com/*"],
-      "js": ["hook.js"],
+      "matches": [
+        "https://*.whatnot.com/*",
+        "https://*.tiktok.com/*"
+      ],
+      "js": [
+        "hook.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN",
       "all_frames": false
     },
     {
-      "matches": ["https://*.whatnot.com/*", "https://*.tiktok.com/*", "https://*.ebay.com/*"],
-      "js": ["readers.js", "relay.js"],
+      "matches": [
+        "https://*.whatnot.com/*",
+        "https://*.tiktok.com/*"
+      ],
+      "js": [
+        "readers.js",
+        "relay.js"
+      ],
       "run_at": "document_start",
       "all_frames": false
+    },
+    {
+      "matches": [
+        "https://*.ebay.com/*"
+      ],
+      "js": [
+        "hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://*.ebay.com/*"
+      ],
+      "js": [
+        "readers.js",
+        "relay.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ]
 }
