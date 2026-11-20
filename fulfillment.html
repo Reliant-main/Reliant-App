@@ -263,7 +263,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     $("showBtns").innerHTML = (s.closed ? (D.owner ? `<button class="btn" type="button" id="reopenBtn">Reopen show</button>` : `<span class="sub">Only an owner can reopen it.</span>`)
       : `<button class="btn${D.manager ? " pri" : ""}" type="button" id="closeBtn">${D.manager ? "Close show…" : "Closing summary"}</button>`);
     const k = [
-      ["Books sold", int(t.sold), money(t.revenue) + " revenue"],
+      ["Books sold", int(t.sold), money(t.revenue) + " revenue" + (t.damaged ? ` · ${int(t.damaged)} damaged cop${t.damaged === 1 ? "y" : "ies"}` : "")],
       ["Canceled", int(t.canceled), t.canceled ? money(t.canrev) + " · back on the shelf" : "none"],
       ["Given away", int(t.given), t.given ? money(t.gcost) + " cost" : "none"],
       ["Profit before giveaways", money(t.profit), "after fees and cost"],
@@ -292,7 +292,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
       const live = g.lines.filter(l => l.status === "sold"), allCan = !live.length;
       const total = g.lines.reduce((a, l) => a + (+l.price || 0), 0);
       const main = `<tr${allCan ? ' style="opacity:.75"' : ""}><td class="num big">${g.sale != null ? esc(g.sale) : '<span class="a">–</span>'}</td><td class="hide-sm a">${esc(g.time || "")}</td>
-        <td>${g.lines.map(l => `<div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${esc(l.isbn)}${l.bundle ? " · bundle" : ""}${D.manager && l.status === "sold" && l.cost == null ? ' · <span class="pill">no cost</span>' : ""}${l.status === "canceled" ? ` · <span class="pill bad">Canceled${l.customer ? " · " + esc(l.customer) : ""}</span> ${esc(l.reason)}${l.cnote ? " · " + esc(l.cnote) : ""}${l.cby ? ` · by ${esc(l.cby)}` : ""}${s.editable && l.origin !== "cancel_tab" ? ` <button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}` : ""}</div>`).join("")}</td>
+        <td>${g.lines.map(l => `<div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${esc(l.isbn)}${l.bundle ? " · bundle" : ""}${D.manager && l.status === "sold" && l.cost == null ? ' · <span class="pill">no cost</span>' : ""}${l.status === "sold" ? (l.dmg ? ` · <span class="pill">Damaged copy</span>${s.editable ? ` <button class="btn sm" type="button" data-dmg="${l.id}" data-on="0">Not damaged</button>` : ""}` : s.editable ? ` · <button class="btn sm" type="button" data-dmg="${l.id}" data-on="1">Damaged copy</button>` : "") : ""}${l.status === "canceled" ? ` · <span class="pill bad">Canceled${l.customer ? " · " + esc(l.customer) : ""}</span> ${esc(l.reason)}${l.cnote ? " · " + esc(l.cnote) : ""}${l.cby ? ` · by ${esc(l.cby)}` : ""}${s.editable && l.origin !== "cancel_tab" ? ` <button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}` : ""}</div>`).join("")}</td>
         <td class="num">${money(total)}</td><td class="num">${live.length && s.editable ? `<button class="btn sm" type="button" data-cx="${esc(g.key)}">${openSale === g.key ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
       if (openSale !== g.key || !live.length || !s.editable) return main;
       return main + `<tr><td colspan="5"><div class="box">
@@ -322,6 +322,13 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
       un.disabled = true;
       const { error } = await sb().rpc("ful_cancel_undo", { p_sales: [+un.dataset.undo] });
       if (error) { un.disabled = false; un.textContent = error.message; return; }
+      await loadShow(); return;
+    }
+    const dm = e.target.closest("[data-dmg]");
+    if (dm) {
+      dm.disabled = true;
+      const { error } = await sb().rpc("ful_sale_damaged", { p_sale: +dm.dataset.dmg, p_on: dm.dataset.on === "1" });
+      if (error) { dm.disabled = false; dm.textContent = error.message; return; }
       await loadShow(); return;
     }
     if (e.target.id === "cxGo") doCancel();
