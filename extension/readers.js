@@ -12,18 +12,28 @@
   // TikTok seller dashboard (shop.tiktok.com/streamer/live/product/dashboard?session_id=...).
   // The dashboard keeps asking TikTok for this LIVE's auction results every few seconds. Each answer is the
   // whole list, newest first, with TikTok's own order number, so the same sale is never made twice.
-  // Learned from the 11/16/2026 show. order_status: 2 = waiting for payment, 3 = paid, 4 = payment failed.
+  // Learned from the 11/16/2026 show, checked against the 11/16-11/19 shows.
+  // order_status: 5 = auction won, order not made yet (no order number, ~2 s after the gavel; the order
+  // number follows 3-7 s later, and now and then never comes), 2 = waiting for payment, 3 = paid, 4 = payment failed.
+  // Each sale is keyed on the auction (product + the moment it ended), not TikTok's order number, so the chit
+  // prints at the win and the same auction stays one ticket as it moves from 5 to 2 to 3.
   // Now and then an answer comes back with the buyer left blank (ttuid "0"); the next answer has it.
   const TT_FEED = /\/live_auction\/auction_result\/get/;
-  const TT_STATUS = { 2: "awaiting_payment", 3: "paid", 4: "cancelled" };
+  const TT_STATUS = { 5: "awaiting_payment", 2: "awaiting_payment", 3: "paid", 4: "cancelled" };
+  function ttKey(r) {
+    const end = Number(r.auction_end_timestamp);
+    if (Number.isFinite(end) && end > 0) return "A" + String(r.product_id || r.sku_id || "x").replace(/\W/g, "") + "-" + end;
+    return r.order_id ? "O" + String(r.order_id).replace(/\W/g, "") : null;
+  }
   function ttSale(r) {
-    if (!r || r.order_id == null) return null;
+    const key = r && ttKey(r);
+    if (!key) return null;
     const uid = r.ttuid != null ? String(r.ttuid) : "";
     const named = uid && uid !== "0" && (r.user_display_id || r.user_name);
     const price = Number(String(r.selling_price ?? "").replace(/[^0-9.]/g, ""));
-    const t = Number(r.order_create_time || r.auction_end_timestamp);
+    const t = Number(r.auction_end_timestamp || r.order_create_time);
     return {
-      event_id: String(r.order_id),
+      event_id: key,
       buyer: named ? { id: uid, username: r.user_display_id || r.user_name, display_name: r.user_name || null } : null,
       price: Number.isFinite(price) ? price : null,
       title: r.product_name || null,
