@@ -845,6 +845,7 @@ body.mode-display #btnHome2 { display: none !important; }
 .sw.rev { background: var(--gilt); opacity: .75; } .sw.avg { background: var(--paper); height: 3px; vertical-align: 3px; } .sw.lots { background: var(--stem); }
 #paceChart svg { display: block; width: 100%; height: auto; }
 #paceChart text { font: 11px "IBM Plex Mono", monospace; fill: var(--paper-dim); }
+.rehTag.realTag { background: #2fa84f; color: #fff; }
 .rehTag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font: 600 11px Figtree, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; background: #d2a54a; color: #10261f; vertical-align: middle; }
 </style>
 
@@ -1072,6 +1073,10 @@ body.mode-display #btnHome2 { display: none !important; }
 <div class="modal" id="showModal" hidden>
   <div class="card" role="dialog" aria-labelledby="showModalTitle">
     <h2 id="showModalTitle">Start a show</h2>
+    <div class="radios" id="realRadios">
+      <label><input type="radio" name="real" value="real"> <span id="realLbl">Real show</span></label>
+      <label><input type="radio" name="real" value="practice"> Practice</label>
+    </div>
     <div class="radios three" id="kindRadios">
       <label><input type="radio" name="kind" value="new"> New books</label>
       <label><input type="radio" name="kind" value="used"> Used books</label>
@@ -1256,7 +1261,7 @@ body.mode-display #btnHome2 { display: none !important; }
     <p><b>Used-book shows:</b> at Start show pick Used books. Set Condition and Source once (they stay set) and Genre per book if you like, then scan each book as it comes up and type the price or R. A book with no barcode can be typed by title. Click Start speed round when you re-run the unsold books, and rescan each one: speed-round sales are marked Speed, and a second R doesn't count as another reject. In this rehearsal version nothing is sent to the used workbook.</p>
     <p><b>Playlist:</b> scan books into the box at the bottom of the list to build it. The same ISBN can be added more than once. With an empty playlist, the arrows step through your whole book list.</p>
     <p><b>List setting:</b> Open keeps the list on screen, Auto shows it when the mouse moves, Hidden keeps it off the TV.</p>
-    <p><b>Rehearsal version.</b> This is the live show screen on the new Workspace. Shows started here are practice shows: their sales stay on this screen and never reach Analytics, Inventory, the sheets or the nightly copy. Delete a practice show from Export shows when you're done. Keep running real shows on the current Workspace until switch day.</p>
+    <p><b>Real shows and practice shows.</b> At Start show, pick Real show or Practice. A real show saves every sale, R, request and damaged copy to the real records as you go (Shows, Fulfillment, Inventory and Analytics see it right away). If the internet drops, keep going: changes wait on this computer and send on their own when it's back (a yellow note at the bottom left shows how many are waiting). Until switch day a real show is saved as a TEST show. A practice show stays on this screen only; delete it from Export shows when you're done.</p>
     <p><b>Your books come from the Reliant database</b> (the nightly copy of your sheets), checked about once a minute. Use <b>Refresh book list</b> to pull changes right away. <b>Load from Show Prep</b> reads the lists built on the Show Prep page, which works on a tablet.</p>
     <div class="qrow" id="sheetLinkRow" hidden style="margin-bottom:12px">
       <label class="lbl" for="sheetLink" style="font:12px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--paper-dim);width:100%">Different sheet link (optional)</label>
@@ -1612,7 +1617,9 @@ body.mode-display #btnHome2 { display: none !important; }
   function rebuildKeys() { byKey = new Map(); books.forEach((b, i) => { const k = keyOf(b); if (!byKey.has(k)) byKey.set(k, i); }); }
   const idxOf = id => id == null || id === START ? -1 : playlist.findIndex(e => e.id === id);
   const entryTitle = e => { const i = byKey.get(e.key); return i == null ? "ISBN " + e.key + " (not in sheet)" : splitTitle(books[i].title).main; };
+  let plSavedHook = null;   // set by the sales panel: tells the database which books a real show is holding
   function savePL() {
+    if (plSavedHook) plSavedHook();
     store.set("spotlight.playlist", JSON.stringify({ list: playlist.map(e => e.g != null || e.lot ? [e.id, e.key, e.g ?? null, e.lot || null] : [e.id, e.key]), cur: curId, det: detourFrom, ret: returnId, shown: [...shownIds], next: nextEid, nextSet, nextLotTag }));
   }
   function loadPL() {
@@ -3049,6 +3056,19 @@ body.mode-display #btnHome2 { display: none !important; }
   const salesCol = id => S.db.collection(`shows/${id}/sales`);
   const reqsCol = id => S.db.collection(`shows/${id}/requests`);
   const dmgCol = id => S.db.collection(`shows/${id}/damaged`);
+  let heldT = null, heldLast = "";
+  function heldSync() {
+    clearTimeout(heldT);
+    heldT = setTimeout(() => {
+      if (!S.db || !S.show || !S.show.real || S.show.endedAt) return;
+      const isbns = playlist.map(e => { const i = byKey.get(e.key); return i == null ? digits(e.key) : (books[i].isbn || digits(books[i].sku || "")); }).filter(Boolean);
+      const sig = isbns.join(",");
+      if (sig === heldLast) return;
+      heldLast = sig;
+      S.db.doc("shows/" + S.show.id).update({ held: isbns }).catch(() => { heldLast = ""; });
+    }, 1500);
+  }
+  plSavedHook = heldSync;
   function backup() {
     if (!S.show) return;
     store.set("spotlight.sales." + S.show.id, JSON.stringify(S.sales));
@@ -3061,6 +3081,7 @@ body.mode-display #btnHome2 { display: none !important; }
   function localShows() { try { return JSON.parse(store.get("spotlight.shows") || "[]"); } catch { return []; } }
 
   async function salesBoot() {
+    try { const { data } = await window.RELIANT.sb.rpc("ful_live"); S.live = data === true; } catch { S.live = false; }
     S.db = await getDb();
     S.mode = S.db ? "db" : "local";
     if (!S.db) { $("salesBanner").hidden = false; $("salesBanner").textContent = "Sales are saving on this computer only (the page's online storage isn't available in this window). Export at the end of the show as usual."; }
@@ -3084,7 +3105,13 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   function subscribe() {
     if (S.unsubS) S.unsubS(); if (S.unsubR) S.unsubR();
+    if (S.unsubShow) { S.unsubShow(); S.unsubShow = null; }
     if (!S.db || !S.show) return;
+    if (S.show.real) S.unsubShow = S.db.doc("shows/" + S.show.id).onSnapshot(d => {
+      const v = d.exists ? d.data() : null;
+      if (v && S.show && v.sourceTab && v.sourceTab !== S.show.sourceTab) { S.show.sourceTab = v.sourceTab; backup(); drawShow(); }
+    }, () => {});
+    heldSync();
     S.unsubS = salesCol(S.show.id).onSnapshot(snap => {
       S.sales = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.loggedAt - b.loggedAt);
       backup(); drawSales();
@@ -3101,7 +3128,7 @@ body.mode-display #btnHome2 { display: none !important; }
   }
   function drawShow() {
     const on = !!S.show;
-    $("showName").innerHTML = on ? esc((SFX ? "Studio " + STUDIO + " · " : "") + S.show.sourceTab + (S.show.kind === "used" ? " · Used" : S.show.kind === "vintage" ? " · Vintage" : "")) + '<span class="rehTag">Rehearsal</span>' : "No show running";
+    $("showName").innerHTML = on ? esc((SFX ? "Studio " + STUDIO + " · " : "") + S.show.sourceTab + (S.show.kind === "used" ? " · Used" : S.show.kind === "vintage" ? " · Vintage" : "")) + (S.show.real ? `<span class="rehTag realTag">${/^TEST/.test(S.show.sourceTab) ? "Test · saving" : "Saving"}</span>` : '<span class="rehTag">Practice</span>') : "No show running";
     document.body.classList.toggle("usedShow", on && isUsedKind(S.show.kind));
     if (on && isUsedKind(S.show.kind)) { if (saleMode === "table") setSaleMode("single"); loadUsedSources(); drawUsedBar(); }
     else document.body.classList.remove("speedOn");
@@ -3124,12 +3151,21 @@ body.mode-display #btnHome2 { display: none !important; }
     $("showDate").value = mode === "start" ? todayISO() : S.show.date;
     $("showDate").closest(".fld").hidden = mode !== "start";
     document.querySelectorAll('#platRadios input').forEach(r => r.checked = mode !== "start" && r.value === S.show.platform);
-    $("kindRadios").hidden = mode !== "start";
+    $("kindRadios").hidden = mode !== "start"; $("realRadios").hidden = mode !== "start";
+    $("realLbl").textContent = S.live ? "Real show" : "Real show (TEST until switch day)";
+    document.querySelectorAll('#realRadios input').forEach(r => r.checked = r.value === (store.get("spotlight.lastReal") === "practice" ? "practice" : "real"));
+    document.querySelectorAll('#realRadios input').forEach(r => r.onchange = drawStartSub);
     const lastKind = ["used", "vintage"].includes(store.get("spotlight.lastKind")) ? store.get("spotlight.lastKind") : "new";
     document.querySelectorAll('#kindRadios input').forEach(r => r.checked = r.value === lastKind);
-    $("showModalSub").textContent = mode === "start" ? "Rehearsal: practice sales stay on this screen and never reach Analytics, Inventory or the sheets." : `Every sale in this show will be relabeled. Currently ${S.show.platform}.`;
+    if (mode === "start") drawStartSub(); else $("showModalSub").textContent = `Every sale in this show will be relabeled. Currently ${S.show.platform}.`;
     $("showErr").textContent = "";
     $("showModal").hidden = false;
+  }
+  function drawStartSub() {
+    const real = document.querySelector('#realRadios input:checked')?.value !== "practice";
+    $("showModalSub").textContent = !real ? "Practice: sales stay on this screen and never reach Analytics, Inventory or Fulfillment."
+      : S.live ? "Real show: every sale, R, request and damaged copy is saved to the real records as you go, and keeps saving if the internet drops."
+      : "Until switch day a real show is saved as a TEST show (numbered 90 and up) so it can be checked in Shows, Fulfillment and Inventory, then deleted.";
   }
   $("btnStartShow").onclick = () => openShowModal("start");
   $("btnPlatform").onclick = () => openShowModal("platform");
@@ -3141,11 +3177,18 @@ body.mode-display #btnHome2 { display: none !important; }
       const iso = $("showDate").value || todayISO();
       const kindPick = document.querySelector('#kindRadios input:checked')?.value, kind = kindPick === "used" || kindPick === "vintage" ? kindPick : "new";
       store.set("spotlight.lastKind", kind);
+      const real = document.querySelector('#realRadios input:checked')?.value !== "practice";
+      store.set("spotlight.lastReal", real ? "real" : "practice");
+      if (real && !S.db) { $("showErr").textContent = "A real show needs the online show storage, which isn't available in this window. Reload the page and try again."; return; }
       const id = `${iso}-${plat}-${Date.now().toString(36)}`;
       $("showGo").disabled = true; $("showErr").textContent = "Naming the show…";
       let name;
-      try { name = await nextShowName(iso); } finally { $("showGo").disabled = false; $("showErr").textContent = ""; }
-      const show = { id, date: iso, platform: plat, sourceTab: name, kind, speed: false, rehearsal: true, startedAt: Date.now(), endedAt: null, exportedAt: null };
+      try {
+        if (real) { const { data, error } = await window.RELIANT.sb.rpc("spot_next_name", { p_date: iso }); if (error) throw error; name = data; }
+        else name = await nextShowName(iso);
+      } catch (err) { $("showErr").textContent = "Couldn't name the show: " + (err && err.message || err) + ". Check the connection and try again."; return; }
+      finally { $("showGo").disabled = false; if ($("showErr").textContent === "Naming the show…") $("showErr").textContent = ""; }
+      const show = { id, date: iso, platform: plat, sourceTab: name, kind, speed: false, real, rehearsal: !real, studio: SFX ? String(STUDIO) : "", startedAt: Date.now(), endedAt: null, exportedAt: null };
       try {
         if (S.db) { await S.db.doc("shows/" + id).set(show); await S.db.doc("meta/current" + SFX).set({ showId: id }); }
         else store.set("spotlight.currentShow", id);
@@ -3163,7 +3206,9 @@ body.mode-display #btnHome2 { display: none !important; }
   };
   $("btnEndShow").onclick = () => {
     const st = statsOf(S.sales);
-    $("endShowSub").textContent = `${S.show.sourceTab}: ${st.books} books, ${money(st.revenue)}. After ending, the export window opens so you can copy the rows out. You can export again later from "Export shows".`;
+    $("endShowSub").textContent = S.show.real
+      ? `${S.show.sourceTab}: ${st.books} books, ${money(st.revenue)}. Everything is already saved. Next: cancellations and giveaways in Fulfillment, then a manager closes the show.${window.RELIANT.waiting && window.RELIANT.waiting() ? ` ${window.RELIANT.waiting()} change(s) are still waiting for the connection; they'll send on their own, so keep this page open until they do.` : ""}`
+      : `${S.show.sourceTab}: ${st.books} books, ${money(st.revenue)}. After ending, the export window opens so you can copy the rows out. You can export again later from "Export shows".`;
     $("endShowModal").hidden = false; $("endShowNo").focus();
   };
   $("endShowNo").onclick = () => { $("endShowModal").hidden = true; };
@@ -3177,11 +3222,12 @@ body.mode-display #btnHome2 { display: none !important; }
       else store.set("spotlight.currentShow", "");
     } catch { toast("Couldn't end the show online. Try again."); show.endedAt = null; return; }
     backup();
-    if (S.unsubS) S.unsubS(); if (S.unsubR) S.unsubR();
+    if (S.unsubS) S.unsubS(); if (S.unsubR) S.unsubR(); if (S.unsubShow) { S.unsubShow(); S.unsubShow = null; }
     S.show = null; S.pending = null; S.bundle = null; TSX.cur = null; T.awaitPick = null; tsDraw();
     if (REJ.open) { REJ.open = false; $("rejBar").hidden = true; $("btnRej").classList.remove("on"); }
     $("endShowModal").hidden = true; drawShow(); drawSales(); drawReqs(); updateBundleBtn();
-    openExport(show.id);
+    if (show.real) toast(`${show.sourceTab} ended. Its sales are in Shows and Fulfillment.`);
+    else openExport(show.id);
   });
 
   // entry
@@ -4296,7 +4342,7 @@ body.mode-display #btnHome2 { display: none !important; }
     const ul = $("evList");
     if (!events.length) { ul.innerHTML = `<li class="empty" style="display:block">No events yet. Type the customer's username, the date and what's happening, then press Enter.</li>`; return; }
     ul.innerHTML = events.slice().reverse().slice(0, 60).map(e => `<li data-id="${esc(e.id)}" class="${e.sentAt ? "" : "unsynced"}"><span class="n"></span><span class="tm">${timeOf(e.loggedAt)}</span>
-      <span class="ttl">${esc(e.user)} · ${esc(niceDate(e.date))}<span class="sub">${esc(e.note)}${e.platform ? " · " + esc(e.platform) : ""} · ${e.sentAt ? "saved (rehearsal)" : "not saved yet"}</span></span><span></span>
+      <span class="ttl">${esc(e.user)} · ${esc(niceDate(e.date))}<span class="sub">${esc(e.note)}${e.platform ? " · " + esc(e.platform) : ""} · ${e.sentAt ? (e.real ? "saved" : "saved (practice)") : "not saved yet"}</span></span><span></span>
       <span class="acts">${e.sentAt ? "" : `<button class="btn warn" type="button" data-a="del">${S.delArm === e.id ? "Confirm delete" : "Delete"}</button>`}</span></li>`).join("");
   }
   let evBusy = false;
@@ -4306,21 +4352,21 @@ body.mode-display #btnHome2 { display: none !important; }
     let ok = 0, failMsg = "";
     for (const e of pend) {
       try {
-        const { error } = await window.RELIANT.sb.rpc("log_customer_event", { p_user: e.user, p_date: e.date || null, p_note: e.note || "", p_platform: e.platform || "", p_rehearsal: true });
+        const { error } = await window.RELIANT.sb.rpc("log_customer_event", { p_user: e.user, p_date: e.date || null, p_note: e.note || "", p_platform: e.platform || "", p_rehearsal: !e.real });
         if (error) throw error;
         e.sentAt = Date.now(); ok++; saveEvents();
       } catch (err) { failMsg = String(err && err.message || err); }
     }
     $("evMsg").textContent = failMsg
       ? `Couldn't save ${pend.length - ok} event${pend.length - ok === 1 ? "" : "s"} to the database (${failMsg}). They're kept here; press Send unsent events to try again.`
-      : `Saved to the database's customer events (${ok} event${ok === 1 ? "" : "s"}, tagged rehearsal while you test).`;
+      : `Saved to the database's customer events (${ok} event${ok === 1 ? "" : "s"}${pend.some(e => !e.real) ? "; events from practice shows are tagged practice" : ""}).`;
     evBusy = false; drawEvents();
   }
   function addEvent() {
     const user = $("evUser").value.trim().replace(/^@/, ""), date = $("evDate").value, note = $("evNote").value.trim();
     if (!user) { toast("Type the customer's username"); $("evUser").focus(); return; }
     if (!date && !note) { toast("Add the event date or a note"); $("evDate").focus(); return; }
-    events.push({ id: "e" + Date.now(), user, date, note, platform: S.show ? S.show.platform : "", loggedAt: Date.now(), sentAt: null });
+    events.push({ id: "e" + Date.now(), user, date, note, platform: S.show ? S.show.platform : "", real: !!(S.live && S.show && S.show.real && !/^TEST/.test(S.show.sourceTab)), loggedAt: Date.now(), sentAt: null });
     saveEvents(); ["evUser", "evDate", "evNote"].forEach(id => $(id).value = ""); $("evUser").focus();
     toast("Event saved"); drawEvents(); sendEvents();
   }
@@ -4498,6 +4544,7 @@ body.mode-display #btnHome2 { display: none !important; }
   // ---- delete a show from the app's history (the Google Sheets are never touched) ----
   let exDelArm = 0;
   async function deleteShow(show) {
+    if (show.real) return "real";
     if (S.db) {
       try {
         const [ss, rs] = await Promise.all([salesCol(show.id).get(), reqsCol(show.id).get()]);
@@ -4515,6 +4562,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (!exData) return;
     const show = exData.show, btn = $("exDelete");
     if (!show.endedAt) { $("exMsg").textContent = "This show is still running. End it first, then it can be deleted."; return; }
+    if (show.real) { $("exMsg").textContent = "This is a real show: its sales are part of your records, so it can't be deleted here. An owner can reopen and correct it from Shows."; return; }
     if (Date.now() - exDelArm > 6000) {
       exDelArm = Date.now();
       const n = exData.sales.length;
@@ -4666,7 +4714,8 @@ body.mode-display #btnHome2 { display: none !important; }
     $("exSend").textContent = allSent ? "Send again" : st ? "Retry the rest" : "Send to sheets";
     $("exSendInfo").innerHTML = st ? (allSent ? `${st} Sending again adds the rows a second time.` : `${st} Click Retry the rest to send the parts that didn't go through.`) : isUsedData(exData) ? `Adds this show's rows to Show Sales – Staging, Show Rejects and Show Summary in ${esc(USED_NAME)}.` : "Adds this show's rows to Show Sales – Staging, Show Rejects and Customer Requests in your Sales and Inventory workbook.";
     $("exSend").disabled = true;
-    $("exSendInfo").textContent = "Rehearsal show: nothing is sent to the sheets or to real sales. Delete it here when you're done practicing.";
+    $("exSendInfo").textContent = exData.show.real ? "Real show: it was saved to the real records as it ran, so there's nothing to send. Use Fulfillment and Close in the Workspace."
+      : "Practice show: nothing is sent to the sheets or to real sales. Delete it here when you're done practicing.";
   }
   $("exSend").onclick = async () => {
     if (!exData) return;

@@ -195,7 +195,7 @@ a.btn { text-decoration: none; display: inline-block; }
     $("showsSub").textContent = `${int(list.length)} show${list.length === 1 ? "" : "s"} · ${int(list.reduce((a, s) => a + s.sold, 0))} books · ${money(list.reduce((a, s) => a + s.rev, 0))}`;
     const page = list.slice(0, S.shown);
     $("showsTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Show</th><th class="plain num">Sold</th><th class="plain num">Revenue</th><th class="plain num hide-sm">Avg</th><th class="plain num hide-sm">R’s</th><th class="plain num hide-sm">Canceled</th>${D.costs ? '<th class="plain num">Profit</th>' : ""}</tr></thead><tbody>${
-      page.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} ${typeTag(s.type)}${s.closed ? ' <span class="pill ok">Closed</span>' : s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}${s.test ? ' <span class="pill bad">Test</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
+      page.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} ${typeTag(s.type)}${s.closed ? ' <span class="pill ok">Closed</span>' : s.test ? ' <span class="pill">Open</span>' : s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}${s.test ? ' <span class="pill bad">Test</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
         <td class="num">${int(s.sold)}${s.speed ? `<div class="a">${int(s.speed)} speed</div>` : ""}</td><td class="num">${money(s.rev)}</td><td class="num hide-sm">${s.sold ? money(s.rev / s.sold) : "–"}</td>
         <td class="num hide-sm">${s.rejects ? int(s.rejects) : "–"}</td><td class="num hide-sm">${s.canceled ? int(s.canceled) : "–"}</td>${D.costs ? `<td class="num">${money(s.after)}</td>` : ""}</tr>`).join("")}</tbody></table>`
       : `<p class="empty">No shows match.</p>`;
@@ -248,7 +248,7 @@ a.btn { text-decoration: none; display: inline-block; }
   function closeBar(s) {
     const role = D.role || "", mgr = role === "owner" || role === "manager";
     const state = s.closed ? `<span class="pill ok">Closed</span> by ${esc(s.closer || "a manager")}${s.closedAt ? " on " + esc(new Date(s.closedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) : ""}`
-      : s.status === "live" ? `<span class="pill">Open · in Staging</span>` : `<span class="pill">Copied to the Roster</span> not closed in the App yet`;
+      : s.test ? `<span class="pill">Open</span>` : s.status === "live" ? `<span class="pill">Open · in Staging</span>` : `<span class="pill">Copied to the Roster</span> not closed in the App yet`;
     const btns = [];
     if (CREW.includes(role) && s.type === "new") btns.push(`<a class="btn" href="fulfillment.html?show=${s.id}">Fulfillment →</a>`);
     if (s.closed) { if (role === "owner") btns.push(`<button class="btn" type="button" data-reopen="${s.id}">Reopen show</button>`); }

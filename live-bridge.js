@@ -4,7 +4,10 @@
    the same two connections, backed by the Reliant database instead:
      use("db")  -> the live_docs table (shared by every signed-in show computer and the TV, updates live)
      use("mcp") -> the book list and Show Prep lists from the database. Nothing is ever written to the sheets.
-   Everything saved here is rehearsal data: it never touches the real shows and sales tables. */
+   Practice shows stay in live_docs. A REAL show (show record with real: true) is copied into the real shows,
+   sales, R's, requests and damaged-stock tables by the database itself (the spot_apply trigger), as each
+   change is saved. If the internet drops, changes wait in an outbox on this computer and are sent in order
+   once it's back, so nothing is lost or saved twice. */
 (() => {
   "use strict";
   const cfg = window.RELIANT_CONFIG;
@@ -19,7 +22,7 @@
   };
   if (!window.supabase || !cfg) { fail("The Workspace couldn't load. Check the internet connection and reload."); return; }
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
-  window.RELIANT = { sb, staff: null, rehearsal: true };
+  window.RELIANT = { sb, staff: null };
 
   const ready = (async () => {
     const { data: { session } } = await sb.auth.getSession();
@@ -57,11 +60,80 @@
   }
   const check = ({ error }) => { if (error) throw error; };
 
+  // ---------------------------------------------------------------- outbox: changes waiting to be saved
+  // Kept per browser tab (it survives a reload of that tab), sent one at a time in order.
+  let tabKey = null;
+  try { tabKey = sessionStorage.getItem("reliant.tab") || autoId(); sessionStorage.setItem("reliant.tab", tabKey); } catch { tabKey = autoId(); }
+  const OBX = "reliant.outbox." + tabKey;
+  let outbox = [];
+  try { outbox = JSON.parse(localStorage.getItem(OBX) || "[]"); } catch {}
+  const waiters = new Map();   // op id -> {resolve, reject} for calls made since this page loaded
+  const saveOutbox = () => { try { if (outbox.length) localStorage.setItem(OBX, JSON.stringify(outbox)); else localStorage.removeItem(OBX); } catch {} };
+  const retryable = e => !e || !e.code || /^PGRST3/.test(e.code) || /fetch|network|timeout|load failed|offline|aborted/i.test(String(e.message || e));
+  const pendingFor = path => outbox.some(o => o.path === path);
+  function overlay(match) {   // put this computer's unsent changes back on top of what the server sent
+    for (const o of outbox) {
+      if (!match(o.path)) continue;
+      if (o.op === "set") docs.set(o.path, o.data);
+      else if (o.op === "update") { if (docs.has(o.path)) docs.set(o.path, { ...docs.get(o.path), ...o.fields }); }
+      else docs.delete(o.path);
+    }
+  }
+  let badge = null;
+  function drawBadge(offline) {
+    if (!document.body) return;
+    if (!badge) { badge = document.createElement("div"); badge.setAttribute("role", "status");
+      badge.style.cssText = "position:fixed;left:12px;bottom:12px;z-index:9998;padding:8px 12px;border-radius:10px;font:600 13px Figtree,system-ui,sans-serif;background:#3a2e12;color:#f2c35a;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none";
+      document.body.appendChild(badge); }
+    badge.style.display = outbox.length ? "block" : "none";
+    badge.textContent = `${outbox.length} change${outbox.length === 1 ? "" : "s"} waiting to save${offline ? " · no connection, keep going" : ""}. They send on their own.`;
+  }
+  async function send(o) {
+    if (o.op === "set") return (await sb.from("live_docs").upsert({ path: o.path, parent: parentOf(o.path), data: o.data, updated_at: new Date().toISOString() })).error;
+    if (o.op === "delete") return (await sb.from("live_docs").delete().eq("path", o.path)).error;
+    const { data, error } = await sb.rpc("live_doc_merge", { p_path: o.path, p_fields: o.fields });
+    if (!error && data && !outbox.slice(1).some(x => x.path === o.path)) local(o.path, data);
+    return error;
+  }
+  let flushing = null, retryT = null;
+  function flush() {
+    if (flushing) return flushing;
+    flushing = (async () => {
+      let offline = false;
+      while (outbox.length) {
+        const o = outbox[0];
+        let err = null;
+        try { err = await send(o); } catch (e) { err = e || { message: "network" }; }
+        if (err && retryable(err)) { offline = true; break; }
+        outbox.shift(); saveOutbox();
+        const w = waiters.get(o.id); waiters.delete(o.id);
+        if (err) { console.error("Not saved:", o.path, err); if (w) w.reject(err); else window.dispatchEvent(new CustomEvent("reliant-unsaved", { detail: { path: o.path, error: err } })); }
+        else if (w) w.resolve();
+      }
+      // anything still queued is safe on this computer: let the callers carry on
+      for (const o of outbox) { const w = waiters.get(o.id); if (w) { waiters.delete(o.id); w.resolve(); } }
+      drawBadge(offline);
+      clearTimeout(retryT);
+      if (outbox.length) retryT = setTimeout(flush, 5000);
+    })().finally(() => { flushing = null; });
+    return flushing;
+  }
+  function queue(op) {
+    op.id = autoId();
+    outbox.push(op); saveOutbox();
+    const p = new Promise((resolve, reject) => waiters.set(op.id, { resolve, reject }));
+    if (flushing) flushing.then(flush); else flush();
+    return p;
+  }
+  addEventListener("online", () => flush());
+  window.RELIANT.waiting = () => outbox.length;
+
   async function loadDoc(path) {
     await ready;
     const { data, error } = await sb.from("live_docs").select("data").eq("path", path).maybeSingle();
     if (error) throw error;
-    local(path, data ? data.data : null);
+    if (pendingFor(path)) { overlay(p => p === path); emitDoc(path); emitCol(parentOf(path)); }
+    else local(path, data ? data.data : null);
     return docs.get(path);
   }
   async function loadCol(parent) {
@@ -71,6 +143,7 @@
     const seen = new Set(data.map(r => r.path));
     for (const p of [...docs.keys()]) if (parentOf(p) === parent && !seen.has(p)) docs.delete(p);
     data.forEach(r => docs.set(r.path, r.data));
+    overlay(p => parentOf(p) === parent);
     colLoaded.add(parent);
     emitCol(parent); data.forEach(r => emitDoc(r.path));
   }
@@ -82,11 +155,12 @@
     channel = sb.channel("live_docs_changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "live_docs" }, msg => {
         const row = msg.eventType === "DELETE" ? msg.old : msg.new;
-        if (!row || !row.path) return;
+        if (!row || !row.path || pendingFor(row.path)) return;   // this computer has a newer, unsent change
         local(row.path, msg.eventType === "DELETE" ? null : row.data);
       })
       .subscribe(status => {
         if (status === "SUBSCRIBED") {
+          flush();
           if (wasUp) { // back after a drop: catch up on anything missed
             colWatch.forEach((s, parent) => { if (s.size) loadCol(parent).catch(() => {}); });
             docWatch.forEach((s, path) => { if (s.size) loadDoc(path).catch(() => {}); });
@@ -95,7 +169,7 @@
         }
       });
   }
-  ready.then(listen, () => {});
+  ready.then(() => { listen(); if (outbox.length) { overlay(() => true); flush(); } }, () => {});
   // the sign-in token is refreshed in the background; keep the live connection using the current one
   sb.auth.onAuthStateChange((_e, session) => { if (session) try { sb.realtime.setAuth(session.access_token); } catch {} });
 
@@ -107,20 +181,18 @@
         await ready;
         const clean = JSON.parse(JSON.stringify(data));
         local(path, clean);
-        check(await sb.from("live_docs").upsert({ path, parent: parentOf(path), data: clean, updated_at: new Date().toISOString() }));
+        await queue({ op: "set", path, data: clean });
       },
       async update(fields) {
         await ready;
         const clean = JSON.parse(JSON.stringify(fields));
         if (docs.has(path)) local(path, { ...docs.get(path), ...clean });
-        const { data, error } = await sb.rpc("live_doc_merge", { p_path: path, p_fields: clean });
-        if (error) throw error;
-        if (data) local(path, data);
+        await queue({ op: "update", path, fields: clean });
       },
       async delete() {
         await ready;
         local(path, null);
-        check(await sb.from("live_docs").delete().eq("path", path));
+        await queue({ op: "delete", path });
       },
       onSnapshot(fn, onErr) {
         if (!docWatch.has(path)) docWatch.set(path, new Set());
