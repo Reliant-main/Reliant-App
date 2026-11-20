@@ -854,7 +854,9 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     ]);
     const bar = $("readerBar");
     if (error) { bar.hidden = true; return; }
-    const src = (st && st.value) || {}, plat = $("platPick").value, now = Date.now();
+    let src = st && st.value; if (typeof src === "string") { try { src = JSON.parse(src); } catch { src = {}; } }   // stored as text
+    src = src || {};
+    const plat = $("platPick").value, now = Date.now();
     const live = (rows || []).filter(r => src[r.platform_code] === "page" && (!plat || r.platform_code === plat)
                                       && (now - Date.parse(r.updated_at)) / 1000 < SHOW_OVER_S);
     if (!live.length) { bar.hidden = true; readerWasBad = false; return; }
