@@ -177,7 +177,7 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     </label>
     <label class="chk"><input type="checkbox" id="follow" checked> Switch to a new show automatically</label>
     <span class="sp"></span>
-    <label class="chk"><input type="checkbox" id="printer"> This computer prints chits</label>
+    <label class="chk"><input type="checkbox" id="printer"> This computer prints chits <span id="helperNote" style="color:var(--ink-3, #888);font-size:13px" hidden></span></label>
     <label class="chk">Chits
       <select id="chitMode" aria-label="When chits print">
         <option value="sale">At the sale</option>
@@ -605,7 +605,55 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     }
     printing = false;
   }
-  function printNow(html) {
+  // ---- Reliant Chit Printer (the small Windows helper): prints with no print window when it's running here.
+  const HELPER = "http://127.0.0.1:17861";
+  let helper = null;   // { printer, version } while the helper answers on this computer
+  function showHelper() {
+    const el = $("helperNote");
+    el.hidden = !($("printer").checked && helper);
+    if (helper) el.textContent = `· no print window (${helper.printer || "chit printer"})`;
+  }
+  async function checkHelper() {
+    if (!$("printer").checked) { helper = null; showHelper(); return; }
+    try {
+      const r = await fetch(HELPER + "/status", { cache: "no-store", signal: AbortSignal.timeout(2000) });
+      const j = await r.json();
+      helper = j && j.ok && j.app === "reliant-chit-printer" ? j : null;
+    } catch { helper = null; }
+    showHelper();
+  }
+  async function chitPng(html) {
+    const m = /@page \{ size: ([\d.]+)in ([\d.]+)in/.exec(html), w = m ? +m[1] : 2, h = m ? +m[2] : 1;
+    const xhtml = new XMLSerializer().serializeToString(new DOMParser().parseFromString(html, "text/html").documentElement);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w * 96}" height="${h * 96}"><foreignObject x="0" y="0" width="100%" height="100%">${xhtml}</foreignObject></svg>`;
+    const img = new Image();
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    await img.decode();
+    const DPI = 203, cw = Math.round(w * DPI), ch = Math.round(h * DPI);   // the Star TSP700II prints 203 dots per inch
+    const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+    const g = cv.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, cw, ch); g.drawImage(img, 0, 0, cw, ch);
+    const px = g.getImageData(0, 0, cw, ch), d = px.data;   // pure black and white, so the thermal printer doesn't speckle
+    for (let i = 0; i < d.length; i += 4) { const v = d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11 < 170 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+    g.putImageData(px, 0, 0);
+    return { png: cv.toDataURL("image/png").split(",")[1], width: w, height: h };
+  }
+  async function helperPrint(html) {
+    const r = await fetch(HELPER + "/print", { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(await chitPng(html)), signal: AbortSignal.timeout(15000) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || "no answer");
+  }
+  async function printNow(html) {
+    if (helper) {
+      try { await helperPrint(html); refocus(); return; }
+      catch (e) {
+        helper = null; showHelper();
+        setMsg("The Reliant Chit Printer didn't print this chit (" + (e.message || e) + "), so it went to the print window.", "bad");
+      }
+    }
+    return browserPrint(html);
+  }
+  function browserPrint(html) {
     return new Promise(res => {
       const f = $("printFrame");
       f.onload = () => {
@@ -899,6 +947,8 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     await loadShow();
     subscribe();
     watchReaders(); setInterval(() => watchReaders().catch(() => {}), 10000);
+    checkHelper(); setInterval(() => checkHelper().catch(() => {}), 30000);
+    $("printer").addEventListener("change", () => checkHelper().catch(() => {}));
     $("platPick").addEventListener("change", () => watchReaders().catch(() => {}));
     $("scan").focus();
   })();
