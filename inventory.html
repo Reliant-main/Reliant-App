@@ -81,6 +81,26 @@ tr:last-child td { border-bottom: 0; }
   .hide-sm { display: none; }
 }
 </style>
+<style>
+.btn.primary { background: var(--accent); color: #0e1915; border-color: var(--accent); font-weight: 600; }
+.btn.small { padding: 4px 9px; font-size: 12.5px; }
+.fld { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.fld input, .fld select, .finp { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.results { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 8px; max-height: 300px; overflow-y: auto; }
+.results li { padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; border-bottom: 1px solid var(--line); }
+.results li:last-child { border-bottom: 0; } .results li.sel, .results li:hover { background: var(--accent-wash); }
+.results .m { font-size: 12.5px; color: var(--muted); }
+.picked { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; }
+.picked .grow { flex: 1 1 220px; } .picked .m { font-size: 12.5px; color: var(--muted); }
+.qty { display: flex; gap: 4px; align-items: center; } .qty input { width: 76px; text-align: right; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 0; border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #0e1915; }
+.ok { color: var(--good); } .no { color: var(--bad); } .diff.pos { color: var(--good); } .diff.neg { color: var(--bad); }
+.big { font-size: 16px; font-weight: 600; }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -94,7 +114,7 @@ tr:last-child td { border-bottom: 0; }
   </header>
 
   <div class="notice bad" id="err" hidden></div>
-  <p class="notice">View only for now. Counts, adjustments, damaged books and receiving are still entered in the current Workspace; they show up here after the nightly copy.</p>
+  <p class="notice" id="liveNote" hidden>Until switch day, the nightly copy replaces counts, adjustments and damaged entries with what's in the sheets, so anything entered here before then is undone overnight (fine for trying it out).</p>
 
   <section class="kpis" id="kpis" aria-label="Inventory totals"></section>
 
@@ -102,7 +122,78 @@ tr:last-child td { border-bottom: 0; }
     <button type="button" role="tab" data-t="hand">On hand</button>
     <button type="button" role="tab" data-t="route">En route <span class="n" id="nRoute"></span></button>
     <button type="button" role="tab" data-t="review">Records review <span class="n" id="nReview"></span></button>
+    <button type="button" role="tab" data-t="count" id="tabCount" hidden>Count</button>
+    <button type="button" role="tab" data-t="adjust" id="tabAdjust" hidden>Adjust &amp; damage</button>
   </nav>
+
+  <section data-pane="count" style="display:contents" hidden>
+    <section class="panel" id="countStart">
+      <div class="ph"><h2>Start a count</h2></div>
+      <p class="how">Count the whole shelf or just part of it. Only the titles you count get a new starting number; everything else keeps its last count. Count before the day's show so its sales aren't mixed in. Each title has a Good box and a Damaged box.</p>
+      <div class="grid2">
+        <label class="fld">Count date<input type="date" id="cDate"></label>
+        <label class="row" style="gap:8px;font-size:14px"><input type="checkbox" id="cBlind" checked> Hide the expected number while counting</label>
+        <button class="btn primary" type="button" id="cGo">Start count</button>
+      </div>
+    </section>
+    <section id="countRun" style="display:contents" hidden>
+      <section class="panel">
+        <div class="row" style="justify-content:space-between">
+          <b id="sessTtl">Counting</b>
+          <div class="seg" role="group" aria-label="Entry mode" id="cMode"><button type="button" data-m="type" aria-pressed="true">Search &amp; type</button><button type="button" data-m="scan" aria-pressed="false">Scan (1 per scan)</button></div>
+          <label class="row" style="gap:6px;font-size:13.5px"><input type="checkbox" id="cDmgScan"> Scanning damaged copies</label>
+          <span class="sub" id="saving"></span>
+          <button class="btn" type="button" id="cFinish">Finish count</button>
+        </div>
+        <input type="search" class="finp" id="cq" placeholder="Search title, author or ISBN" autocomplete="off" aria-label="Find a title to count">
+        <ul class="results" id="cRes" hidden></ul>
+        <div class="picked" id="cPick" hidden></div>
+        <p class="how" id="cMsg"></p>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Counted this session</h2><span class="sub" id="sessSum"></span></div>
+        <div class="tbl"><table><thead><tr><th class="plain">Title</th><th class="plain num">Counted</th><th class="plain num" id="thExp">Expected</th><th class="plain num">Entries</th><th class="plain"></th></tr></thead><tbody id="sessBody"></tbody></table></div>
+      </section>
+    </section>
+    <section class="panel" id="countDone" hidden></section>
+  </section>
+
+  <section data-pane="adjust" style="display:contents" hidden>
+    <section class="panel">
+      <div class="ph"><h2>Log an adjustment</h2></div>
+      <p class="how">For books that leave or come back outside a sale or a delivery: lost, store use, returns, and moves to or from the back end. Giveaways are logged in Fulfillment.</p>
+      <input type="search" class="finp" id="aq" placeholder="Search title, author or ISBN (or scan)" autocomplete="off" aria-label="Find a title">
+      <ul class="results" id="aRes" hidden></ul>
+      <div class="picked" id="aPick" hidden></div>
+      <div class="grid2">
+        <label class="fld">Reason<select id="aReason"></select></label>
+        <label class="fld">How many books<input type="number" id="aQty" min="1" step="1" value="1"></label>
+        <label class="fld">Date<input type="date" id="aDate"></label>
+        <label class="fld">Notes<input type="text" id="aNote" placeholder="Optional"></label>
+      </div>
+      <div class="row"><button class="btn primary" type="button" id="aGo" disabled>Save adjustment</button><span id="aMsg"></span></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Damaged copies</h2></div>
+      <p class="how">Mark copies as damaged (still sellable at a lower price) or too damaged to sell (they come off the shelf). Use "Found damaged copy" for damaged books that were left out of the last count.</p>
+      <input type="search" class="finp" id="dq" placeholder="Search title, author or ISBN (or scan)" autocomplete="off" aria-label="Find the damaged book">
+      <ul class="results" id="dRes" hidden></ul>
+      <div class="picked" id="dPick" hidden></div>
+      <div class="grid2">
+        <label class="fld">What happened<select id="dType"></select></label>
+        <label class="fld">How many copies<input type="number" id="dQty" min="1" step="1" value="1"></label>
+        <label class="fld">Date<input type="date" id="dDate"></label>
+        <label class="fld">Order # (optional)<input type="text" id="dOrder" placeholder="If it arrived this way"></label>
+        <label class="fld">Notes<input type="text" id="dNote" placeholder="Optional — e.g. bent corner"></label>
+      </div>
+      <div class="row"><button class="btn primary" type="button" id="dGo" disabled>Save</button><span id="dMsg"></span></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Recent adjustments and damage</h2></div>
+      <div class="tbl" id="recentTbl"></div>
+      <p class="how" id="recentMsg"></p>
+    </section>
+  </section>
 
   <section class="panel" data-pane="hand">
     <div class="ph">
@@ -159,6 +250,7 @@ tr:last-child td { border-bottom: 0; }
     const held = D.committed || {};
     rows.forEach(r => { const h = held[r.isbn]; r.held = h ? +h[0] || 0 : 0; r.heldShows = h ? h[1] || [] : []; r.avail = Math.max(0, (+r.good || 0) - r.held); });
     const at = D.synced_at ? new Date(D.synced_at) : null;
+    afterLoad();
     setStatus("live", `${int(rows.length)} titles · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"} · full count ${dfmt(D.full_count_date)}`);
     render();
   }
@@ -204,7 +296,7 @@ tr:last-child td { border-bottom: 0; }
     $("nReview").textContent = int(reviewN);
     document.querySelectorAll("#tabs [data-t]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === S.tab)));
     document.querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== S.tab);
-    if (S.tab === "hand") renderHand(); else if (S.tab === "route") renderRoute(); else renderReview();
+    if (S.tab === "hand") renderHand(); else if (S.tab === "route") renderRoute(); else if (S.tab === "review") renderReview(); else if (S.tab === "count") countView(); else if (S.tab === "adjust") adjView();
   }
   function renderHand() {
     $("filters").innerHTML = FILTERS.map(([key, lab, fn]) => `<button type="button" data-f="${key}" aria-pressed="${S.f === key}">${lab}<span class="n">${int(rows.filter(fn).length)}</span></button>`).join("");
@@ -290,6 +382,276 @@ tr:last-child td { border-bottom: 0; }
   }
   const closeDrawer = () => { $("drawer").hidden = true; };
 
+
+  // ================================================================ write screens: count, adjust, damage
+  const me = () => { try { return window.parent.RELIANT.staff || {}; } catch { return {}; } };
+  const role = () => me().role || "";
+  const canCount = () => ["owner", "manager", "operator", "scanner"].includes(role());
+  const canAdjust = () => ["owner", "manager", "scanner"].includes(role());
+  const isMgr = () => ["owner", "manager"].includes(role());
+  const pad = n => String(n).padStart(2, "0");
+  const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const validISO = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
+  const numv = v => { const n = parseFloat(String(v ?? "").replace(/[$,\s]/g, "")); return isFinite(n) ? n : NaN; };
+  const bad = t => `<span class="no">${esc(t)}</span>`;
+  const okm = t => `<span class="ok">${esc(t)}</span>`;
+  const errMsg = e => (e && e.message) || String(e);
+  const clean = s => String(s ?? "").toUpperCase().replace(/[^0-9X]/g, "");
+  function key13(s) {
+    let d = clean(s);
+    if (d.length === 10) { const core = "978" + d.slice(0, 9); let t = 0; for (let i = 0; i < 12; i++) t += (+core[i]) * (i % 2 ? 3 : 1); return core + ((10 - t % 10) % 10); }
+    return d;
+  }
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, del: k => { try { localStorage.removeItem(k); } catch {} } };
+  let REASONS = [], DTYPES = [], live = true, byIsbn = new Map();
+
+  async function afterLoad() {
+    byIsbn = new Map(rows.map(r => [r.isbn, r]));
+    $("tabCount").hidden = !canCount(); $("tabAdjust").hidden = !canAdjust();
+    const c = sb();
+    if (!REASONS.length) {
+      const [a, d, l] = await Promise.all([c.from("adjustment_reasons").select("*"), c.from("damage_types").select("*"), c.rpc("ful_live")]);
+      REASONS = (a.data || []).filter(r => !/gift|damag/i.test(r.name)); DTYPES = d.data || []; live = l.data === true;
+      $("aReason").innerHTML = REASONS.map(r => `<option value="${esc(r.name)}">${esc(r.name)} (${r.direction > 0 ? "adds" : "removes"})</option>`).join("");
+      $("dType").innerHTML = DTYPES.map(t => `<option>${esc(t.name)}</option>`).join("");
+    }
+    $("liveNote").hidden = live;
+  }
+  // search the loaded titles; an ISBN that isn't loaded is looked up in the full book list
+  function searchLocal(q, n) {
+    const t = String(q || "").trim().toLowerCase(); if (t.length < 2) return [];
+    const k = key13(t); if (k.length === 13 && byIsbn.has(k)) return [byIsbn.get(k)];
+    const words = t.split(/\s+/).filter(Boolean);
+    return rows.filter(r => words.every(w => (r.title + " " + r.author + " " + r.isbn).toLowerCase().includes(w)))
+      .sort((a, b) => (b.on_hand > 0) - (a.on_hand > 0) || a.title.localeCompare(b.title)).slice(0, n);
+  }
+  async function findIsbn(raw) {
+    const k = key13(raw); if (byIsbn.has(k)) return byIsbn.get(k);
+    const { data } = await sb().rpc("ful_book_search", { p_q: k });
+    const hit = (data || []).find(b => b.isbn === k);
+    return hit ? { isbn: hit.isbn, title: hit.title, author: hit.author, on_hand: 0, damaged: 0, good: 0 } : null;
+  }
+  function wireSearch(inp, list, onPick, extra) {
+    let sel = 0, res = [];
+    const draw = () => {
+      res = searchLocal(inp.value, 8);
+      const d = clean(inp.value);
+      list.hidden = !res.length && !inp.value.trim();
+      list.innerHTML = res.length ? res.map((it, i) => `<li class="${i === sel ? "sel" : ""}" data-i="${i}"><span class="t">${esc(it.title)}</span><span class="m">${esc(it.author)} · ${esc(it.isbn)}${extra ? " · " + extra(it) : ""}</span></li>`).join("")
+        : inp.value.trim() ? (d.length >= 10 ? `<li data-raw="1"><span class="t">Look up ISBN ${esc(d)}</span><span class="m">Press Enter</span></li>` : `<li style="cursor:default">No match.</li>`) : "";
+    };
+    const pick = i => { const it = res[i]; if (!it) return; list.hidden = true; inp.value = ""; onPick(it); };
+    const pickRaw = async () => {
+      const d = clean(inp.value); if (d.length < 10) return;
+      const it = await findIsbn(d); list.hidden = true; inp.value = "";
+      if (it) onPick(it); else onPick(null, `ISBN ${d} isn't in the book list. Add it in Book Info first.`);
+    };
+    inp.addEventListener("input", () => { sel = 0; draw(); });
+    inp.addEventListener("keydown", e => {
+      if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(sel + 1, res.length - 1); draw(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(sel - 1, 0); draw(); }
+      else if (e.key === "Enter") { e.preventDefault(); if (clean(inp.value).length >= 10 && !/[a-z]/i.test(inp.value.replace(/x$/i, ""))) pickRaw(); else if (res.length) pick(sel); }
+      else if (e.key === "Escape") list.hidden = true;
+    });
+    list.addEventListener("click", e => { const li = e.target.closest("li"); if (!li) return; if (li.dataset.raw) pickRaw(); else if (li.dataset.i != null) pick(+li.dataset.i); });
+  }
+
+  // ---------------------------------------------------------------- COUNT
+  const SKEY = "inv.count.app";
+  let sess = null, cMode = "type", flushT = 0, flushing = false;
+  try { sess = JSON.parse(ls.get(SKEY) || "null"); } catch { sess = null; }
+  const saveSess = () => sess ? ls.set(SKEY, JSON.stringify(sess)) : ls.del(SKEY);
+  const sessTotal = k => sess ? sess.entries.filter(e => e.isbn === k).reduce((a, e) => a + e.qty, 0) + ((sess.pending[k] || {}).qty || 0) : 0;
+  function countView() {
+    $("cDate").value = $("cDate").value || todayISO(); $("cDate").max = todayISO();
+    $("countStart").hidden = !!sess; $("countRun").hidden = !sess;
+    if (sess) renderSess();
+  }
+  $("cGo").onclick = () => {
+    const d = $("cDate").value;
+    if (!validISO(d) || d > todayISO()) { $("cDate").focus(); return; }
+    const expected = {}; for (const r of rows) expected[r.isbn] = r.on_hand || 0;
+    sess = { date: d, by: me().name || "", blind: $("cBlind").checked, expected, entries: [], pending: {} };
+    saveSess(); $("countDone").hidden = true; countView(); $("cq").focus();
+  };
+  $("cMode").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; cMode = b.dataset.m;
+    $("cMode").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    $("cq").placeholder = cMode === "scan" ? "Scan a book — each scan adds 1" : "Search title, author or ISBN"; $("cPick").hidden = true; $("cq").focus(); });
+  // scan mode: an ISBN + Enter adds 1 straight away
+  $("cq").addEventListener("keydown", async e => {
+    if (cMode !== "scan" || e.key !== "Enter") return;
+    const d = clean($("cq").value); if (d.length < 10) return;
+    e.stopImmediatePropagation(); e.preventDefault(); $("cq").value = ""; $("cRes").hidden = true;
+    const it = await findIsbn(d);
+    if (!it) { $("cMsg").innerHTML = bad(`ISBN ${d} isn't in the book list. Add it in Book Info, then scan it again.`); return; }
+    addCount(it, 1, true, $("cDmgScan").checked ? 1 : 0);
+  }, true);
+  wireSearch($("cq"), $("cRes"), (it, msg) => {
+    if (!it) { $("cMsg").innerHTML = bad(msg); return; }
+    if (cMode === "scan") { addCount(it, 1, true, $("cDmgScan").checked ? 1 : 0); return; }
+    const already = sessTotal(it.isbn);
+    $("cPick").hidden = false;
+    $("cPick").innerHTML = `<div class="grow"><div class="t">${esc(it.title)}</div><div class="m">${esc(it.author)} · ${esc(it.isbn)}${already ? ` · ${int(already)} already counted (this adds to it)` : ""}${sess && !sess.blind ? ` · ${int(sess.expected[it.isbn] || 0)} expected` : ""}</div></div>
+      <label class="fld">Good<div class="qty"><button class="btn small" type="button" id="qMinus">−</button><input class="finp" type="number" id="qVal" min="0" step="1" inputmode="numeric"><button class="btn small" type="button" id="qPlus">+</button></div></label>
+      <label class="fld">Damaged<input class="finp" style="width:76px" type="number" id="qDmg" min="0" step="1" placeholder="0" inputmode="numeric"></label>
+      <button class="btn primary" type="button" id="qSave">Save</button>`;
+    const qv = $("qVal"), qd = $("qDmg");
+    $("qMinus").onclick = () => { qv.value = Math.max(0, (Math.round(numv(qv.value)) || 0) - 1); qv.focus(); };
+    $("qPlus").onclick = () => { qv.value = (Math.round(numv(qv.value)) || 0) + 1; qv.focus(); };
+    const save = () => { const q = Math.round(numv(qv.value)), dq = qd.value === "" ? 0 : Math.round(numv(qd.value));
+      if (!(dq >= 0)) { qd.focus(); return; } if ((!(q >= 0) || qv.value === "") && !(dq > 0)) { qv.focus(); return; }
+      addCount(it, (q >= 0 ? q : 0) + dq, false, dq); $("cPick").hidden = true; $("cq").focus(); };
+    [qv, qd].forEach(x => x.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); save(); } }));
+    $("qSave").onclick = save; qv.focus();
+  }, it => sess && !sess.blind ? `${int(sess.expected[it.isbn] || 0)} expected` : "");
+  function addCount(it, q, batched, dq) {
+    if (!sess) return;
+    const p = sess.pending[it.isbn] || (sess.pending[it.isbn] = { isbn: it.isbn, title: it.title, qty: 0, dmg: 0 });
+    p.qty += q; p.dmg += dq || 0;
+    saveSess(); renderSess();
+    $("cMsg").innerHTML = okm(`${q === 0 ? "Recorded 0" : "+" + int(q)}${dq ? ` (${int(dq)} damaged)` : ""} · ${it.title} · ${int(sessTotal(it.isbn))} counted this session`);
+    clearTimeout(flushT); flushT = setTimeout(flush, batched ? 2500 : 200);
+  }
+  async function flush() {
+    if (!sess || flushing) return;
+    const keys = Object.keys(sess.pending); if (!keys.length) { $("saving").textContent = ""; return; }
+    flushing = true;
+    const batch = keys.map(k => ({ ...sess.pending[k] }));
+    $("saving").textContent = `Saving ${batch.length}…`;
+    const { data, error } = await sb().from("stock_counts").insert(batch.map(b => ({ count_date: sess.date, isbn: b.isbn, qty: b.qty, damaged_qty: b.dmg || 0, notes: "App count" }))).select("id,isbn");
+    if (error) { $("saving").innerHTML = bad("Not saved yet — retrying. " + errMsg(error)); flushing = false; flushT = setTimeout(flush, 5000); return; }
+    batch.forEach((b, i) => {
+      const cur = sess.pending[b.isbn];
+      if (cur) { cur.qty -= b.qty; cur.dmg -= b.dmg || 0; if (cur.qty <= 0 && !(cur.dmg > 0)) delete sess.pending[b.isbn]; }
+      sess.entries.push({ id: data[i].id, isbn: b.isbn, title: b.title, qty: b.qty, dmg: b.dmg || 0, at: Date.now() });
+    });
+    saveSess(); flushing = false; $("saving").textContent = "All saved"; renderSess();
+    if (Object.keys(sess.pending).length) { clearTimeout(flushT); flushT = setTimeout(flush, 800); }
+  }
+  function renderSess() {
+    if (!sess) return;
+    $("sessTtl").textContent = `Counting · ${dfmt(sess.date)} · ${sess.by}`;
+    $("thExp").hidden = sess.blind;
+    const keys = [...new Set(sess.entries.map(e => e.isbn).concat(Object.keys(sess.pending)))];
+    const list = keys.map(k => {
+      const ents = sess.entries.filter(e => e.isbn === k), pend = sess.pending[k];
+      return { k, title: (byIsbn.get(k) || ents[0] || pend || {}).title, total: sessTotal(k), dmg: ents.reduce((a, e) => a + e.dmg, 0) + ((pend && pend.dmg) || 0), n: ents.length + (pend ? 1 : 0), pend: !!pend, last: ents.length ? ents[ents.length - 1].at : Date.now() };
+    }).sort((a, b) => b.last - a.last);
+    $("sessSum").textContent = `${int(list.length)} titles · ${int(list.reduce((a, r) => a + r.total, 0))} books`;
+    $("sessBody").innerHTML = list.length ? list.map(r => `<tr><td><div class="t">${esc(r.title || r.k)}</div><div class="a">${esc(r.k)}</div></td>
+      <td class="num big">${int(r.total)}${r.dmg ? ` <span class="pill">${int(r.dmg)} damaged</span>` : ""}${r.pend ? ' <span class="a">saving</span>' : ""}</td>${sess.blind ? "" : `<td class="num">${int(sess.expected[r.k] || 0)}</td>`}<td class="num">${int(r.n)}</td>
+      <td class="num"><button class="btn small" type="button" data-undo="${esc(r.k)}" ${r.pend ? "disabled" : ""}>Undo last</button></td></tr>`).join("")
+      : `<tr><td colspan="5" class="empty">Nothing counted yet. Search or scan a title above.</td></tr>`;
+  }
+  $("sessBody").addEventListener("click", async e => {
+    const b = e.target.closest("[data-undo]"); if (!b || !sess) return;
+    const ents = sess.entries.filter(x => x.isbn === b.dataset.undo), last = ents[ents.length - 1]; if (!last) return;
+    b.disabled = true;
+    const { error } = await sb().rpc("count_undo", { p_id: last.id });
+    if (error) { $("cMsg").innerHTML = bad(errMsg(error)); b.disabled = false; return; }
+    sess.entries = sess.entries.filter(x => x !== last); saveSess(); renderSess();
+    $("cMsg").innerHTML = okm(`Removed the last entry (${int(last.qty)}) for ${last.title || last.isbn}.`);
+  });
+  $("cFinish").onclick = async () => {
+    if (!sess) return;
+    clearTimeout(flushT); await flush();
+    if (Object.keys(sess.pending).length) { $("cMsg").innerHTML = bad("Some counts haven't saved yet. Check the connection and press Finish again."); return; }
+    const counted = new Map(); for (const e of sess.entries) counted.set(e.isbn, (counted.get(e.isbn) || 0) + e.qty);
+    const diffs = [...counted].map(([k, c]) => { const ex = sess.expected[k] || 0; return { k, title: (byIsbn.get(k) || sess.entries.find(e => e.isbn === k) || {}).title, c, ex, d: c - ex }; }).filter(x => x.d).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+    const missing = rows.filter(r => (sess.expected[r.isbn] || 0) > 0 && !counted.has(r.isbn));
+    const books = [...counted.values()].reduce((a, b) => a + b, 0), done = sess;
+    sess = null; saveSess();
+    $("countRun").hidden = true; $("countDone").hidden = false;
+    $("countDone").innerHTML = `<div class="ph"><h2>Count finished · ${dfmt(done.date)}</h2></div>
+      <p class="how">${int(counted.size)} titles and ${int(books)} books counted by ${esc(done.by)}. ${diffs.length ? `${int(diffs.length)} titles differ from what the records expected.` : "Every counted title matched what the records expected."}</p>
+      ${diffs.length ? `<div class="tbl"><table><thead><tr><th class="plain">Title</th><th class="plain num">Counted</th><th class="plain num">Expected</th><th class="plain num">Difference</th></tr></thead><tbody>${
+        diffs.map(x => `<tr><td><div class="t">${esc(x.title || x.k)}</div><div class="a">${esc(x.k)}</div></td><td class="num">${int(x.c)}</td><td class="num">${int(x.ex)}</td><td class="num diff ${x.d > 0 ? "pos" : "neg"}">${x.d > 0 ? "+" : ""}${int(x.d)}</td></tr>`).join("")}</tbody></table></div>
+        <p class="how">A difference means a record was missed somewhere: a sale under the wrong ISBN, a delivery not received, or a damaged copy not logged. The count is now the starting number for these titles.</p>` : ""}
+      ${missing.length ? `<div><b>${int(missing.length)} titles weren't counted</b><p class="how">They still show books on hand (${int(missing.reduce((a, r) => a + (done.expected[r.isbn] || 0), 0))} in all). If this was a full count of the shelf, set them to 0. If you only counted part of the shelf, leave them.</p>
+        <div class="row"><button class="btn" type="button" id="zeroGo">This was a full count — set these to 0</button><span id="zeroMsg"></span></div></div>` : ""}
+      <div class="row"><button class="btn primary" type="button" id="doneGo">Done</button></div>`;
+    $("doneGo").onclick = () => { $("countDone").hidden = true; countView(); load(); };
+    let armed = false;
+    if ($("zeroGo")) $("zeroGo").onclick = async () => {
+      if (!armed) { armed = true; $("zeroGo").textContent = `Yes, set ${int(missing.length)} titles to 0`; $("zeroGo").classList.add("primary"); $("zeroMsg").textContent = "Press again to confirm."; return; }
+      $("zeroGo").disabled = true; $("zeroMsg").textContent = "Saving…";
+      const { error } = await sb().from("stock_counts").insert(missing.map(r => ({ count_date: done.date, isbn: r.isbn, qty: 0, notes: "App count · not found" })));
+      $("zeroMsg").innerHTML = error ? bad(errMsg(error)) : okm(`Set ${int(missing.length)} titles to 0.`);
+      if (error) $("zeroGo").disabled = false;
+    };
+  };
+
+  // ---------------------------------------------------------------- ADJUST and DAMAGE
+  let aPick = null, dPick = null;
+  function adjView() { ["aDate", "dDate"].forEach(id => { $(id).value = $(id).value || todayISO(); $(id).max = todayISO(); }); loadRecent(); }
+  const pickedHtml = it => `<div class="grow"><div class="t">${esc(it.title)}</div><div class="m">${esc(it.author)} · ${esc(it.isbn)} · on hand ${int(it.on_hand)}${it.damaged ? ` (${int(it.damaged)} damaged)` : ""}</div></div><button class="btn small" type="button" data-change>Change</button>`;
+  function previewAdj() {
+    if (!aPick) return;
+    const r = REASONS.find(x => x.name === $("aReason").value), q = Math.round(numv($("aQty").value));
+    $("aMsg").innerHTML = r && q > 0 ? `On hand goes from <b>${int(aPick.on_hand)}</b> to <b>${int(aPick.on_hand + r.direction * q)}</b>.` : "";
+  }
+  wireSearch($("aq"), $("aRes"), (it, msg) => {
+    if (!it) { $("aMsg").innerHTML = bad(msg); return; }
+    aPick = it; $("aPick").hidden = false; $("aPick").innerHTML = pickedHtml(it); $("aGo").disabled = false; previewAdj(); $("aQty").select();
+  }, it => int(it.on_hand) + " on hand");
+  $("aPick").addEventListener("click", e => { if (e.target.closest("[data-change]")) { aPick = null; $("aPick").hidden = true; $("aGo").disabled = true; $("aMsg").textContent = ""; $("aq").focus(); } });
+  ["aReason", "aQty"].forEach(id => $(id).addEventListener("input", previewAdj));
+  $("aGo").onclick = async () => {
+    const r = REASONS.find(x => x.name === $("aReason").value), q = Math.round(numv($("aQty").value)), d = $("aDate").value;
+    if (!aPick) return; if (!r) { $("aMsg").innerHTML = bad("Pick a reason."); return; }
+    if (!(q > 0)) { $("aMsg").innerHTML = bad("Enter how many books (1 or more)."); return; }
+    if (!validISO(d) || d > todayISO()) { $("aMsg").innerHTML = bad("Pick a date that isn't in the future."); return; }
+    $("aGo").disabled = true; $("aMsg").textContent = "Saving…";
+    const { error } = await sb().from("stock_adjustments").insert({ adjusted_on: d, isbn: aPick.isbn, qty: r.direction * q, reason: r.name, notes: $("aNote").value.trim() || null });
+    if (error) { $("aMsg").innerHTML = bad("Not saved. " + errMsg(error)); $("aGo").disabled = false; return; }
+    $("aMsg").innerHTML = okm(`Saved: ${r.direction > 0 ? "+" : "−"}${q} ${r.name.toLowerCase()} for ${aPick.title}.`);
+    aPick = null; $("aPick").hidden = true; $("aNote").value = ""; $("aQty").value = 1;
+    load();
+  };
+  function dmgHelp() {
+    const t = DTYPES.find(x => x.name === $("dType").value); if (!dPick || !t) { $("dMsg").textContent = ""; return; }
+    const n = Math.max(1, Math.round(numv($("dQty").value)) || 1);
+    $("dMsg").innerHTML = `After saving: ${int(dPick.on_hand + t.total_change * n)} on hand, ${int(Math.max(0, (dPick.damaged || 0) + t.damaged_change * n))} damaged.`;
+  }
+  wireSearch($("dq"), $("dRes"), (it, msg) => {
+    if (!it) { $("dMsg").innerHTML = bad(msg); return; }
+    dPick = it; $("dPick").hidden = false; $("dPick").innerHTML = pickedHtml(it); $("dGo").disabled = false; dmgHelp(); $("dQty").select();
+  }, it => it.damaged ? int(it.damaged) + " damaged" : int(it.on_hand) + " on hand");
+  $("dPick").addEventListener("click", e => { if (e.target.closest("[data-change]")) { dPick = null; $("dPick").hidden = true; $("dGo").disabled = true; $("dMsg").textContent = ""; $("dq").focus(); } });
+  ["dType", "dQty"].forEach(id => $(id).addEventListener("input", dmgHelp));
+  $("dGo").onclick = async () => {
+    const t = DTYPES.find(x => x.name === $("dType").value), n = Math.round(numv($("dQty").value)), d = $("dDate").value;
+    if (!dPick) return; if (!t) { $("dMsg").innerHTML = bad("Pick what happened."); return; }
+    if (!(n > 0)) { $("dMsg").innerHTML = bad("Enter how many copies (1 or more)."); return; }
+    if (!validISO(d) || d > todayISO()) { $("dMsg").innerHTML = bad("Pick a date that isn't in the future."); return; }
+    if (t.damaged_change < 0 && t.total_change <= 0 && (dPick.damaged || 0) < n) { $("dMsg").innerHTML = bad(`Only ${int(dPick.damaged || 0)} damaged copies are recorded for this title.`); return; }
+    $("dGo").disabled = true; $("dMsg").textContent = "Saving…";
+    const { error } = await sb().from("damaged_stock").insert({ logged_on: d, isbn: dPick.isbn, qty: n, damage_type: t.name, order_number: $("dOrder").value.trim() || null, notes: $("dNote").value.trim() || null });
+    if (error) { $("dMsg").innerHTML = bad("Not saved. " + errMsg(error)); $("dGo").disabled = false; return; }
+    $("dMsg").innerHTML = okm(`Saved: ${n} × ${dPick.title} · ${t.name}.`);
+    dPick = null; $("dPick").hidden = true; $("dNote").value = ""; $("dOrder").value = ""; $("dQty").value = 1;
+    load();
+  };
+  async function loadRecent() {
+    const c = sb();
+    const [a, d] = await Promise.all([c.from("stock_adjustments").select("id,adjusted_on,isbn,qty,reason,notes,entered_by").order("id", { ascending: false }).limit(15),
+      c.from("damaged_stock").select("id,logged_on,isbn,qty,damage_type,notes,entered_by,spotlight_ref,order_number").order("id", { ascending: false }).limit(15)]);
+    const list = [...(a.data || []).map(x => ({ kind: "adjust", id: x.id, date: x.adjusted_on, isbn: x.isbn, qty: x.qty, what: x.reason, notes: x.notes, by: x.entered_by })),
+      ...(d.data || []).map(x => ({ kind: "damage", id: x.id, date: x.logged_on, isbn: x.isbn, qty: x.qty, what: x.damage_type, notes: [x.order_number && "order " + x.order_number, x.notes].filter(Boolean).join(" · "), by: x.entered_by, show: !!x.spotlight_ref }))]
+      .sort((x, y) => String(y.date).localeCompare(String(x.date)) || y.id - x.id).slice(0, 20);
+    $("recentTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Date</th><th class="plain">Title</th><th class="plain num">Qty</th><th class="plain">What</th><th class="plain hide-sm">Notes</th><th class="plain"></th></tr></thead><tbody>${
+      list.map(r => `<tr><td>${dfmt(r.date)}</td><td><div class="t">${esc((byIsbn.get(r.isbn) || {}).title || r.isbn)}</div><div class="a">${esc(r.isbn)}</div></td><td class="num">${r.kind === "adjust" && r.qty > 0 ? "+" : ""}${int(r.qty)}</td><td>${esc(r.what)}</td><td class="hide-sm a">${esc([r.notes, r.by].filter(Boolean).join(" · "))}</td>
+        <td class="num">${isMgr() && !r.show ? `<button class="btn small" type="button" data-rm="${r.kind}:${r.id}">Remove</button>` : ""}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">Nothing logged yet.</p>`;
+  }
+  $("recentTbl").addEventListener("click", async e => {
+    const b = e.target.closest("[data-rm]"); if (!b) return;
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Yes, remove"; b.classList.add("primary"); return; }
+    const [kind, id] = b.dataset.rm.split(":"); b.disabled = true;
+    const { error } = await sb().rpc("stock_entry_remove", { p_kind: kind, p_id: +id });
+    $("recentMsg").innerHTML = error ? bad(errMsg(error)) : okm("Removed.");
+    if (!error) load();
+  });
   // interactions
   $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S.tab = b.dataset.t; render(); });
   $("kpis").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (!b) return; const g = b.dataset.go;

@@ -125,7 +125,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     <div class="home-in">
       <div class="home-head">
         <div><span class="eyebrow">Reliant Distribution</span><h1>Workspace</h1></div>
-        <div class="acct"><span class="who" id="who"></span><button class="btn" type="button" id="settingsBtn" hidden>Settings</button><button class="btn" type="button" data-signout>Sign out</button></div>
+        <div class="acct"><span class="who" id="who"></span><button class="btn" type="button" id="switchBtn">Switch person</button><button class="btn" type="button" id="pinBtn">My PIN</button><button class="btn" type="button" id="settingsBtn" hidden>Settings</button><button class="btn" type="button" data-signout>Sign out</button></div>
       </div>
       <div class="secs" id="secs"></div>
       <div class="sub">
@@ -139,8 +139,21 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 <!-- A section opened full screen -->
 <div class="section" id="section" hidden>
   <div class="bar"><button class="btn" type="button" id="homeBtn">⌂ Home</button><span class="ttl" id="sectionTitle"></span></div>
-  <iframe id="sectionFrame" title="Section"></iframe>
+  <iframe id="sectionFrame" title="Section" allow="clipboard-write; camera"></iframe>
 </div>
+
+<!-- Quick switch on a shared device: pick a person, type their PIN -->
+<main class="gate" id="pinGate" hidden style="position:fixed;inset:0;z-index:50;background:rgba(5,12,10,.85)">
+  <form class="card" id="pinForm" autocomplete="off">
+    <div><span class="eyebrow">Shared device</span><h2 id="pinTitle">Switch person</h2></div>
+    <div id="pinPeople" class="fld"></div>
+    <div class="fld"><label for="pinInput" id="pinLabel">PIN</label><input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" required></div>
+    <div class="fld" id="pin2Wrap" hidden><label for="pin2">Type it again</label><input id="pin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></div>
+    <div class="msg" id="pinMsg" role="status"></div>
+    <button class="btn primary" type="submit" id="pinGo">Switch</button>
+    <button class="btn" type="button" id="pinCancel">Cancel</button>
+  </form>
+</main>
 
 <script>
 (() => {
@@ -160,8 +173,9 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     ] },
     { title: "Buy & stock", desc: "Get books in the door", items: [
       { id: "purchasing", title: "Purchasing", desc: "Build buy lists from sales, stock, price, ratings and profit, and keep the lists you send.", url: "purchasing.html", roles: MANAGER },
-      { id: "orders", title: "Orders & Receiving", desc: "Supplier orders, what’s on the way, and confirming boxes when they arrive.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
-      { id: "inventory", title: "Inventory", desc: "What’s on hand and on order, held for shows, damaged, and records to review.", url: "inventory.html" }
+      { id: "orders", title: "Orders & Receiving", desc: "Add supplier orders from their files, see what’s on the way, and receive boxes when they arrive.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
+      { id: "inventory", title: "Inventory", desc: "What’s on hand and on order, counts, adjustments, damaged copies, and records to review.", url: "inventory.html" },
+      { id: "books", title: "Book Info", desc: "Titles, authors, Goodreads, spice, genres, tropes and the synopsis shown on the TV. Add new books.", url: "books.html" }
     ] },
     { title: "Show day", desc: "Get books ready, then sell them live", items: [
       { id: "prep", title: "Show Prep", desc: "Scan books into an upcoming show and group them into sets, on a tablet or computer.", page: "prep.html", roles: SHOW_CREW },
@@ -233,6 +247,62 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     $("sectionFrame").src = "about:blank";
     show("home");
   }
+  // ---------- quick PIN switch (shared devices) and setting your own PIN ----------
+  let pinMode = "switch", pinPick = null;
+  const pinMsg = (t, bad) => { $("pinMsg").textContent = t; $("pinMsg").classList.toggle("bad", !!bad); };
+  function openPin(mode) {
+    pinMode = mode; pinPick = null; pinMsg("");
+    $("pinInput").value = ""; $("pin2").value = "";
+    $("pinTitle").textContent = mode === "switch" ? "Switch person" : "Set my PIN";
+    $("pinLabel").textContent = mode === "switch" ? "Their PIN" : "New PIN (4 to 6 digits)";
+    $("pin2Wrap").hidden = mode === "switch"; $("pin2").required = mode !== "switch";
+    $("pinGo").textContent = mode === "switch" ? "Switch" : "Save PIN";
+    $("pinPeople").innerHTML = "";
+    $("pinGate").hidden = false;
+    if (mode === "switch") {
+      $("pinPeople").innerHTML = "<span>Loading people…</span>";
+      sb.rpc("pin_people").then(({ data }) => {
+        const me = window.RELIANT.staff || {};
+        const list = (data || []).filter(p => p.name !== me.name);
+        $("pinPeople").innerHTML = list.length ? "<label>Who's taking over?</label>" + list.map(p => `<button type="button" class="btn" data-pid="${p.id}"></button>`).join("")
+          : "<span>Nobody else has a PIN yet. Each person sets one with My PIN after signing in once with their email.</span>";
+        list.forEach(p => { const b = $("pinPeople").querySelector(`[data-pid="${p.id}"]`); b.textContent = `${p.name} · ${p.role}`; });
+      });
+    } else setTimeout(() => $("pinInput").focus(), 0);
+  }
+  $("pinPeople").addEventListener("click", e => { const b = e.target.closest("[data-pid]"); if (!b) return; pinPick = b.dataset.pid;
+    $("pinPeople").querySelectorAll("[data-pid]").forEach(x => x.classList.toggle("primary", x === b)); $("pinInput").focus(); });
+  $("switchBtn").onclick = () => openPin("switch");
+  $("pinBtn").onclick = () => openPin("set");
+  $("pinCancel").onclick = () => { $("pinGate").hidden = true; };
+  $("pinForm").onsubmit = async e => {
+    e.preventDefault();
+    const pin = $("pinInput").value.trim();
+    if (!/^\d{4,6}$/.test(pin)) { pinMsg("A PIN is 4 to 6 digits.", true); return; }
+    $("pinGo").disabled = true;
+    try {
+      if (pinMode === "set") {
+        if (pin !== $("pin2").value.trim()) { pinMsg("The two PINs don't match.", true); return; }
+        const { error } = await sb.rpc("set_my_pin", { p_pin: pin });
+        if (error) { pinMsg(error.message, true); return; }
+        pinMsg("Saved. Others on a shared device can now switch to you with this PIN.");
+        setTimeout(() => { $("pinGate").hidden = true; }, 1500);
+        return;
+      }
+      if (!pinPick) { pinMsg("Pick who's taking over.", true); return; }
+      pinMsg("Checking…");
+      const { data, error } = await sb.functions.invoke("pin-switch", { body: { staff_id: pinPick, pin } });
+      if (error || !data || !data.token_hash) {
+        let m = "Couldn't switch."; try { const j = error && error.context && await error.context.json(); if (j && j.error) m = j.error; } catch {}
+        pinMsg(m, true); return;
+      }
+      const { data: v, error: vErr } = await sb.auth.verifyOtp({ token_hash: data.token_hash, type: "magiclink" });
+      if (vErr) { pinMsg(vErr.message, true); return; }
+      $("pinGate").hidden = true; closeSection();
+      await refresh(v.session);
+    } finally { $("pinGo").disabled = false; }
+  };
+
   $("settingsBtn").onclick = () => openSection({ id: "settings", title: "Settings", url: "settings.html" });
   window.RELIANT.onStaffChanged = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };
   $("pendingRetry").onclick = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };

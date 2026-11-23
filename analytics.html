@@ -136,6 +136,9 @@ svg .val { fill: var(--ink); font-size: 12px; font-weight: 600; font-variant-num
 .proj .how { font-size: 12px; color: var(--muted); line-height: 1.5; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
+#srcTbl tr.srcrow { cursor: pointer; } #srcTbl tr.srcrow:hover td { background: var(--accent-wash, rgba(127,199,166,.08)); }
+#srcTbl td.num, #srcTbl th.num, .srcbox td.num, .srcbox th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.srcdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
 .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
 .sw.dash { height: 0; width: 16px; border-top: 2px dashed var(--s1); border-radius: 0; }
 
@@ -323,6 +326,7 @@ tr.inr td { background: var(--accent-wash); }
         <div class="dppop" id="dpPop" role="dialog" aria-label="Choose dates" hidden></div>
       </div>
       <select id="platSel" aria-label="Platform"><option value="">All platforms</option></select>
+      <select id="srcSel" aria-label="Used book source" hidden><option value="">All sources</option></select>
       <button class="btn" id="btnRefresh" type="button">Refresh</button>
     </div>
   </header>
@@ -378,6 +382,16 @@ tr.inr td { background: var(--accent-wash); }
           </div>
           <aside class="proj" id="proj"></aside>
         </div>
+      </section>
+
+      <section class="panel" id="srcPanel" hidden>
+        <div class="ph"><h2>By source</h2><span class="sub" id="srcSub"></span></div>
+        <div class="tbl" id="srcTbl"></div>
+        <div class="ph"><h2 style="font-size:14px" id="srcChartTitle">Over time</h2>
+          <div class="seg" role="group" aria-label="Chart measure" id="srcMet"><button type="button" data-m="profit">Profit</button><button type="button" data-m="rev">Sales</button></div></div>
+        <div class="legend" id="srcLegend"></div>
+        <div class="chart" id="srcChart"></div>
+        <p class="how">Click a source to see every tab for that source alone. Sell-through counts each source’s sales against its R’s.</p>
       </section>
 
       <button type="button" class="notice linknote" id="chkNote" hidden></button>
@@ -447,6 +461,7 @@ tr.inr td { background: var(--accent-wash); }
             <button type="button" data-c="dates">Two date ranges</button>
             <button type="button" data-c="plat">Platform vs platform</button>
             <button type="button" data-c="shows">Two shows</button>
+            <button type="button" data-c="src" id="cModeSrc" hidden>Source vs source</button>
           </div>
         </div>
         <div id="cSetup"></div>
@@ -1489,6 +1504,7 @@ tr.inr td { background: var(--accent-wash); }
   }
 
   function render() {
+    fillSources();
     const M = currentModel();
     setTab(state.tab);
     if (!M) { $("dash").hidden = true; $("start").hidden = false; return; }
@@ -1529,8 +1545,9 @@ tr.inr td { background: var(--accent-wash); }
       ...(st && st.n ? [["Sell-through", pct(st.main), `${pct(st.fin)} with speed round`]] : [])
     ]);
     renderOvEv(M, A, isUsed);
+    renderSources(A, isUsed);
     const P = A.proj && A.weeks.length >= 8 ? A.proj : null;
-    $("trendSub").textContent = A.weeks.length ? `${A.weeks.length} weeks ending ${dstrY(A.lastDay)}${state.plat ? " · " + (PLAT[state.plat] || state.plat) : ""}` : "";
+    $("trendSub").textContent = A.weeks.length ? `${A.weeks.length} weeks ending ${dstrY(A.lastDay)}${state.plat ? " · " + (PLAT[state.plat] || state.plat) : ""}${isUsed && state.usrc ? " · " + state.usrc : ""}` : "";
     const ts = state.tshow;
     $("trendTitle").textContent = ts === "rev" ? "Weekly revenue" : ts === "units" ? "Weekly books sold" : "Weekly revenue and books sold";
     const lg = [];
@@ -1554,6 +1571,50 @@ tr.inr td { background: var(--accent-wash); }
     if (checks.length) cn.innerHTML = `<b>${checks.length} data check${checks.length === 1 ? "" : "s"}</b> affect${checks.length === 1 ? "s" : ""} accuracy in this range <span class="go">View in More →</span>`;
   }
 
+  let srcMet = store.get("sa.srcm") === "rev" ? "rev" : "profit";
+  function srcStats(sales, rej) {
+    const t = titleStats(sales, 0), unsold = rej.filter(r => !r.soldLater).length;
+    return { ...t, unsold, sell: rej.length ? t.units / (t.units + unsold) : NaN, shows: new Set(sales.map(x => x.tab || x.d)).size };
+  }
+  function renderSources(A, isUsed) {
+    const box = $("srcPanel"), u = models.used;
+    box.hidden = !isUsed || !!state.usrc || !u;
+    if (box.hidden) return;
+    const pf = x => !state.plat || x.plat === state.plat;
+    const names = srcNames(u);
+    const pw = A.prevWin || { from: A.from - (A.to - A.from + 1), to: A.from - 1 };
+    const rows = names.map(n => {
+      const all = u.sales.filter(x => srcOf(x) === n && pf(x)), rj = (u.rej || []).filter(x => srcOf(x) === n && pf(x));
+      const cur = srcStats(all.filter(x => x.d >= A.from && x.d <= A.to), rj.filter(x => x.d >= A.from && x.d <= A.to));
+      const prev = srcStats(all.filter(x => x.d >= pw.from && x.d <= pw.to), rj.filter(x => x.d >= pw.from && x.d <= pw.to));
+      return { n, cur, prev, color: srcColor(u, n) };
+    }).filter(r => r.cur.units || r.prev.units);
+    const tot = rows.reduce((a, r) => a + r.cur.units, 0);
+    $("srcSub").textContent = `${rangeLabel()}${state.plat ? " · " + (PLAT[state.plat] || state.plat) : ""}${vsTxt ? " · change " + vsTxt : ""}`;
+    if (!rows.length) { $("srcTbl").innerHTML = `<p class="empty">No used sales in these dates.</p>`; $("srcChart").innerHTML = ""; $("srcLegend").innerHTML = ""; return; }
+    const chg = (a, b) => { if (!vsTxt || !isFinite(a) || !isFinite(b) || !b) return ""; const d = (a - b) / Math.abs(b); return ` <small class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "▲" : "▼"}${Math.abs(d * 100).toFixed(0)}%</small>`; };
+    $("srcTbl").innerHTML = `<table><thead><tr><th>Source</th><th class="num">Books</th><th class="num">Share</th><th class="num">Sales</th><th class="num">Profit</th><th class="num">Avg sale</th><th class="num">Avg profit</th><th class="num">Margin</th><th class="num">Sell-through</th><th class="num">Shows</th></tr></thead><tbody>${rows.map(r => { const c = r.cur, p = r.prev; return `<tr class="srcrow" data-src="${esc(r.n)}" tabindex="0">
+      <td><span class="srcdot" style="background:${r.color}"></span><b>${esc(r.n)}</b></td>
+      <td class="num">${int(c.units)}${chg(c.units, p.units)}</td>
+      <td class="num">${tot ? pct(c.units / tot, 0) : "–"}</td>
+      <td class="num">${money(c.rev)}${chg(c.rev, p.rev)}</td>
+      <td class="num">${c.costed ? money(c.profit) : "–"}${c.costed && p.costed ? chg(c.profit, p.profit) : ""}</td>
+      <td class="num">${isFinite(c.avg) ? money(c.avg) : "–"}</td>
+      <td class="num">${isFinite(c.avgProfit) ? money(c.avgProfit) : "–"}</td>
+      <td class="num">${isFinite(c.margin) ? pct(c.margin, 0) : "–"}</td>
+      <td class="num">${isFinite(c.sell) ? pct(c.sell, 0) : "–"}</td>
+      <td class="num">${int(c.shows)}</td></tr>`; }).join("")}</tbody></table>`;
+    $("srcMet").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === srcMet)));
+    const from = isFinite(A.from) ? A.from : Math.min(...u.sales.map(x => x.d)), bk = bucketsFor(from, A.to);
+    $("srcChartTitle").textContent = `${srcMet === "rev" ? "Sales" : "Profit"} by ${bk.gran}`;
+    $("srcLegend").innerHTML = rows.map(r => `<span><i class="sw" style="background:${r.color}"></i>${esc(r.n)}</span>`).join("");
+    const series = rows.map(r => ({ name: r.n, color: r.color, vals: seriesFor(u.sales.filter(x => srcOf(x) === r.n && pf(x)), [], bk.out, srcMet).map(v => isFinite(v.v) ? v.v : 0) }));
+    lineChart2($("srcChart"), bk.out.map(b => bucketLabel(b, bk.gran)), series);
+  }
+  $("srcMet").addEventListener("click", e => { const b = e.target.closest("button[data-m]"); if (!b) return; srcMet = b.dataset.m; store.set("sa.srcm", srcMet); render(); });
+  const pickSrc = n => { state.usrc = n; store.set("sa.usrc", n); render(); window.scrollTo(0, 0); };
+  $("srcTbl").addEventListener("click", e => { const r = e.target.closest("tr[data-src]"); if (r) pickSrc(r.dataset.src); });
+  $("srcTbl").addEventListener("keydown", e => { const r = e.target.closest("tr[data-src]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pickSrc(r.dataset.src); } });
   function renderOvEv(M, A, isUsed) {
     const box = $("ovEv");
     box.hidden = isUsed;
@@ -1791,7 +1852,7 @@ tr.inr td { background: var(--accent-wash); }
 
   // ---------- saved copy: last good data kept in this browser so Analytics opens instantly ----------
   const SNAP = (() => {
-    const DB = "reliant-analytics", ST = "snap", VER = 2; // bump VER when the saved shape changes
+    const DB = "reliant-analytics", ST = "snap", VER = 3; // bump VER when the saved shape changes
     let dbp = null;
     const openDb = () => dbp || (dbp = new Promise((res, rej) => {
       try {
@@ -1822,10 +1883,39 @@ tr.inr td { background: var(--accent-wash); }
   const models = { new: null, used: null };
   const meta = { new: { at: 0, source: "", sig: "", fresh: false }, used: { at: 0, source: "", sig: "", fresh: false } };
   let combCache = { n: null, u: null, v: null };
+  // ---------- used-book sources (HPB, Goodwill-Salvage, BSMT-1 …) ----------
+  const NOSRC = "(no source)";
+  const srcOf = x => (x && x.srcName) ? x.srcName : NOSRC;
+  const SRC_COLORS = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
+  function srcNames(M) {   // busiest first
+    if (!M) return [];
+    const n = new Map(); for (const x of M.sales) n.set(srcOf(x), (n.get(srcOf(x)) || 0) + 1);
+    return [...n.entries()].sort((a, b) => (a[0] === NOSRC) - (b[0] === NOSRC) || b[1] - a[1]).map(e => e[0]);
+  }
+  const srcColor = (M, name) => SRC_COLORS[Math.max(0, srcNames(M).indexOf(name)) % SRC_COLORS.length];
+  let srcCache = new Map();
+  function srcModel(M, name) {   // the used model narrowed to one source (sales, R's and sell-through)
+    if (!M) return M;
+    const k = name; let c = srcCache.get(k);
+    if (c && c.base === M) return c.v;
+    const sales = M.sales.filter(x => srcOf(x) === name), rej = (M.rej || []).filter(x => srcOf(x) === name);
+    const v = { ...M, sales, rej, st: showStats(sales, [], rej) };
+    srcCache.set(k, { base: M, v }); return v;
+  }
+  state.usrc = store.get("sa.usrc") || "";
+  function fillSources() {
+    const sel = $("srcSel"), u = models.used, on = state.view === "used" && !!u;
+    sel.hidden = !on;
+    if (!on) return;
+    const names = srcNames(u);
+    sel.innerHTML = `<option value="">All sources</option>` + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+    if (state.usrc && !names.includes(state.usrc)) state.usrc = "";
+    sel.value = state.usrc;
+  }
   function currentModel() {
     const n = models.new, u = models.used, v = state.view;
     if (v === "new") return n;
-    if (v === "used") return u;
+    if (v === "used") return u && state.usrc ? srcModel(u, state.usrc) : u;
     if (!n && !u) return null;
     if (combCache.n !== n || combCache.u !== u || !combCache.v) {
       combCache = { n, u, v: {
@@ -1917,10 +2007,10 @@ tr.inr td { background: var(--accent-wash); }
       });
     }
     for (const r of (meta.rej || [])) {
-      const [sid, code, soldLater, round, pl, at, ts] = r;
+      const [sid, code, soldLater, round, pl, at, ts, src] = r;
       const sh = showOf(sid), bk = books[code];
       out[kindOf(sid)].rej.push({ d: sh[1], isbn: code || "", title: bk ? bk[0] : "", tab: sh[0], plat: sh[2] || "Other",
-        soldLater: !!soldLater, round: round || "", pl: pl || "", at: at || "", ts: ts == null ? NaN : +ts });
+        soldLater: !!soldLater, round: round || "", pl: pl || "", at: at || "", ts: ts == null ? NaN : +ts, srcName: src || "" });
     }
     const inv = (meta.inv || []).map(([isbn, qty, cost, value]) => {
       const bk = books[isbn] || [];
@@ -2584,6 +2674,17 @@ tr.inr td { background: var(--accent-wash); }
       ${rows}
       <p class="how">A lot is one sale (a bundle counts once) or one R; R's are counted per book. Times are to the minute.${P.timedShare < 0.98 ? ` Only ${pct(P.timedShare, 0)} of this show's sales have a time, so these figures are partial.` : ""}${oth.length ? ` “Others” is the average of ${int(oth.length)} other show${oth.length === 1 ? "" : "s"} with times.` : ""}</p></section>`;
   }
+  function showSrcPanel(S, isUsed) {
+    if (!(isUsed || S.src === "used") || state.usrc) return "";
+    const u = models.used, names = [...new Set([...S.sales.map(srcOf), ...(S.rej || []).map(srcOf)])];
+    if (!names.length) return "";
+    names.sort((a, b) => srcNames(u).indexOf(a) - srcNames(u).indexOf(b));
+    const rows = names.map(n => ({ n, st: srcStats(S.sales.filter(x => srcOf(x) === n), (S.rej || []).filter(x => srcOf(x) === n)) }));
+    return `<section class="panel srcbox"><div class="ph"><h2>By source</h2><span class="sub">${names.length} source${names.length === 1 ? "" : "s"} in this show</span></div>
+      <div class="tbl"><table><thead><tr><th>Source</th><th class="num">Books</th><th class="num">Sales</th><th class="num">Profit</th><th class="num">Avg sale</th><th class="num">Avg profit</th><th class="num">Margin</th><th class="num">R’s</th><th class="num">Sell-through</th></tr></thead><tbody>
+      ${rows.map(r => { const c = r.st; return `<tr><td><span class="srcdot" style="background:${srcColor(u, r.n)}"></span><b>${esc(r.n)}</b></td><td class="num">${int(c.units)}</td><td class="num">${money(c.rev)}</td><td class="num">${c.costed ? money(c.profit) : "–"}</td><td class="num">${isFinite(c.avg) ? money(c.avg) : "–"}</td><td class="num">${isFinite(c.avgProfit) ? money(c.avgProfit) : "–"}</td><td class="num">${isFinite(c.margin) ? pct(c.margin, 0) : "–"}</td><td class="num">${int(c.unsold)}</td><td class="num">${isFinite(c.sell) ? pct(c.sell, 0) : "–"}</td></tr>`; }).join("")}
+      </tbody></table></div></section>`;
+  }
   function renderShowDetail(M, A, isUsed, isComb, rangeName) {
     $("sListWrap").hidden = true; const box = $("sDetail"); box.hidden = false;
     const everything = buildShows(M, -Infinity, Infinity);
@@ -2666,6 +2767,7 @@ tr.inr td { background: var(--accent-wash); }
           </div></div>
         <div class="chart" id="sChart"></div>
       </section>
+      ${showSrcPanel(S, isUsed)}
       <div class="grid2">
         <section class="panel"><div class="ph"><h2>Prices it sold at</h2><span class="sub">books per price band</span></div><div class="chart" id="sBands"></div></section>
         <section class="panel"><div class="ph"><h2>Top titles</h2><span class="sub">${int(tops.length)} title${tops.length === 1 ? "" : "s"} sold</span></div>
@@ -2720,7 +2822,7 @@ tr.inr td { background: var(--accent-wash); }
   });
 
   // ---------- Compare tab: dates vs dates, platform vs platform (any two), show vs show ----------
-  const CV = { mode: ["dates", "plat", "shows"].includes(store.get("sa.cm")) ? store.get("sa.cm") : "dates", metric: store.get("sa.cmm") || "rev",
+  const CV = { mode: ["dates", "plat", "shows", "src"].includes(store.get("sa.cm")) ? store.get("sa.cm") : "dates", metric: store.get("sa.cmm") || "rev", sa: store.get("sa.csa") || "", sb: store.get("sa.csb") || "",
     view: store.get("sa.cv") === "side" ? "side" : "overlay", a: null, b: null, tf: "gain",
     pa: store.get("sa.cpa") || "TT", pb: store.get("sa.cpb") || "WN" };
   const cmpPlats = M => [...new Set(["TT", "WN", "EB", ...M.sales.map(s => s.plat).filter(Boolean)])];
@@ -2747,6 +2849,14 @@ tr.inr td { background: var(--accent-wash); }
   }
   function cmpGroups(M, A) {
     const allShows = buildShowsFromSales(M, M.sales).sort((x, y) => y.d - x.d);
+    if (CV.mode === "src") {
+      const u = models.used, names = srcNames(u);
+      if (!names.includes(CV.sa)) CV.sa = names[0];
+      if (!names.includes(CV.sb) || CV.sb === CV.sa) CV.sb = names.find(n => n !== CV.sa);
+      const pf = x => !state.plat || x.plat === state.plat;
+      const side = n => { const SM = srcModel(u, n); return { label: n || "–", sub: rangeLabel() + (state.plat ? " · " + (PLAT[state.plat] || state.plat) : ""), sales: SM ? SM.sales.filter(x => x.d >= A.from && x.d <= A.to && pf(x)) : [], M: SM }; };
+      return { allShows, A: side(CV.sa), B: side(CV.sb), buckets: true, same: true };
+    }
     if (CV.mode === "plat") {
       const inWin = M.sales.filter(s => s.d >= A.from && s.d <= A.to);
       const pl = cmpPlats(M);
@@ -2768,6 +2878,9 @@ tr.inr td { background: var(--accent-wash); }
       buckets: true };
   }
   function renderCompare(M, A, isUsed, isComb, rangeName) {
+    const srcOk = isUsed && srcNames(models.used).length >= 2;
+    $("cModeSrc").hidden = !srcOk;
+    if (CV.mode === "src" && !srcOk) CV.mode = "dates";
     $("cMode").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.c === CV.mode)));
     const G = cmpGroups(M, A);
     // ----- setup row -----
@@ -2782,6 +2895,10 @@ tr.inr td { background: var(--accent-wash); }
       const popt = sel => cmpPlats(M).map(c => `<option value="${esc(c)}"${c === sel ? " selected" : ""}>${esc(PLAT[c] || c)}</option>`).join("");
       setup = `<div class="cpair"><label class="cside a"><span class="k">A</span><select id="cPlatA" aria-label="Platform A">${popt(CV.pa)}</select></label><label class="cside b"><span class="k">B</span><select id="cPlatB" aria-label="Platform B">${popt(CV.pb)}</select></label></div>
         <p class="how">Uses the dates chosen at the top of the page${state.plat ? ". The platform filter is ignored here" : ""}.</p>`;
+    } else if (CV.mode === "src") {
+      const sopt = sel => srcNames(models.used).map(n => `<option value="${esc(n)}"${n === sel ? " selected" : ""}>${esc(n)}</option>`).join("");
+      setup = `<div class="cpair"><label class="cside a"><span class="k">A</span><select id="cSrcA" aria-label="Source A">${sopt(CV.sa)}</select></label><label class="cside b"><span class="k">B</span><select id="cSrcB" aria-label="Source B">${sopt(CV.sb)}</select></label></div>
+        <p class="how">Uses the dates chosen at the top of the page${state.usrc ? ". The source filter is ignored here" : ""}.</p>`;
     } else {
       const opt = sel => G.allShows.map(s => `<option value="${esc(s.key)}"${s.key === sel ? " selected" : ""}>${esc(s.tab)} · ${WD[new Date(s.d * DAY).getUTCDay()]} ${dstr(s.d)} · ${int(s.units)} books${isComb ? (s.src === "used" ? " · used" : " · new") : ""}</option>`).join("");
       setup = G.allShows.length < 2 ? `<p class="empty">At least two shows are needed.</p>` : `<div class="cpair">
@@ -2790,7 +2907,7 @@ tr.inr td { background: var(--accent-wash); }
         <p class="how">Any two shows, whatever dates are chosen at the top.</p>`;
     }
     $("cSetup").innerHTML = setup;
-    const SA = groupStats(M, G.A.sales), SB = groupStats(M, G.B.sales);
+    const SA = groupStats(G.A.M || M, G.A.sales), SB = groupStats(G.B.M || M, G.B.sales);
     const E = evs(M);
     const evOf = side => {
       if (isUsed) return null;
@@ -2895,6 +3012,8 @@ tr.inr td { background: var(--accent-wash); }
     if (id === "cShowA") CV.a = v; else if (id === "cShowB") CV.b = v;
     else if (id === "cPlatA") { if (v === CV.pb) { CV.pb = CV.pa; store.set("sa.cpb", CV.pb); } CV.pa = v; store.set("sa.cpa", v); }
     else if (id === "cPlatB") { if (v === CV.pa) { CV.pa = CV.pb; store.set("sa.cpa", CV.pa); } CV.pb = v; store.set("sa.cpb", v); }
+    else if (id === "cSrcA") { if (v === CV.sb) { CV.sb = CV.sa; store.set("sa.csb", CV.sb); } CV.sa = v; store.set("sa.csa", v); }
+    else if (id === "cSrcB") { if (v === CV.sa) { CV.sa = CV.sb; store.set("sa.csa", CV.sa); } CV.sb = v; store.set("sa.csb", v); }
     else return; render(); });
   $("cBody").addEventListener("click", e => {
     const m = e.target.closest("[data-cmm]"); if (m) { CV.metric = m.dataset.cmm; store.set("sa.cmm", CV.metric); render(); return; }
@@ -2925,6 +3044,7 @@ tr.inr td { background: var(--accent-wash); }
   seg("horSeg", "h", () => state.horizon, v => { state.horizon = +v; store.set("sa.h", v); });
   seg("tsSeg", "s", () => state.tshow, v => { state.tshow = v; store.set("sa.ts", v); });
   $("platSel").onchange = e => { state.plat = e.target.value; render(); };
+  $("srcSel").onchange = e => { state.usrc = e.target.value; store.set("sa.usrc", state.usrc); SV.open = null; render(); };
   $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; if (b.dataset.t === "titles" && state.tab === "titles") TV.open = null; if (b.dataset.t === "shows" && state.tab === "shows") SV.open = null; setTab(b.dataset.t); render(); window.scrollTo(0, 0); });
   $("tabs").addEventListener("keydown", e => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;

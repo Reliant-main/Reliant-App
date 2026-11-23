@@ -89,6 +89,42 @@ tr:last-child td { border-bottom: 0; }
 .bar2 i { display: block; height: 100%; }
 .drawer .card { width: min(720px, 100%); }
 </style>
+
+<style>
+.btn.primary { background: var(--accent); color: #0e1915; border-color: var(--accent); font-weight: 600; }
+.btn.small { padding: 4px 9px; font-size: 12.5px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 26px 16px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.drop.over { border-color: var(--accent); background: var(--accent-wash); }
+.drop p { margin: 0; }
+.small { font-size: 12.5px; color: var(--muted); }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.meta label, .mapgrid label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.meta input, .meta select, .mapgrid select, .fin, .rtbl input, .rtbl select, .srow input { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+.mapgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.checks li { display: flex; gap: 8px; } .ok { color: var(--good); } .no { color: var(--bad); } .wn { color: var(--warnfg); }
+.side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.side > div { overflow-x: auto; padding: 10px; } .side > div + div { border-left: 1px solid var(--line); }
+.side h3 { margin: 0 0 6px; font: 600 13px var(--f-ui); color: var(--ink-2); }
+.side table { font-size: 12.5px; } .side td { padding: 4px 6px; }
+tr.off td { opacity: .4; } tr.flag td { background: rgba(239,107,107,.10); }
+.trunc { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag { font: 600 10.5px var(--f-ui); border-radius: 999px; padding: 1px 7px; margin-left: 6px; border: 1px solid var(--line); color: var(--muted); }
+.tag.new { color: var(--gilt); border-color: var(--gilt); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.basis { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--bad); border-radius: 10px; padding: 12px 14px; }
+.basis.set { border-color: var(--line); }
+.bopt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 14px; }
+.bopt.off { opacity: .55; } .bs { color: var(--muted); font-size: 13px; }
+.rtbl input[type=number] { width: 68px; text-align: right; } .rtbl input.short { border-color: var(--warnfg); } .rtbl input.need { border-color: var(--bad); }
+.partchk { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); }
+.fbnote { font-size: 13.5px; border: 1px solid var(--gilt); border-radius: 8px; padding: 10px 12px; color: var(--ink-2); }
+.srow { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.srow .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.srow input[type=number] { width: 70px; }
+.recv { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.recv h3 { margin: 0; font: 600 16px var(--f-ui); }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -102,7 +138,7 @@ tr:last-child td { border-bottom: 0; }
   </header>
 
   <div class="notice bad" id="err" hidden></div>
-  <p class="notice">View only for now. Orders and boxes are still entered and received in the current Workspace; they show up here after the nightly copy.</p>
+  <p class="notice" id="liveNote" hidden></p>
 
   <section class="kpis" id="kpis" aria-label="Orders totals"></section>
 
@@ -110,9 +146,24 @@ tr:last-child td { border-bottom: 0; }
     <button type="button" role="tab" data-t="open">Waiting <span class="n" id="nOpen"></span></button>
     <button type="button" role="tab" data-t="short">Shortages <span class="n" id="nShort"></span></button>
     <button type="button" role="tab" data-t="all">All orders <span class="n" id="nAll"></span></button>
+    <button type="button" role="tab" data-t="new" id="tabNew" hidden>New order</button>
   </nav>
 
-  <section class="panel">
+  <section id="newPane" style="display:contents" hidden>
+    <section class="panel">
+      <div class="drop" id="drop">
+        <p><b>Drop supplier order files here</b>, or</p>
+        <button class="btn primary" id="btnPick" type="button">Choose files</button>
+        <p class="small">Book Depot Excel (.xls), Faire CSV, Texas Bookman PDF, or any supplier spreadsheet (.csv, .xlsx). A new layout is set up once, then recognized from then on.</p>
+        <input type="file" id="file" multiple accept=".csv,.xls,.xlsx,.pdf" hidden>
+      </div>
+    </section>
+    <div id="newOrders" style="display:contents"></div>
+    <p class="how">Approved orders are saved as on the way (not yet received). Landed cost per book is its price plus an equal share of the order's shipping. New titles are added to the book list; fill in their details in Book Info.</p>
+  </section>
+
+
+  <section class="panel" id="listPane">
     <div class="ph">
       <div><h2 id="listTitle">Orders</h2><span class="sub" id="listSub"></span></div>
       <div class="ctrls">
@@ -139,6 +190,11 @@ tr:last-child td { border-bottom: 0; }
   const dfmt = s => { if (!s) return "–"; const [y, m, d] = s.split("-").map(Number); return `${MON[m - 1]} ${d}, ${y}`; };
   const daysAgo = s => { if (!s) return NaN; const [y, m, d] = s.split("-").map(Number); return Math.round((Date.now() - Date.UTC(y, m - 1, d)) / 864e5); };
   const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+  const me = () => { try { return window.parent.RELIANT.staff || {}; } catch { return {}; } };
+  const isMgr = () => ["owner", "manager"].includes(me().role);
+  const canRecv = () => ["owner", "manager", "scanner"].includes(me().role);
+  const pad = n => String(n).padStart(2, "0");
+  const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
   let D = null, orders = [];
   const S = { tab: "open", q: "", sup: "", shown: 50 };
@@ -154,11 +210,11 @@ tr:last-child td { border-bottom: 0; }
     if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
     $("err").hidden = true; D = data;
     const byId = new Map();
-    for (const [id, num, sup, date, notes, ship] of D.orders) byId.set(id, { id, num, sup, date, notes, ship, lines: [], damaged: [] });
+    for (const [id, num, sup, date, notes, ship, appMade] of D.orders) byId.set(id, { id, num, sup, date, notes, ship, appMade: !!appMade, lines: [], damaged: [] });
     for (const l of D.lines) {
       const o = byId.get(l[0]); if (!o) continue;
       o.lines.push({ isbn: l[1], title: l[2], ordered: l[3], expected: l[4], received: +l[5] || 0, last: l[6], route: +l[7] || 0,
-        short: +l[8] || 0, shortStatus: l[9], days: l[10], late: !!l[11], cost: l[12], est: !!l[13] });
+        short: +l[8] || 0, shortStatus: l[9], days: l[10], late: !!l[11], cost: l[12], est: !!l[13], lineId: l[14], author: l[15] || "" });
     }
     const byNum = new Map([...byId.values()].map(o => [o.num, o]));
     for (const [num, isbn, qty, type, on, notes] of (D.damaged || [])) { const o = byNum.get(num); if (o) o.damaged.push({ isbn, qty, type, on, notes }); }
@@ -176,6 +232,10 @@ tr:last-child td { border-bottom: 0; }
     const sups = [...new Set(orders.map(o => o.sup))].sort((a, b) => SUPNAME(a).localeCompare(SUPNAME(b)));
     $("sup").innerHTML = `<option value="">All suppliers</option>` + sups.map(c => `<option value="${esc(c)}">${esc(SUPNAME(c))}</option>`).join("");
     $("sup").value = sups.includes(S.sup) ? S.sup : "";
+    $("tabNew").hidden = !isMgr();
+    $("liveNote").hidden = !!D.live;
+    $("liveNote").textContent = "Until switch day, the nightly copy re-copies orders that are in the Purchase Ledger sheet, so a box received here on one of those orders is undone overnight. Orders added here (New order) and boxes received on them are kept.";
+    if (openId) openOrder(openId);
     render();
   }
 
@@ -185,6 +245,7 @@ tr:last-child td { border-bottom: 0; }
   function inTab(o) { return S.tab === "open" ? o.route > 0 : S.tab === "short" ? o.shortOpen > 0 : true; }
   function render() {
     if (!D) return;
+    $("newPane").hidden = S.tab !== "new"; $("listPane").hidden = S.tab === "new";
     const open = orders.filter(o => o.route > 0), shorts = orders.filter(o => o.shortOpen > 0);
     const recent = orders.flatMap(o => o.lines.filter(l => l.last && daysAgo(l.last) <= 30 && !l.est));
     const k = [
@@ -206,6 +267,8 @@ tr:last-child td { border-bottom: 0; }
     $("note").textContent = S.tab === "open" ? "Oldest first, late orders at the top. Late means waiting longer than that supplier usually takes."
       : S.tab === "short" ? "Orders where fewer books arrived than were expected, and the rest is still marked as possibly coming."
       : "Newest first. Click an order to see every title on it.";
+    if (S.tab === "new") return;
+    if (S.tab === "short" && canRecv()) { drawShorts(list); $("more").innerHTML = ""; return; }
     const page = list.slice(0, S.shown);
     $("tbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Order</th><th class="plain">Ordered</th><th class="plain">Status</th><th class="plain num hide-sm">Titles</th><th class="plain num">Books</th><th class="plain num">Received</th><th class="plain num">${S.tab === "short" ? "Short" : "On the way"}</th>${D.costs ? '<th class="plain num hide-sm">Cost</th>' : ""}</tr></thead><tbody>${
       page.map(o => `<tr class="trow" tabindex="0" data-id="${o.id}"><td><div class="t">${esc(o.num)}</div><div class="a">${esc(SUPNAME(o.sup))}</div></td>
@@ -215,8 +278,11 @@ tr:last-child td { border-bottom: 0; }
       : `<p class="empty">${q || S.sup ? "No orders match." : S.tab === "open" ? "Nothing is waiting to arrive." : S.tab === "short" ? "No shortages waiting." : "No orders yet."}</p>`;
     $("more").innerHTML = list.length > S.shown ? `<button type="button" class="btn" id="moreBtn">Show ${int(Math.min(50, list.length - S.shown))} more</button>` : "";
   }
+  let openId = null, R = null;
   function openOrder(id) {
-    const o = orders.find(x => x.id === +id); if (!o) return;
+    const o = orders.find(x => x.id === +id); if (!o) { openId = null; return; }
+    if (openId !== o.id || !R || R.id !== o.id) R = null;
+    openId = o.id;
     const lines = o.lines.slice().sort((a, b) => (b.route - a.route) || (b.short - a.short) || a.title.localeCompare(b.title));
     const pct = o.units ? o.rec / o.units * 100 : 0;
     $("drawerCard").innerHTML = `
@@ -235,10 +301,425 @@ tr:last-child td { border-bottom: 0; }
           <td class="num">${l.route ? `<b>${int(l.route)}</b>${l.late ? ' <span class="pill bad">late</span>' : ""}` : l.short ? `<span class="pill">${int(l.short)} short${l.shortStatus && l.shortStatus !== "waiting" ? " · " + esc(l.shortStatus.replace("_", " ")) : ""}</span>` : "–"}</td>
           ${D.costs ? `<td class="num">${money(l.cost)}</td>` : ""}</tr>`).join("")}</tbody></table></div>
       ${o.damaged.length ? `<div><h3 style="margin:0 0 6px;font:600 15px var(--f-ui)">Damaged on arrival</h3>${o.damaged.map(d => `<div class="a">${int(d.qty)} × ${esc((o.lines.find(l => l.isbn === d.isbn) || {}).title || d.isbn)} · ${esc(d.type)} · ${dfmt(d.on)}</div>`).join("")}</div>` : ""}
-      ${o.notes && !/^Imported from Purchase Ledger/.test(o.notes) ? `<p class="how">${esc(o.notes)}</p>` : o.est ? `<p class="how">Some received dates on this order were estimated when the records were moved over.</p>` : ""}`;
-    $("drawer").hidden = false; $("closeD").focus();
+      ${o.notes && !/^Imported from Purchase Ledger/.test(o.notes) ? `<p class="how">${esc(o.notes)}</p>` : o.est ? `<p class="how">Some received dates on this order were estimated when the records were moved over.</p>` : ""}
+      ${canRecv() && o.route > 0 ? `<div class="recv" id="recvBox"></div>` : ""}`;
+    if ($("recvBox")) drawRecv(o);
+    const wasOpen = !$("drawer").hidden;
+    $("drawer").hidden = false; if (!wasOpen) $("closeD").focus();
   }
-  const closeDrawer = () => { $("drawer").hidden = true; };
+  const closeDrawer = () => { $("drawer").hidden = true; openId = null; R = null; };
+
+
+  // ================================================================ receiving a box
+  const numv = v => { if (typeof v === "number") return v; const n = parseFloat(String(v ?? "").replace(/[$,\s]/g, "")); return isFinite(n) ? n : NaN; };
+  const bad = t => `<span class="no">${esc(t)}</span>`;
+  const errMsg = e => (e && (e.message || e.error_description)) || String(e);
+  function drawRecv(o) {
+    const box = $("recvBox"); if (!box) return;
+    const lines = o.lines.filter(l => l.route > 0);
+    const fb = String(o.sup).toUpperCase() === "FB";
+    if (!R) R = { id: o.id, date: todayISO(), partial: false, v: Object.fromEntries(lines.map(l => [l.lineId, { recv: +l.expected || +l.ordered || 0, front: null, dmg: 0, bad: 0, fate: "gone" }])) };
+    const keepOf = l => { const x = R.v[l.lineId]; return fb ? (x.front == null ? 0 : x.front) : x.recv; };
+    const anyShort = !R.partial && lines.some(l => R.v[l.lineId].recv < (+l.ordered || 0));
+    const fbMissing = fb ? lines.filter(l => R.v[l.lineId].recv > 0 && R.v[l.lineId].front == null).length : 0;
+    const dmgOver = lines.filter(l => R.v[l.lineId].dmg + R.v[l.lineId].bad > keepOf(l)).length;
+    const arrived = lines.reduce((a, l) => a + R.v[l.lineId].recv, 0), ordered = lines.reduce((a, l) => a + (+l.ordered || 0), 0);
+    const short = Math.max(0, ordered - arrived);
+    box.innerHTML = `
+      <h3>Receive this box</h3>
+      <p class="how">Received starts out equal to what was ordered. Change only the lines that came up short (or over), then confirm. If copies arrived damaged, enter how many can still be sold (Damaged) and how many can't (Can't sell).</p>
+      ${fb ? `<div class="fbnote"><b>First Book order.</b> Enter how many of each title go to the front end (live shows). Only that number goes on the shelf, at this order's cost per book. The rest stays with the back end; later moves go on Inventory → Adjust.</div>` : ""}
+      <label class="partchk"><input type="checkbox" id="rPartial"${R.partial ? " checked" : ""}><span><b>Partial delivery:</b> this box is only part of the order and the rest is still coming. Enter what arrived (0 for titles not in this box); the rest stays on the order as still coming.</span></label>
+      <div class="tbl"><table class="rtbl"><thead><tr><th class="plain">Title</th><th class="plain num">Ordered</th><th class="plain num">Received</th>${fb ? '<th class="plain num">Front end</th>' : ""}<th class="plain num" title="Arrived damaged but can still be sold">Damaged</th><th class="plain num" title="Arrived too damaged to sell">Can't sell</th>${anyShort ? '<th class="plain">Short books</th>' : ""}</tr></thead><tbody>${
+        lines.map(l => { const x = R.v[l.lineId], sh = (+l.ordered || 0) - x.recv, over = x.dmg + x.bad > keepOf(l);
+          return `<tr><td><div class="t trunc" title="${esc(l.title)}">${esc(l.title)}</div><div class="a">${esc(l.isbn)}</div></td><td class="num">${int(l.ordered)}</td>
+          <td class="num"><input type="number" min="0" step="1" data-k="recv" data-l="${l.lineId}" value="${x.recv}" class="${x.recv < (+l.ordered || 0) ? "short" : ""}" aria-label="Received"></td>
+          ${fb ? `<td class="num"><input type="number" min="0" step="1" data-k="front" data-l="${l.lineId}" value="${x.front == null ? "" : x.front}" placeholder="?" class="${x.recv > 0 && x.front == null ? "need" : ""}" aria-label="Front end"></td>` : ""}
+          <td class="num"><input type="number" min="0" step="1" data-k="dmg" data-l="${l.lineId}" value="${x.dmg || ""}" placeholder="0" class="${over ? "need" : ""}" aria-label="Damaged, can still sell"></td>
+          <td class="num"><input type="number" min="0" step="1" data-k="bad" data-l="${l.lineId}" value="${x.bad || ""}" placeholder="0" class="${over ? "need" : ""}" aria-label="Too damaged to sell"></td>
+          ${anyShort ? `<td>${sh > 0 && !fb ? `<select data-k="fate" data-l="${l.lineId}" aria-label="What happens to the short books"><option value="gone"${x.fate === "gone" ? " selected" : ""}>${sh} not coming</option><option value="wait"${x.fate === "wait" ? " selected" : ""}>${sh} may still come</option></select>` : ""}</td>` : ""}</tr>`; }).join("")}</tbody></table></div>
+      <div class="actions"><label class="sub">Date received <input class="fin" type="date" id="rDate" value="${esc(R.date)}" max="${todayISO()}"></label></div>
+      <div class="actions"><button class="btn primary" type="button" id="rGo"${fbMissing || dmgOver ? " disabled" : ""}>${R.partial ? "Confirm partial delivery" : `Confirm received${short ? ` · ${short} short` : ""}`}</button>
+        <span id="rRes">${fbMissing ? bad(`Enter the front-end number for ${fbMissing} title${fbMissing === 1 ? "" : "s"} (0 if none).`) : dmgOver ? bad("Damaged + can't sell is more than what was kept on a line.") : ""}</span></div>`;
+    $("rPartial").onchange = e => { R.partial = e.target.checked; drawRecv(o); };
+    $("rDate").onchange = e => { R.date = e.target.value; };
+    box.querySelectorAll("[data-k]").forEach(inp => inp.onchange = () => {
+      const x = R.v[inp.dataset.l], k = inp.dataset.k;
+      if (k === "fate") x.fate = inp.value;
+      else if (k === "front") { const v = Math.round(numv(inp.value)); x.front = inp.value === "" || !isFinite(v) ? null : Math.max(0, Math.min(v, x.recv)); }
+      else { x[k] = Math.max(0, Math.round(numv(inp.value)) || 0); if (k === "recv" && x.front != null && x.front > x.recv) x.front = x.recv; }
+      drawRecv(o);
+    });
+    $("rGo").onclick = async () => {
+      const c = sb(), btn = $("rGo"), res = $("rRes");
+      if (R.partial && !lines.some(l => R.v[l.lineId].recv > 0)) { res.innerHTML = bad("Enter how many of each title arrived in this box."); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(R.date) || R.date > todayISO()) { res.innerHTML = bad("Pick a date that isn't in the future."); return; }
+      btn.disabled = true; btn.textContent = "Saving…";
+      const p = { order_id: o.id, date: R.date, partial: R.partial, lines: lines.map(l => ({ line_id: l.lineId, ...R.v[l.lineId] })) };
+      const { data, error } = await c.rpc("order_receive", { p });
+      if (error) { btn.disabled = false; btn.textContent = "Try again"; res.innerHTML = bad(errMsg(error)); return; }
+      const msg = `Received on ${dfmt(R.date)}: ${int(data.books)} books on the shelf${data.short_waiting ? `, ${int(data.short_waiting)} short may still come` : ""}${data.damaged ? `, ${int(data.damaged)} damaged (sellable)` : ""}${data.cant_sell ? `, ${int(data.cant_sell)} written off` : ""}${data.split ? `; the rest of ${int(data.split)} title${data.split === 1 ? " is" : "s are"} still coming` : ""}${data.resplit ? ". Shipping was re-spread over the books that came" : ""}.`;
+      R = null; await load();
+      const o2 = orders.find(x => x.id === o.id);
+      if (o2) openOrder(o2.id);
+      const after = $("recvBox") || $("drawerCard");
+      after.insertAdjacentHTML("beforeend", `<p class="ok">${esc(msg)}</p>`);
+    };
+  }
+
+  // ================================================================ short shipments
+  function drawShorts(list) {
+    const rows = list.flatMap(o => o.lines.filter(l => l.short > 0 && (l.shortStatus || "waiting") === "waiting").map(l => ({ o, l })));
+    $("tbl").innerHTML = rows.length ? `<div style="display:flex;flex-direction:column;gap:8px">${rows.map(({ o, l }) => `
+      <div class="srow" data-line="${l.lineId}"><div><div class="t">${esc(l.title)}</div><div class="a">${int(l.short)} short · ${esc(SUPNAME(o.sup))} #${esc(o.num)} · ${esc(l.isbn)}${l.last ? ` · box came ${dfmt(l.last)}` : ""}</div></div>
+      <div class="acts"><label class="a">Arrived <input type="number" min="1" max="${l.short}" step="1" value="${l.short}" data-sq></label><input type="date" value="${todayISO()}" max="${todayISO()}" data-sd aria-label="Date arrived">
+      <button class="btn primary" type="button" data-sa>Arrived</button><button class="btn" type="button" data-sg>Not coming</button></div><div class="a" data-sr style="flex-basis:100%"></div></div>`).join("")}</div>`
+      : `<p class="empty">No shortages waiting.</p>`;
+  }
+  $("tbl").addEventListener("click", async e => {
+    const row = e.target.closest(".srow"); if (!row) return;
+    const ga = e.target.closest("[data-sa]"), gg = e.target.closest("[data-sg]"); if (!ga && !gg) return;
+    const res = row.querySelector("[data-sr]"), line = +row.dataset.line;
+    if (gg && !gg.dataset.armed) { gg.dataset.armed = "1"; gg.textContent = "Yes, not coming"; res.textContent = "Press again to confirm."; return; }
+    row.querySelectorAll("button").forEach(b => b.disabled = true); res.textContent = "Saving…";
+    const args = ga ? { p_line: line, p_action: "arrived", p_qty: Math.round(numv(row.querySelector("[data-sq]").value)), p_date: row.querySelector("[data-sd]").value } : { p_line: line, p_action: "gone" };
+    const { error } = await sb().rpc("short_resolve", args);
+    if (error) { res.innerHTML = bad(errMsg(error)); row.querySelectorAll("button").forEach(b => b.disabled = false); return; }
+    await load();
+  });
+
+  // ================================================================ new orders from supplier files
+  const SUPPLIER_FILES = { bd: { code: "BD", name: "Book Depot" }, faire: { code: "FAIRE", name: "Faire" }, txb: { code: "TB", name: "Texas Bookman" } };
+  const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+  const XLSXJS = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  const text = v => String(v ?? "").trim();
+  const MONL = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+  function toISO(v) {
+    if (v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+    if (typeof v === "number" && v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * 864e5)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; }
+    const s = text(v); let m;
+    if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+    if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/))) { let y = +m[3]; if (y < 100) y += 2000; return `${y}-${pad(m[1])}-${pad(m[2])}`; }
+    if ((m = s.match(/([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})/))) { const i = MONL.findIndex(x => x.startsWith(m[1].toLowerCase().slice(0, 3))); if (i >= 0) return `${m[3]}-${pad(i + 1)}-${pad(m[2])}`; }
+    return "";
+  }
+  const clean = s => String(s ?? "").toUpperCase().replace(/[^0-9X]/g, "");
+  function isbnOk(s) {
+    const d = clean(s);
+    if (/^\d{13}$/.test(d)) { let t = 0; for (let i = 0; i < 12; i++) t += (+d[i]) * (i % 2 ? 3 : 1); return (10 - t % 10) % 10 === +d[12] && /^97[89]/.test(d); }
+    if (/^\d{9}[\dX]$/.test(d)) { let t = 0; for (let i = 0; i < 10; i++) t += (d[i] === "X" ? 10 : +d[i]) * (10 - i); return t % 11 === 0; }
+    return false;
+  }
+  function key13(s) {
+    let d = clean(s);
+    if (d.length === 9) d = "0" + d;
+    if (d.length === 10) { const core = "978" + d.slice(0, 9); let t = 0; for (let i = 0; i < 12; i++) t += (+core[i]) * (i % 2 ? 3 : 1); return core + ((10 - t % 10) % 10); }
+    return d;
+  }
+  const isbnFromSku = s => { const m = text(s).toUpperCase().match(/^(\d{9,13}X?)[A-Z]*$/); return m ? m[1] : text(s); };
+  const loadScript = src => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Couldn't load a file reader. Check the internet connection.")); document.head.appendChild(s); });
+  let xlsxReady = null, pdfReady = null, BOOKS = null, LAYOUTS = new Map(), NEW = [];
+  async function bookInfo() {
+    if (BOOKS) return BOOKS;
+    const { data, error } = await sb().rpc("book_info_list"); if (error) throw error;
+    BOOKS = new Map((data || []).map(r => [r[0], { title: r[1], author: r[2], gr: r[3], spice: r[4] }]));
+    return BOOKS;
+  }
+  async function loadLayouts() {
+    const { data } = await sb().from("supplier_layouts").select("*");
+    LAYOUTS = new Map((data || []).map(r => [r.id, r]));
+  }
+  const sigOf = head => head.map(h => text(h).toLowerCase()).filter(Boolean).join("|").slice(0, 400);
+  const sigId = sig => { let h = 2166136261; for (let i = 0; i < sig.length; i++) { h ^= sig.charCodeAt(i); h = Math.imul(h, 16777619); } return "r" + (h >>> 0).toString(36); };
+  const blank = (sup, rawHead) => ({ sup, orderNo: "", orderDate: "", lines: [], shipping: 0, tax: 0, coupon: 0, invSub: NaN, invTotal: NaN, rawHead });
+
+  function readBookDepot(rows) {
+    const o = blank(SUPPLIER_FILES.bd, ["SKU", "Title", "Ordered", "Shipped", "Price", "SubTotal"]);
+    const after = (r, i) => { for (let j = i + 1; j < r.length; j++) if (text(r[j]) !== "") return r[j]; return ""; };
+    let hdr = -1;
+    rows.forEach((r, ri) => r.forEach((c, i) => {
+      const t = text(c).toLowerCase();
+      if (t === "order date") o.orderDate = toISO(after(r, i));
+      else if (t === "order #") o.orderNo = text(after(r, i));
+      else if (hdr < 0 && t === "sku") hdr = ri;
+      else if (ri > hdr && hdr >= 0) {
+        const v = numv(after(r, i));
+        if (t === "subtotal" && isNaN(o.invSub)) o.invSub = v;
+        else if (t === "shipping") o.shipping = isFinite(v) ? v : 0;
+        else if (t === "tax") o.tax = isFinite(v) ? v : 0;
+        else if (t === "coupon") o.coupon = isFinite(v) ? v : 0;
+        else if (t === "total") o.invTotal = v;
+      }
+    }));
+    if (hdr < 0) return null;
+    for (let ri = hdr + 1; ri < rows.length; ri++) {
+      const r = rows[ri], cells = r.map(text).filter(Boolean);
+      if (!cells.length) continue;
+      if (/^(subtotal|coupon|tax|shipping|total)$/i.test(cells[0])) break;
+      const sku = cells.find(c => /^\d{9,13}X?[A-Z]*$/i.test(c)); if (!sku) continue;
+      const nums = r.filter(c => text(c) !== "" && isFinite(numv(c)) && text(c) !== sku).map(numv);
+      const title = cells.find(c => c !== sku && !isFinite(numv(c))) || "";
+      if (nums.length < 3) continue;
+      const [ordered, shipped, price, sub] = nums.length >= 4 ? nums.slice(-4) : [nums[0], nums[0], nums[1], nums[2]];
+      o.lines.push({ raw: [sku, title, ordered, shipped, money(price), money(sub)], isbn: isbnFromSku(sku), title, author: "", qty: ordered, unit: price });
+    }
+    return o;
+  }
+  function readFaire(rows) {
+    const head = rows[0].map(h => text(h).toLowerCase()), c = n => head.indexOf(n);
+    const o = blank(SUPPLIER_FILES.faire, ["Product name", "GTIN", "Qty", "Wholesale", "Subtotal"]); o.noInvoiceTotal = true;
+    for (const r of rows.slice(1)) {
+      const name = text(r[c("product name")]); if (!name) continue;
+      const qty = numv(r[c("quantity")]), unit = numv(r[c("wholesale price")]);
+      o.orderNo = o.orderNo || text(r[c("order number")]); o.orderDate = o.orderDate || toISO(r[c("order date")]);
+      const i = name.lastIndexOf(":"); let title = i > 0 ? name.slice(0, i).trim() : name, author = i > 0 ? name.slice(i + 1).trim() : "";
+      const m = title.match(/^(.*),\s*(The|A|An)$/i); if (m) title = m[2] + " " + m[1];
+      const gtin = text(r[c("gtin")]) || text(r[c("sku")]);
+      o.lines.push({ raw: [name, gtin, qty, money(unit), money(qty * unit)], isbn: gtin, title, author, qty, unit });
+    }
+    return o;
+  }
+  function readTexasBookman(lines) {
+    const o = blank(SUPPLIER_FILES.txb, ["SKU", "Name", "Price", "Qty", "Total"]);
+    const all = lines.join("\n"); let m, cur = null;
+    if ((m = all.match(/Order#\s*([A-Za-z0-9-]+)/))) o.orderNo = m[1];
+    if ((m = all.match(/Date:\s*(?:[A-Za-z]+,\s*)?([A-Za-z]+\s+\d{1,2},\s*\d{4})/))) o.orderDate = toISO(m[1]);
+    if ((m = all.match(/Sub-total:\s*\$?([\d,]+\.\d{2})/))) o.invSub = numv(m[1]);
+    if ((m = all.match(/Shipping:\s*\$?([\d,]+\.\d{2})/))) o.shipping = numv(m[1]);
+    if ((m = all.match(/Tax:\s*\$?([\d,]+\.\d{2})/))) o.tax = numv(m[1]);
+    if ((m = all.match(/Order total:\s*\$?([\d,]+\.\d{2})/))) o.invTotal = numv(m[1]);
+    const finish = () => {
+      if (!cur) return;
+      const nm = cur.name.join(" ").replace(/\s+/g, " ").trim(), im = nm.match(/\((\d{9,13}X?)\)\s*$/);
+      o.lines.push({ raw: [cur.sku, nm, money(cur.unit), cur.qty, money(cur.sub)], isbn: im ? im[1] : "", title: im ? nm.slice(0, im.index).trim() : nm, author: "", qty: cur.qty, unit: cur.unit });
+      cur = null;
+    };
+    for (const ln of lines) {
+      const s = ln.trim(), p = s.match(/^(\d{5,})\s+\$([\d,]+\.\d{2})\s+(\d+)\s+\$([\d,]+\.\d{2})$/);
+      if (p) { finish(); cur = { sku: p[1], unit: numv(p[2]), qty: +p[3], sub: numv(p[4]), name: [] }; continue; }
+      if (/^(Sub-total|Shipping|Tax|Order total):/i.test(s)) { finish(); continue; }
+      if (cur) { cur.name.push(s); if (/\(\d{9,13}X?\)\s*$/.test(s)) finish(); }
+    }
+    finish();
+    return o;
+  }
+  function readWithLayout(rows, L) {
+    const H = L.header_row || 0, col = L.cols || {}, g = (r, k) => col[k] >= 0 ? r[col[k]] : "";
+    const o = blank({ code: L.supplier_code, name: SUPNAME(L.supplier_code) }, (rows[H] || []).map(text).filter(Boolean).slice(0, 6)); o.noInvoiceTotal = true;
+    for (const r of rows.slice(H + 1)) {
+      const qty = numv(g(r, "qty")), unit = numv(g(r, "unit")), isbn = text(g(r, "isbn")), title = text(g(r, "title"));
+      if (!(qty > 0) || !isFinite(unit) || (!isbn && !title)) continue;
+      o.orderNo = o.orderNo || text(g(r, "orderNo")); o.orderDate = o.orderDate || toISO(g(r, "orderDate"));
+      o.lines.push({ raw: (rows[H] || []).map((_, i) => r[i]).filter(x => text(x) !== "").slice(0, 6).map(x => text(x).slice(0, 60)), isbn: isbnFromSku(isbn), title, author: text(g(r, "author")), qty, unit });
+    }
+    return o;
+  }
+  async function pdfLines(buf) {
+    if (!pdfReady) pdfReady = (async () => { await loadScript(PDFJS + "pdf.min.js"); window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; })();
+    await pdfReady;
+    const doc = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise, out = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const tc = await (await doc.getPage(p)).getTextContent(), rows = [];
+      for (const it of tc.items) {
+        if (!it.str || !it.str.trim()) continue;
+        const y = it.transform[5], x = it.transform[4];
+        let row = rows.find(r => Math.abs(r.y - y) < 2.5); if (!row) rows.push(row = { y, items: [] });
+        row.items.push({ x, s: it.str });
+      }
+      rows.sort((a, b) => b.y - a.y).forEach(r => out.push(r.items.sort((a, b) => a.x - b.x).map(i => i.s.trim()).join(" ").replace(/\s+/g, " ")));
+    }
+    return out;
+  }
+  async function readFile(f) {
+    const name = f.name.toLowerCase(), buf = await f.arrayBuffer();
+    if (name.endsWith(".pdf")) {
+      const lines = await pdfLines(buf);
+      if (/texasbookman/i.test(lines.join(" "))) return readTexasBookman(lines);
+      throw new Error("This PDF isn't from a supplier the App can read yet (Texas Bookman PDFs are). Save it as a spreadsheet, or ask Claude to add it.");
+    }
+    if (!xlsxReady) xlsxReady = loadScript(XLSXJS); await xlsxReady;
+    const wb = name.endsWith(".csv") ? XLSX.read(new TextDecoder("utf-8").decode(buf).replace(/^﻿/, ""), { type: "string", cellDates: true, raw: true }) : XLSX.read(buf, { type: "array", cellDates: true, raw: false });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: "" });
+    const flat = rows.slice(0, 40).map(r => r.map(text).join(" ")).join(" ");
+    if (/book ?depot/i.test(flat)) { const o = readBookDepot(rows); if (o && o.lines.length) return o; }
+    const head0 = (rows[0] || []).map(h => text(h).toLowerCase());
+    if (head0.includes("gtin") && head0.includes("wholesale price") && head0.includes("order number")) return readFaire(rows);
+    for (let h = 0; h < Math.min(rows.length, 15); h++) { const L = LAYOUTS.get(sigId(sigOf(rows[h] || []))); if (L) return readWithLayout(rows, L); }
+    return { needsMapping: true, rows, fileName: f.name };
+  }
+  // ---------- pricing and checks
+  const units = o => o.lines.filter(l => l.include).reduce((a, l) => a + l.qty, 0);
+  function totalGap(o) {
+    const linesAll = o.lines.reduce((a, l) => a + l.qty * l.unit, 0); let gap = 0;
+    if (isFinite(o.invTotal)) { const g = o.invTotal - (linesAll + (o.shipping || 0) + (o.tax || 0) - (o.coupon || 0)); if (Math.abs(g) >= 0.02) gap = g; }
+    if (!gap && isFinite(o.invSub)) { const g = o.invSub - linesAll; if (Math.abs(g) >= 0.02) gap = g; }
+    if (!gap) return null;
+    const incl = o.lines.filter(l => l.include).reduce((a, l) => a + l.qty * l.unit, 0);
+    return { gap: Math.round(gap * 100) / 100, incl, invoiceOk: incl > 0 && incl + gap > 0 };
+  }
+  const unitCost = (o, l) => { if (o.basis !== "invoice") return l.unit; const G = totalGap(o); return G && G.invoiceOk ? l.unit * (1 + G.gap / G.incl) : l.unit; };
+  const landed = (o, l) => { const u = units(o); return Math.round((unitCost(o, l) + (u ? (o.shipping || 0) / u : 0)) * 10000) / 10000; };
+  function enrich(o) {
+    o.id = o.id || "o" + Math.random().toString(36).slice(2, 8);
+    const known = new Set(orders.map(x => x.num.toUpperCase()));
+    o.dupe = () => !!o.orderNo && known.has(o.orderNo.toUpperCase());
+    o.lines.forEach(l => {
+      l.include = l.include ?? true; l.house = l.house || false;
+      l.ok = isbnOk(l.isbn); l.key = l.ok ? key13(l.isbn) : "";
+      const h = l.key && BOOKS.get(l.key); l.hist = h || null;
+      l.title = l.title || (h && h.title) || ""; l.author = l.author || (h && h.author) || "";
+    });
+    return o;
+  }
+  function checks(o) {
+    const out = [], linesAll = o.lines.reduce((a, l) => a + l.qty * l.unit, 0);
+    if (isFinite(o.invSub)) { const ok = Math.abs(linesAll - o.invSub) < 0.02; out.push({ ok, tot: !ok, t: ok ? `Lines add up to the invoice subtotal: ${money(o.invSub)}.` : `Lines add up to ${money(linesAll)}, but the invoice subtotal is ${money(o.invSub)}.` }); }
+    else out.push({ warn: true, t: `Lines add up to ${money(linesAll)}. This file has no invoice subtotal to compare, so check it against the supplier's order page.` });
+    if (isFinite(o.invTotal)) { const t = linesAll + (o.shipping || 0) + (o.tax || 0) - (o.coupon || 0), ok = Math.abs(t - o.invTotal) < 0.02; out.push({ ok, tot: !ok, t: ok ? `Order total matches: ${money(o.invTotal)} (shipping ${money(o.shipping || 0)}${o.tax ? ", tax " + money(o.tax) : ""}).` : `Books + shipping + tax come to ${money(t)}, but the order total is ${money(o.invTotal)}.` }); }
+    if (o.basis && totalGap(o)) for (const c of out) if (c.tot) { c.ok = undefined; c.warn = true; c.t += o.basis === "invoice" ? " Using the invoice totals." : " Using the book lines as listed."; }
+    if (!o.orderNo) out.push({ ok: false, t: "No order number found. Type it in above." });
+    else if (o.dupe()) out.push({ ok: false, t: `Order #${o.orderNo} is already recorded.` });
+    else out.push({ ok: true, t: `Order #${o.orderNo} isn't recorded yet.` });
+    if (!o.orderDate) out.push({ ok: false, t: "No order date found. Pick it above." });
+    const badN = o.lines.filter(l => l.include && !l.ok && !l.house).length;
+    if (badN) out.push({ ok: false, t: `${badN} line${badN === 1 ? " doesn't have" : "s don't have"} a valid ISBN (highlighted). Untick it, or tick "House code" for items with no ISBN.` });
+    const nw = o.lines.filter(l => l.include && !l.hist).length, rp = o.lines.filter(l => l.include && l.hist).length;
+    out.push({ ok: true, t: `${rp} title${rp === 1 ? "" : "s"} already in the book list, ${nw} new.` });
+    return out;
+  }
+  // ---------- screens
+  function drawNew() {
+    const box = $("newOrders"); box.innerHTML = "";
+    for (const o of NEW) box.appendChild(o.needsMapping ? mapPanel(o) : orderPanel(o));
+  }
+  function supplierOptions(sel) {
+    return Object.entries(D.suppliers || {}).sort((a, b) => a[1][0].localeCompare(b[1][0])).map(([c, v]) => `<option value="${esc(c)}"${c === sel ? " selected" : ""}>${esc(v[0])} (${esc(c)})</option>`).join("");
+  }
+  function orderPanel(o) {
+    const p = document.createElement("section"); p.className = "panel";
+    const u = units(o), books = o.lines.filter(l => l.include).reduce((a, l) => a + l.qty * unitCost(o, l), 0), G = totalGap(o);
+    if (!G) o.basis = null;
+    const ck = checks(o), hasErr = ck.some(c => c.ok === false) || (G && !o.basis);
+    p.innerHTML = `
+      <div class="ph"><h2>${esc(o.sup.name)} · #${esc(o.orderNo || "—")}</h2><span class="sub">${esc(o.file || "")}</span></div>
+      <div class="meta">
+        <label>Supplier<select data-f="sup">${supplierOptions(o.sup.code)}</select></label>
+        <label>Order #<input data-f="orderNo" value="${esc(o.orderNo)}"></label>
+        <label>Order date<input data-f="orderDate" type="date" value="${esc(o.orderDate)}"></label>
+        <label>Shipping for this order ($)<input data-f="shipping" type="number" step="0.01" min="0" value="${esc(String(o.shipping || 0))}"></label>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><span class="k">Titles</span><span class="v">${o.lines.filter(l => l.include).length}</span><span class="d">${o.lines.length} in the file</span></div>
+        <div class="kpi"><span class="k">Books</span><span class="v">${int(u)}</span><span class="d">&nbsp;</span></div>
+        <div class="kpi"><span class="k">Books cost</span><span class="v">${money(books)}</span><span class="d">before shipping</span></div>
+        <div class="kpi"><span class="k">Shipping per book</span><span class="v">${money(u ? (o.shipping || 0) / u : 0)}</span><span class="d">${money(o.shipping || 0)} ÷ ${int(u)} books</span></div>
+      </div>
+      <ul class="checks">${ck.map(c => `<li><span class="${c.ok === false ? "no" : c.warn ? "wn" : "ok"}">${c.ok === false ? "✗" : c.warn ? "!" : "✓"}</span><span>${esc(c.t)}</span></li>`).join("")}</ul>
+      ${G ? `<div class="basis${o.basis ? " set" : ""}"><div><b>The invoice and the book lines are ${money(Math.abs(G.gap))} apart.</b> Choose which numbers to use:</div>
+        <label class="bopt"><input type="radio" name="b-${o.id}" value="lines"${o.basis === "lines" ? " checked" : ""}><span><b>Book lines as listed</b> · books cost ${money(G.incl)}<br><span class="bs">Each book keeps the price on its line.</span></span></label>
+        <label class="bopt${G.invoiceOk ? "" : " off"}"><input type="radio" name="b-${o.id}" value="invoice"${o.basis === "invoice" ? " checked" : ""}${G.invoiceOk ? "" : " disabled"}><span><b>Invoice totals</b> · books cost ${G.invoiceOk ? money(G.incl + G.gap) : "–"}<br><span class="bs">The difference is spread across the books by price.</span></span></label></div>` : ""}
+      <div class="side">
+        <div><h3>From the supplier file</h3><table><thead><tr><th class="plain"></th>${o.rawHead.map(h => `<th class="plain">${esc(h)}</th>`).join("")}</tr></thead><tbody>${
+          o.lines.map((l, i) => `<tr class="${l.include ? "" : "off"} ${l.include && !l.ok && !l.house ? "flag" : ""}"><td><input type="checkbox" data-inc="${i}" ${l.include ? "checked" : ""} aria-label="Include this line"></td>${l.raw.map(c => `<td><div class="trunc" title="${esc(c)}">${esc(c)}</div></td>`).join("")}</tr>`).join("")}</tbody></table></div>
+        <div><h3>What will be saved</h3><table><thead><tr><th class="plain">ISBN</th><th class="plain">Title · Author</th><th class="plain num">Qty</th><th class="plain num">Landed</th><th class="plain num">Total</th></tr></thead><tbody>${
+          o.lines.map((l, i) => { const lc = landed(o, l); return `<tr class="${l.include ? "" : "off"} ${l.include && !l.ok && !l.house ? "flag" : ""}"><td>${l.ok ? esc(key13(l.isbn)) : `<input class="fin" style="width:140px" data-isbn="${i}" value="${esc(l.isbn)}" ${l.house ? "disabled" : ""} aria-label="ISBN"><label class="a" style="display:block"><input type="checkbox" data-house="${i}" ${l.house ? "checked" : ""}> House code</label>`}</td>
+            <td><div class="trunc t" title="${esc(l.title)}">${esc(l.title || "—")}${l.hist ? "" : `<span class="tag new">New</span>`}</div><div class="a">${l.author ? esc(l.author) : "no author"}</div></td>
+            <td class="num">${int(l.qty)}</td><td class="num">${money(lc)}</td><td class="num">${money(lc * l.qty)}</td></tr>`; }).join("")}</tbody></table></div>
+      </div>
+      <div class="actions"><button class="btn primary" data-a="approve" type="button"${hasErr || o.done ? " disabled" : ""}>${o.done ? "Saved" : "Approve and save the order"}</button><button class="btn" data-a="remove" type="button">Remove</button><span data-r>${o.done || (G && !o.basis ? bad("Choose which numbers to use (just above).") : "")}</span></div>`;
+    p.querySelectorAll("[data-f]").forEach(inp => inp.onchange = () => {
+      const f = inp.dataset.f;
+      if (f === "shipping") o.shipping = Math.max(0, numv(inp.value) || 0);
+      else if (f === "sup") o.sup = { code: inp.value, name: SUPNAME(inp.value) };
+      else o[f] = text(inp.value);
+      drawNew();
+    });
+    p.querySelectorAll("[data-inc]").forEach(cb => cb.onchange = () => { o.lines[+cb.dataset.inc].include = cb.checked; drawNew(); });
+    p.querySelectorAll("[data-house]").forEach(cb => cb.onchange = () => { o.lines[+cb.dataset.house].house = cb.checked; drawNew(); });
+    p.querySelectorAll("[data-isbn]").forEach(inp => inp.onchange = () => { const l = o.lines[+inp.dataset.isbn]; l.isbn = text(inp.value); l.ok = isbnOk(l.isbn); l.key = l.ok ? key13(l.isbn) : ""; const h = l.key && BOOKS.get(l.key); l.hist = h || null; if (h) { l.title = l.title || h.title; l.author = l.author || h.author; } drawNew(); });
+    p.querySelectorAll(`input[name="b-${o.id}"]`).forEach(rb => rb.onchange = () => { o.basis = rb.value; drawNew(); });
+    p.querySelector('[data-a="remove"]').onclick = () => { NEW = NEW.filter(x => x !== o); drawNew(); };
+    p.querySelector('[data-a="approve"]').onclick = async e => {
+      const btn = e.target, r = p.querySelector("[data-r]");
+      btn.disabled = true; btn.textContent = "Saving…";
+      const G2 = totalGap(o);
+      const payload = { order_number: o.orderNo, supplier_code: o.sup.code, supplier_name: o.sup.name, order_date: o.orderDate, shipping: o.shipping || 0,
+        invoice_total: isFinite(o.invTotal) ? o.invTotal : null, file: o.file || null,
+        notes: G2 ? (o.basis === "invoice" ? `Invoice totals used (${money(Math.abs(G2.gap))} spread across the books)` : `Book lines used as listed (${money(Math.abs(G2.gap))} off the invoice)`) : null,
+        lines: o.lines.filter(l => l.include).map(l => ({ isbn: l.ok ? key13(l.isbn) : l.isbn, house: !l.ok && l.house, title: l.title, author: l.author, qty: l.qty, unit: Math.round(unitCost(o, l) * 10000) / 10000, landed: landed(o, l) })) };
+      const { data, error } = await sb().rpc("order_create", { p: payload });
+      if (error) { btn.disabled = false; btn.textContent = "Try again"; r.innerHTML = bad(errMsg(error)); return; }
+      o.done = `<span class="ok">Saved: ${int(data.lines)} titles, ${int(data.units)} books, on the way.${data.new_titles ? ` ${int(data.new_titles)} new title${data.new_titles === 1 ? "" : "s"} added to the book list; fill in their details in Book Info.` : ""}</span>`;
+      BOOKS = null; await bookInfo().catch(() => {}); await load(); drawNew();
+    };
+    return p;
+  }
+  const MAP_FIELDS = [["isbn", "ISBN / EAN", true], ["title", "Title", true], ["qty", "Quantity", true], ["unit", "Unit price", true], ["author", "Author", false], ["orderNo", "Order #", false], ["orderDate", "Order date", false]];
+  function mapPanel(o) {
+    const p = document.createElement("section"); p.className = "panel";
+    const rows = o.rows;
+    if (o.headerRow == null) o.headerRow = Math.max(0, rows.findIndex(r => r.filter(c => text(c)).length >= 3));
+    const head = (rows[o.headerRow] || []).map((h, i) => text(h) || `Column ${i + 1}`);
+    const guess = { isbn: /isbn|ean|gtin|upc|barcode/i, title: /title|product|name|description/i, qty: /qty|quantity|ordered|units/i, unit: /unit|price|cost|wholesale/i, author: /author/i, orderNo: /order ?(#|no|number)|invoice/i, orderDate: /date/i };
+    o.cols = o.cols || Object.fromEntries(MAP_FIELDS.map(([k]) => [k, head.findIndex(h => guess[k].test(h))]));
+    p.innerHTML = `
+      <div class="ph"><h2>Set up a new supplier layout</h2><span class="sub">${esc(o.fileName)}</span></div>
+      <p class="how">This file's layout isn't set up yet. Match its columns once and the App will recognize this supplier's files from now on.</p>
+      <div class="meta">
+        <label>Supplier<select data-m="sup"><option value="">Pick…</option>${supplierOptions(o.msup || "")}<option value="__new"${o.msup === "__new" ? " selected" : ""}>New supplier…</option></select></label>
+        ${o.msup === "__new" ? `<label>Supplier name<input data-m="name" value="${esc(o.mname || "")}" placeholder="e.g. Ingram"></label><label>Short code<input data-m="code" value="${esc(o.mcode || "")}" placeholder="e.g. ING"></label>` : ""}
+        <label>Header row<select data-m="hdr">${rows.slice(0, 15).map((r, i) => `<option value="${i}"${i === o.headerRow ? " selected" : ""}>Row ${i + 1}: ${esc(r.map(text).filter(Boolean).slice(0, 4).join(" · ").slice(0, 60))}</option>`).join("")}</select></label>
+      </div>
+      <div class="mapgrid">${MAP_FIELDS.map(([k, lab, req]) => `<label>${esc(lab)}${req ? "" : " (optional)"}<select data-c="${k}"><option value="-1">—</option>${head.map((h, i) => `<option value="${i}"${o.cols[k] === i ? " selected" : ""}>${esc(h)}</option>`).join("")}</select></label>`).join("")}</div>
+      <div class="tbl"><table><tbody>${rows.slice(o.headerRow, o.headerRow + 6).map(r => `<tr>${r.slice(0, 12).map(c => `<td>${esc(text(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="actions"><button class="btn primary" data-a="save" type="button">Save layout and read the file</button><button class="btn" data-a="remove" type="button">Remove</button><span data-r></span></div>`;
+    p.querySelector('[data-m="sup"]').onchange = e => { o.msup = e.target.value; drawNew(); };
+    if (p.querySelector('[data-m="name"]')) { p.querySelector('[data-m="name"]').oninput = e => o.mname = e.target.value; p.querySelector('[data-m="code"]').oninput = e => o.mcode = e.target.value; }
+    p.querySelector('[data-m="hdr"]').onchange = e => { o.headerRow = +e.target.value; o.cols = null; drawNew(); };
+    p.querySelectorAll("[data-c]").forEach(s => s.onchange = () => { o.cols[s.dataset.c] = +s.value; });
+    p.querySelector('[data-a="remove"]').onclick = () => { NEW = NEW.filter(x => x !== o); drawNew(); };
+    p.querySelector('[data-a="save"]').onclick = async () => {
+      const r = p.querySelector("[data-r]"), c = sb();
+      let code = o.msup;
+      if (!code) { r.innerHTML = bad("Pick the supplier."); return; }
+      if (code === "__new") {
+        code = text(o.mcode).toUpperCase();
+        if (!text(o.mname) || !code) { r.innerHTML = bad("Give the new supplier a name and a short code."); return; }
+        const { error } = await c.from("suppliers").upsert({ code, name: text(o.mname) }, { onConflict: "code", ignoreDuplicates: true });
+        if (error) { r.innerHTML = bad(errMsg(error)); return; }
+        D.suppliers[code] = D.suppliers[code] || [text(o.mname), 10];
+      }
+      if (MAP_FIELDS.some(([k, , req]) => req && !(o.cols[k] >= 0))) { r.innerHTML = bad("Pick a column for ISBN, Title, Quantity and Unit price."); return; }
+      const sig = sigOf(rows[o.headerRow] || []), id = sigId(sig);
+      const L = { id, supplier_code: code, header_row: o.headerRow, cols: o.cols, sig };
+      const { error } = await c.from("supplier_layouts").upsert(L);
+      if (error) { r.innerHTML = bad(errMsg(error)); return; }
+      LAYOUTS.set(id, L);
+      const parsed = readWithLayout(rows, L);
+      if (!parsed.lines.length) { r.innerHTML = bad("No lines with a quantity and price were found with these columns."); return; }
+      parsed.file = o.fileName;
+      NEW[NEW.indexOf(o)] = enrich(parsed); drawNew();
+    };
+    return p;
+  }
+  async function addFiles(files) {
+    $("err").hidden = true;
+    try { await Promise.all([bookInfo(), loadLayouts()]); } catch (e) { $("err").hidden = false; $("err").textContent = "Couldn't load the book list: " + errMsg(e); return; }
+    for (const f of files) {
+      try {
+        const o = await readFile(f); o.file = f.name;
+        if (o.needsMapping) { NEW.push(o); continue; }
+        if (!o.lines.length) throw new Error("No order lines were found in it.");
+        NEW.push(enrich(o));
+      } catch (e) { $("err").hidden = false; $("err").textContent = `Couldn't read ${f.name}. ${errMsg(e)}`; }
+    }
+    drawNew();
+  }
+  $("btnPick").onclick = () => $("file").click();
+  $("file").onchange = e => { addFiles([...e.target.files]); e.target.value = ""; };
+  ["dragenter", "dragover"].forEach(t => $("drop").addEventListener(t, e => { e.preventDefault(); $("drop").classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => $("drop").addEventListener(t, e => { e.preventDefault(); $("drop").classList.remove("over"); }));
+  $("drop").addEventListener("drop", e => addFiles([...e.dataTransfer.files]));
 
   $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; S.tab = b.dataset.t; S.shown = 50; render(); });
   $("kpis").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (!b) return; S.tab = b.dataset.go; S.shown = 50; render(); });

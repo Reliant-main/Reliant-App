@@ -90,6 +90,7 @@ ol.items .acts .wide { font-size: 13px; }
     <p class="sub" style="margin:8px 0 14px">Build a show's playlist ahead of time: make a list, then scan the books in the order they'll go on. Tap <b>Add set</b> to start the next table set, and <b>+ 2nd book</b> to sell the next book you scan together with the one before it. On the live show screen, <b>Load from Show Prep</b> picks the list up.</p>
     <form class="newrow" id="newForm" autocomplete="off">
       <input type="text" id="newName" placeholder="Show name, e.g. Tuesday romance" maxlength="60" aria-label="New list name">
+      <select id="newPlat" aria-label="Platform" style="font:inherit;padding:8px;border-radius:8px"><option value="TT">TikTok</option><option value="WN">Whatnot</option><option value="EB">eBay</option></select>
       <button class="btn primary" type="submit">New list</button>
     </form>
     <p class="msg" id="listsMsg"></p>
@@ -111,9 +112,14 @@ ol.items .acts .wide { font-size: 13px; }
       <button class="btn primary" type="button" id="addSet">Add set</button>
       <button class="btn" type="button" id="add2nd">+ 2nd book</button>
       <button class="btn" type="button" id="camBtn" hidden>Scan with camera</button>
+      <button class="btn" type="button" id="clearSet">Clear current set</button>
+      <button class="btn" type="button" id="backSet">Bring back last set</button>
       <button class="btn" type="button" id="rename">Rename</button>
+      <select id="lPlat" aria-label="Platform" style="font:inherit;padding:8px;border-radius:8px"><option value="TT">TikTok</option><option value="WN">Whatnot</option><option value="EB">eBay</option></select>
+      <button class="btn" type="button" id="release">Release books</button>
       <button class="btn warn" type="button" id="del">Delete list</button>
     </div>
+    <p class="sub" id="holdLine" style="margin:8px 0 0"></p>
     <div class="cam" id="cam" hidden><video id="video" playsinline muted></video><span class="line"></span></div>
     <p class="msg" id="msg"></p>
     <ol class="items" id="items"></ol>
@@ -142,6 +148,7 @@ ol.items .acts .wide { font-size: 13px; }
   // A list is rows: isbns[k] is a book, or a divider ("— Set —") that starts the next set;
   // pairs[k] is the 2nd book sold together with isbns[k] (blank when it's a single book).
   const DIVIDER = "— Set —";
+  const PLAT = { TT: "TikTok", WN: "Whatnot", EB: "eBay" };
   const isDiv = v => /^\W*set\b/i.test(String(v || "").trim());
   const rowsOf = l => { const a = [...(l.isbns || [])], p = [...(l.pairs || [])]; while (p.length < a.length) p.push(""); p.length = a.length; return { a, p }; };
   const bookCount = l => { const { a, p } = rowsOf(l); return a.filter(x => !isDiv(x)).length + p.filter(Boolean).length; };
@@ -153,7 +160,7 @@ ol.items .acts .wide { font-size: 13px; }
     const box = $("lists");
     if (!lists.length) { box.innerHTML = `<p class="sub">No lists yet. Type a show name above and press New list.</p>`; return; }
     box.innerHTML = lists.map(l => { const n = bookCount(l), ns = setCount(l), hasDiv = (l.isbns || []).some(isDiv);
-      return `<button type="button" data-id="${esc(l.id)}"><span class="n">${esc(l.name || "Show")}</span><span class="c">${n} book${n === 1 ? "" : "s"}${hasDiv ? ` · ${ns} set${ns === 1 ? "" : "s"}` : ""}${l.by ? " · " + esc(l.by) : ""}</span></button>`; }).join("");
+      return `<button type="button" data-id="${esc(l.id)}"><span class="n">${esc(l.name || "Show")}</span><span class="c">${l.platform ? esc(PLAT[l.platform] || l.platform) + " · " : ""}${n} book${n === 1 ? "" : "s"}${hasDiv ? ` · ${ns} set${ns === 1 ? "" : "s"}` : ""}${l.released ? " · released" : ""}${l.by ? " · " + esc(l.by) : ""}</span></button>`; }).join("");
   }
   function draw2nd() {
     $("scan").classList.toggle("second", armed2nd);
@@ -165,6 +172,14 @@ ol.items .acts .wide { font-size: 13px; }
     const l = cur();
     if (!l) { openId = null; show(); return; }
     $("lName").textContent = l.name || "Show";
+    $("lPlat").value = l.platform || "TT";
+    const nb = bookCount(l);
+    $("release").hidden = !nb;
+    $("release").textContent = l.released ? "Hold for this show again" : "Release books";
+    $("holdLine").textContent = !nb ? "" : l.released ? `Released: ${nb === 1 ? "this book is" : `these ${nb} books are`} back in available stock.` : `${nb} book${nb === 1 ? "" : "s"} held for this show · Inventory shows them as held, not available, until the show sells them or the list is released or deleted.`;
+    { const { a: aa } = rowsOf(l), lastDiv = aa.map(isDiv).lastIndexOf(true), curSetLen = aa.slice(lastDiv + 1).length;
+      $("clearSet").disabled = !curSetLen;
+      $("backSet").disabled = !((l.lastCleared && !curSetLen) || lastDiv >= 0); }
     const { a, p } = rowsOf(l), n = bookCount(l), hasDiv = a.some(isDiv), ns = setCount(l);
     $("lCount").textContent = `${n} book${n === 1 ? "" : "s"}${hasDiv ? ` · ${ns} set${ns === 1 ? "" : "s"}` : ""}`;
     draw2nd();
@@ -182,7 +197,7 @@ ol.items .acts .wide { font-size: 13px; }
       html += `<li data-i="${i}" class="${b ? "" : "miss"} ${i === lastAdded ? "new" : ""}"><span class="k">${row}</span>
         <span><span class="t">${esc(label(x))}</span><br><span class="a">${esc(b ? [b.author, x].filter(Boolean).join(" · ") : "Not in the book list yet")}</span>
         ${p[i] ? `<span class="t2"><b class="lotchip">2nd</b><span>${esc(label(p[i]))}${bookOf(p[i]) ? "" : " · not in the book list yet"}</span></span>` : ""}</span>
-        <span class="acts">${up}${p[i] ? `<button class="btn wide" type="button" data-a="unpair">Unpair</button>` : prevIsBook && !p[i - 1] ? `<button class="btn wide" type="button" data-a="pair" title="Sell this book together with the one above">Pair with above</button>` : ""}<button class="btn warn" type="button" data-a="rm" aria-label="Remove">✕</button></span></li>`;
+        <span class="acts">${up}${i > 0 && !isDiv(a[i - 1]) ? `<button class="btn wide" type="button" data-a="split" title="Start a new set from this book">✂ Split here</button>` : ""}${p[i] ? `<button class="btn wide" type="button" data-a="unpair">Unpair</button>` : prevIsBook && !p[i - 1] ? `<button class="btn wide" type="button" data-a="pair" title="Sell this book together with the one above">Pair with above</button>` : ""}<button class="btn warn" type="button" data-a="rm" aria-label="Remove">✕</button></span></li>`;
     });
     $("items").innerHTML = html;
     const nl = $("items").querySelector("li.new"); if (nl) nl.scrollIntoView({ block: "nearest" });
@@ -205,7 +220,7 @@ ol.items .acts .wide { font-size: 13px; }
     if (!name) { setMsg("listsMsg", "Type a show name first.", "bad"); $("newName").focus(); return; }
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const me = (window.RELIANT && window.RELIANT.staff) || {};
-    try { await db.doc("prep/" + id).set({ name, isbns: [], pairs: [], createdAt: Date.now(), updatedAt: Date.now(), by: me.name || "" }); }
+    try { await db.doc("prep/" + id).set({ name, platform: $("newPlat").value, isbns: [], pairs: [], createdAt: Date.now(), updatedAt: Date.now(), by: me.name || "" }); }
     catch { setMsg("listsMsg", "Couldn't make the list. Check the connection and try again.", "bad"); return; }
     $("newName").value = ""; setMsg("listsMsg", "");
     openId = id; lastAdded = -1; show();
@@ -257,11 +272,44 @@ ol.items .acts .wide { font-size: 13px; }
     const l = cur(), i = +b.closest("li").dataset.i, { a, p } = rowsOf(l), act = b.dataset.a;
     armed2nd = false;
     if (act === "rm") { a.splice(i, 1); p.splice(i, 1); setMsg("msg", ""); lastAdded = -1; }
+    else if (act === "split") { if (i < 1 || isDiv(a[i - 1])) return; a.splice(i, 0, DIVIDER); p.splice(i, 0, ""); lastAdded = i + 1; setMsg("msg", "New set started from this book", "ok"); }
     else if (act === "pair") { if (i < 1 || isDiv(a[i - 1]) || p[i - 1] || p[i]) return; p[i - 1] = a[i]; a.splice(i, 1); p.splice(i, 1); lastAdded = i - 1; setMsg("msg", `${label(p[i - 1])} now sells together with ${label(a[i - 1])}`, "ok"); }
     else if (act === "unpair") { setMsg("msg", `${label(p[i])} is its own book again`, "ok"); a.splice(i + 1, 0, p[i]); p.splice(i + 1, 0, ""); p[i] = ""; lastAdded = i + 1; }
     else { const j = act === "up" ? i - 1 : i + 1; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; [p[i], p[j]] = [p[j], p[i]]; lastAdded = j; }
     store(l, a, p);
   });
+  $("lPlat").onchange = e => { const l = cur(); if (!l) return; l.platform = e.target.value; drawList(); save(l, { platform: l.platform }); };
+  let relArm = 0;
+  $("release").onclick = () => {
+    const l = cur(); if (!l) return;
+    if (!l.released && Date.now() - relArm > 4000) { relArm = Date.now(); $("release").textContent = "Tap again to release"; setTimeout(() => drawList(), 4000); return; }
+    relArm = 0; l.released = !l.released; drawList(); save(l, { released: l.released });
+    setMsg("msg", l.released ? "Books released to available stock. The list is kept." : "Held for this show again.", "ok");
+  };
+  let clrArm = 0;
+  $("clearSet").onclick = () => {
+    const l = cur(); if (!l) return;
+    const { a, p } = rowsOf(l), d = a.map(isDiv).lastIndexOf(true);
+    if (a.length - (d + 1) <= 0) return;
+    if (Date.now() - clrArm > 4000) { clrArm = Date.now(); $("clearSet").textContent = "Tap again to clear"; setTimeout(() => { $("clearSet").textContent = "Clear current set"; }, 4000); return; }
+    clrArm = 0; $("clearSet").textContent = "Clear current set";
+    l.lastCleared = { at: d + 1, a: a.slice(d + 1), p: p.slice(d + 1) };
+    a.length = d + 1; p.length = d + 1; armed2nd = false; lastAdded = -1;
+    l.isbns = a; l.pairs = p; drawList(); save(l, { isbns: a, pairs: p, lastCleared: l.lastCleared });
+    setMsg("msg", "Current set cleared · Bring back last set puts the books back", "bad");
+  };
+  $("backSet").onclick = () => {
+    const l = cur(); if (!l) return;
+    const { a, p } = rowsOf(l), d = a.map(isDiv).lastIndexOf(true), curLen = a.length - (d + 1);
+    if (l.lastCleared && !curLen && l.lastCleared.at === a.length) {   // undo a Clear
+      a.push(...l.lastCleared.a); p.push(...l.lastCleared.p); l.lastCleared = null;
+      setMsg("msg", "Set brought back", "ok");
+    } else if (d >= 0) {   // reopen the set before: this set's books join it
+      a.splice(d, 1); p.splice(d, 1);
+      setMsg("msg", `Back in the set before${curLen ? ` · ${curLen} book${curLen === 1 ? "" : "s"} joined it` : ""}`, "ok");
+    } else return;
+    armed2nd = false; l.isbns = a; l.pairs = p; drawList(); save(l, { isbns: a, pairs: p, lastCleared: l.lastCleared || null });
+  };
   $("rename").onclick = () => {
     const l = cur(); if (!l) return;
     const name = (prompt("New name for this list", l.name || "") || "").trim().slice(0, 60);
