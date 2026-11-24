@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book Info</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.pill.part { background: transparent; color: var(--gilt); border: 1px solid var(--gilt); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+<style>
+.seltop { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar2 { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); min-width: 80px; }
+.bar2 i { display: block; height: 100%; }
+.drawer .card { width: min(720px, 100%); }
+</style>
+
+<style>
+.btn.primary { background: var(--accent); color: #0e1915; border-color: var(--accent); font-weight: 600; }
+.btn.small { padding: 4px 9px; font-size: 12.5px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 26px 16px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.drop.over { border-color: var(--accent); background: var(--accent-wash); }
+.drop p { margin: 0; }
+.small { font-size: 12.5px; color: var(--muted); }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.meta label, .mapgrid label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.meta input, .meta select, .mapgrid select, .fin, .rtbl input, .rtbl select, .srow input { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+.mapgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.checks li { display: flex; gap: 8px; } .ok { color: var(--good); } .no { color: var(--bad); } .wn { color: var(--warnfg); }
+.side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.side > div { overflow-x: auto; padding: 10px; } .side > div + div { border-left: 1px solid var(--line); }
+.side h3 { margin: 0 0 6px; font: 600 13px var(--f-ui); color: var(--ink-2); }
+.side table { font-size: 12.5px; } .side td { padding: 4px 6px; }
+tr.off td { opacity: .4; } tr.flag td { background: rgba(239,107,107,.10); }
+.trunc { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag { font: 600 10.5px var(--f-ui); border-radius: 999px; padding: 1px 7px; margin-left: 6px; border: 1px solid var(--line); color: var(--muted); }
+.tag.new { color: var(--gilt); border-color: var(--gilt); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.basis { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--bad); border-radius: 10px; padding: 12px 14px; }
+.basis.set { border-color: var(--line); }
+.bopt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 14px; }
+.bopt.off { opacity: .55; } .bs { color: var(--muted); font-size: 13px; }
+.rtbl input[type=number] { width: 68px; text-align: right; } .rtbl input.short { border-color: var(--warnfg); } .rtbl input.need { border-color: var(--bad); }
+.partchk { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink-2); }
+.fbnote { font-size: 13.5px; border: 1px solid var(--gilt); border-radius: 8px; padding: 10px 12px; color: var(--ink-2); }
+.srow { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.srow .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.srow input[type=number] { width: 70px; }
+.recv { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.recv h3 { margin: 0; font: 600 16px var(--f-ui); }
+</style>
+<style>
+.ed { display: flex; flex-direction: column; gap: 12px; }
+.ed .meta textarea { font: 400 14px/1.45 var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 90px; resize: vertical; }
+.picks { display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow-y: auto; padding: 2px; }
+.picks label { font-size: 13px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); }
+.picks label:has(input:checked) { border-color: var(--accent); background: var(--accent-wash); color: var(--ink); }
+.picks label.sub { margin-left: 10px; }
+.picks input { margin: 0; }
+.wide { grid-column: 1 / -1; }
+.miss { color: var(--warnfg); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Book Info</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+    <div class="ctrls"><button class="btn primary" id="btnAdd" type="button" hidden>Add a book</button><button class="btn" id="btnRefresh" type="button">Refresh</button></div>
+  </header>
+  <div class="notice bad" id="err" hidden></div>
+  <p class="notice" id="liveNote" hidden>Until switch day, the nightly copy rebuilds the show screen's book list from the Tele-prompter sheet, so edits made here may be replaced overnight by what's in the sheet.</p>
+  <section class="panel">
+    <div class="ph">
+      <div><h2>Books</h2><span class="sub" id="sub"></span></div>
+      <input type="search" class="search" id="q" placeholder="Title, author or ISBN" aria-label="Search books" autocomplete="off">
+    </div>
+    <div class="chips" id="filters" role="group" aria-label="Filter"></div>
+    <div class="tbl" id="tbl"></div>
+    <div id="more"></div>
+    <p class="how">Info needed lists books in stock or on order that are missing an author, Goodreads score, genre or synopsis (and spice for romance). These details are what Book Spotlight shows on the TV.</p>
+  </section>
+</div>
+<div class="drawer" id="drawer" hidden><div class="card" id="drawerCard" role="dialog" aria-modal="true" aria-label="Edit book"></div></div>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const sb = () => { try { return window.parent.RELIANT.sb; } catch { return null; } };
+  const me = () => { try { return window.parent.RELIANT.staff || {}; } catch { return {}; } };
+  const isMgr = () => ["owner", "manager"].includes(me().role);
+  const bad = t => `<span class="no">${esc(t)}</span>`;
+  let B = [], G = [], T = [], gName = new Map(), tName = new Map();
+  const S = { q: "", f: "need", shown: 100 };
+  const setStatus = (k, t) => { $("dot").className = "dot " + k; $("statusText").textContent = t; };
+
+  async function load() {
+    const c = sb();
+    if (!c) { setStatus("err", "Not signed in"); return; }
+    setStatus("busy", "Loading…");
+    const [b, g, t, l] = await Promise.all([c.rpc("book_info_list"), c.from("genres").select("*").order("sort_order"), c.from("tropes").select("*").order("name"), c.rpc("ful_live")]);
+    if (b.error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = b.error.message; return; }
+    G = g.data || []; T = t.data || []; gName = new Map(G.map(x => [x.id, x])); tName = new Map(T.map(x => [x.id, x.name]));
+    B = (b.data || []).map(r => ({ isbn: r[0], title: r[1], author: r[2], gr: r[3], spice: r[4], release: r[5], genres: r[6] || [], tropes: r[7] || [], series: r[8] || "", synopsis: r[9] || "", notes: r[10] || "", pron: r[11] || "", onHand: +r[12] || 0, route: +r[13] || 0 }));
+    B.forEach(x => { x.miss = missing(x); });
+    $("liveNote").hidden = l.data === true;
+    $("btnAdd").hidden = !isMgr();
+    setStatus("live", `${int(B.length)} books`);
+    render();
+  }
+  const romance = x => x.genres.some(id => { let g = gName.get(id); while (g) { if (g.needs_spice) return true; g = g.parent_id ? gName.get(g.parent_id) : null; } return false; });
+  function missing(x) {
+    const m = [];
+    if (!x.author) m.push("author"); if (x.gr == null) m.push("Goodreads"); if (!x.genres.length) m.push("genre");
+    if (!x.synopsis) m.push("synopsis"); if (romance(x) && x.spice == null) m.push("spice");
+    return m;
+  }
+  const FILTERS = [
+    ["need", "Info needed", x => (x.onHand > 0 || x.route > 0) && x.miss.length],
+    ["stock", "In stock or on order", x => x.onHand > 0 || x.route > 0],
+    ["all", "All books", () => true]
+  ];
+  function render() {
+    $("filters").innerHTML = FILTERS.map(([k, lab, fn]) => `<button type="button" data-f="${k}" aria-pressed="${S.f === k}">${lab}<span class="n">${int(B.filter(fn).length)}</span></button>`).join("");
+    const fn = FILTERS.find(f => f[0] === S.f)[2], words = S.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const list = B.filter(fn).filter(x => words.every(w => (x.title + " " + x.author + " " + x.isbn).toLowerCase().includes(w)));
+    $("sub").textContent = `${int(list.length)} book${list.length === 1 ? "" : "s"}`;
+    $("tbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Title</th><th class="plain num">GR</th><th class="plain num hide-sm">Spice</th><th class="plain hide-sm">Genres</th><th class="plain num">On hand</th><th class="plain">Missing</th></tr></thead><tbody>${
+      list.slice(0, S.shown).map(x => `<tr class="trow" tabindex="0" data-isbn="${esc(x.isbn)}"><td><div class="t">${esc(x.title)}</div><div class="a">${esc(x.author || "—")} · ${esc(x.isbn)}</div></td>
+        <td class="num">${x.gr != null ? esc(x.gr) : "–"}</td><td class="num hide-sm">${x.spice != null ? esc(x.spice) : "–"}</td><td class="hide-sm a">${esc(x.genres.map(id => (gName.get(id) || {}).name).filter(Boolean).join(", "))}</td>
+        <td class="num">${int(x.onHand)}${x.route ? ` <span class="a">+${int(x.route)}</span>` : ""}</td><td>${x.miss.length ? `<span class="miss">${esc(x.miss.join(", "))}</span>` : ""}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="empty">${words.length ? "No books match." : S.f === "need" ? "Every book in stock or on order has its info." : "No books."}</p>`;
+    $("more").innerHTML = list.length > S.shown ? `<button type="button" class="btn" id="moreBtn">Show ${int(Math.min(100, list.length - S.shown))} more</button>` : "";
+  }
+  function genrePicks(sel) {
+    const top = G.filter(g => !g.parent_id), kids = id => G.filter(g => g.parent_id === id);
+    const one = (g, sub) => `<label class="${sub ? "sub" : ""}"><input type="checkbox" data-g="${g.id}"${sel.includes(g.id) ? " checked" : ""}>${esc(g.name)}</label>`;
+    return top.map(g => one(g) + kids(g.id).map(k => one(k, true)).join("")).join("");
+  }
+  function openBook(isbn) {
+    const isNew = !isbn, x = isNew ? { isbn: "", title: "", author: "", gr: null, spice: null, release: null, genres: [], tropes: [], series: "", synopsis: "", notes: "", pron: "" } : B.find(b => b.isbn === isbn);
+    if (!x) return;
+    const ro = !isMgr();
+    $("drawerCard").innerHTML = `
+      <div><button type="button" class="btn" id="closeD">✕ Close</button></div>
+      <div><span class="eyebrow">${isNew ? "New book" : esc(x.isbn)}</span><h2>${esc(x.title || "Add a book")}</h2>${x.miss && x.miss.length ? `<div class="miss">Missing: ${esc(x.miss.join(", "))}</div>` : ""}</div>
+      <div class="ed">
+        <div class="meta">
+          ${isNew ? `<label class="wide">ISBN<input id="eIsbn" placeholder="13 or 10 digits"></label><label class="wide" style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" id="eHouse"> No ISBN — give it a house code (RD-…)</label>` : ""}
+          <label class="wide">Title<input id="eTitle" value="${esc(x.title)}"></label>
+          <label class="wide">Author (First Last)<input id="eAuthor" value="${esc(x.author)}"></label>
+          <label>Goodreads score<input id="eGr" type="number" step="0.01" min="0" max="5" value="${x.gr ?? ""}"></label>
+          <label>Spice (0–5, romance only)<input id="eSpice" type="number" step="1" min="0" max="5" value="${x.spice ?? ""}"></label>
+          <label>Release date<input id="eRel" type="date" value="${esc(x.release || "")}"></label>
+          <label>Series number<input id="eSeries" value="${esc(x.series)}" placeholder="e.g. Book 2"></label>
+          <label class="wide">Synopsis (one or two sentences for the TV)<textarea id="eSyn">${esc(x.synopsis)}</textarea></label>
+          <label class="wide">Notes<input id="eNotes" value="${esc(x.notes)}"></label>
+          <label class="wide">Pronunciation<input id="ePron" value="${esc(x.pron)}"></label>
+        </div>
+        <div><b>Genres</b><div class="picks" id="eGenres">${genrePicks(x.genres)}</div></div>
+        <div><b>Tropes</b> <input class="search" id="tq" placeholder="Filter tropes" style="width:200px"><div class="picks" id="eTropes">${T.map(t => `<label data-tn="${esc(t.name.toLowerCase())}"><input type="checkbox" data-t="${t.id}"${x.tropes.includes(t.id) ? " checked" : ""}>${esc(t.name)}</label>`).join("")}</div></div>
+        <div class="actions">${ro ? `<span class="a">Only an owner or manager can edit book info.</span>` : `<button class="btn primary" type="button" id="eSave">${isNew ? "Add book" : "Save"}</button>`}<span id="eMsg"></span></div>
+      </div>`;
+    if (ro) $("drawerCard").querySelectorAll("input,textarea").forEach(i => { if (i.id !== "tq") i.disabled = true; });
+    $("tq").oninput = e => { const q = e.target.value.toLowerCase(); $("eTropes").querySelectorAll("label").forEach(l => l.hidden = q && !l.dataset.tn.includes(q)); };
+    if ($("eHouse")) $("eHouse").onchange = e => { $("eIsbn").disabled = e.target.checked; };
+    if ($("eSave")) $("eSave").onclick = async () => {
+      const v = id => $(id).value.trim();
+      const p = { new: isNew, isbn: isNew ? v("eIsbn") : x.isbn, house: isNew && $("eHouse").checked, title: v("eTitle"), author: v("eAuthor"), gr: v("eGr"), spice: v("eSpice"), release_date: v("eRel"),
+        series: v("eSeries"), synopsis: v("eSyn"), notes: v("eNotes"), pronunciation: v("ePron"),
+        genres: [...$("eGenres").querySelectorAll("input:checked")].map(i => +i.dataset.g), tropes: [...$("eTropes").querySelectorAll("input:checked")].map(i => +i.dataset.t) };
+      if (!p.title) { $("eMsg").innerHTML = bad("The book needs a title."); return; }
+      if (p.gr && !(+p.gr >= 0 && +p.gr <= 5)) { $("eMsg").innerHTML = bad("Goodreads score is between 0 and 5."); return; }
+      if (p.spice && !(/^[0-5]$/.test(p.spice))) { $("eMsg").innerHTML = bad("Spice is a whole number from 0 to 5."); return; }
+      $("eSave").disabled = true; $("eMsg").textContent = "Saving…";
+      const { data, error } = await sb().rpc("book_save", { p });
+      if (error) { $("eSave").disabled = false; $("eMsg").innerHTML = bad(error.message); return; }
+      await load(); openBook(data);
+      $("eMsg").innerHTML = `<span class="ok">Saved${isNew ? ` as ${esc(data)}` : ""}.</span>`;
+    };
+    $("drawer").hidden = false;
+  }
+  $("filters").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (!b) return; S.f = b.dataset.f; S.shown = 100; render(); });
+  $("q").addEventListener("input", e => { S.q = e.target.value; S.shown = 100; render(); });
+  $("tbl").addEventListener("click", e => { const r = e.target.closest(".trow"); if (r) openBook(r.dataset.isbn); });
+  $("tbl").addEventListener("keydown", e => { if (e.key === "Enter") { const r = e.target.closest(".trow"); if (r) openBook(r.dataset.isbn); } });
+  $("more").addEventListener("click", e => { if (e.target.id === "moreBtn") { S.shown += 100; render(); } });
+  $("drawer").addEventListener("click", e => { if (e.target === $("drawer") || e.target.closest("#closeD")) $("drawer").hidden = true; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") $("drawer").hidden = true; });
+  $("btnAdd").onclick = () => openBook(null);
+  $("btnRefresh").onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>
