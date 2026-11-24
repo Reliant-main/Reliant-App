@@ -87,8 +87,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 <main class="gate" id="signin" hidden>
   <form class="card" id="signinForm" autocomplete="on">
     <div><span class="eyebrow">Reliant Distribution</span><h1>Workspace</h1></div>
-    <p id="signinIntro">Sign in with your work email and password.</p>
-    <div class="fld"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required></div>
+    <p id="signinIntro">Sign in with your work email, or the username you were given (like Brooklyn.Smith), and your password.</p>
+    <div class="fld"><label for="email" id="emailLbl">Email or username</label><input id="email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required></div>
     <div class="fld"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" minlength="8" required></div>
     <div class="msg" id="signinMsg" role="status"></div>
     <button class="btn primary" type="submit" id="signinBtn">Sign in</button>
@@ -103,6 +103,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 <main class="gate" id="newpw" hidden>
   <form class="card" id="newpwForm">
     <div><span class="eyebrow">Reliant Distribution</span><h2>Choose a new password</h2></div>
+    <p id="newpwWhy" hidden>Your account was set up with a starting password. Choose your own now (at least 8 characters).</p>
     <div class="fld"><label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></div>
     <div class="msg" id="newpwMsg" role="status"></div>
     <button class="btn primary" type="submit">Save password</button>
@@ -197,8 +198,12 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 
   // ---------- signed-in state ----------
   let signup = false;
+  // people without an email sign in with a username; it maps to an address that receives no mail
+  const NAME_DOMAIN = "staff.reliantbookstore.com";
+  const toLogin = v => { v = v.trim(); return v.includes("@") ? v : `${v.toLowerCase()}@${NAME_DOMAIN}`; };
   async function refresh(session) {
     if (!session) { window.RELIANT.staff = null; show("signin"); return; }
+    if (session.user && session.user.user_metadata && session.user.user_metadata.must_change) { $("newpwWhy").hidden = false; show("newpw"); return; }
     const { data: me, error } = await sb.rpc("my_staff");
     if (error) { $("signinMsg").textContent = "Couldn't check your account: " + error.message; $("signinMsg").classList.add("bad"); show("signin"); return; }
     if (!me) { $("pendingEmail").textContent = session.user.email || ""; show("pending"); return; }
@@ -265,7 +270,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
         const me = window.RELIANT.staff || {};
         const list = (data || []).filter(p => p.name !== me.name);
         $("pinPeople").innerHTML = list.length ? "<label>Who's taking over?</label>" + list.map(p => `<button type="button" class="btn" data-pid="${p.id}"></button>`).join("")
-          : "<span>Nobody else has a PIN yet. Each person sets one with My PIN after signing in once with their email.</span>";
+          : "<span>Nobody else has a PIN yet. Each person signs in once (email or username) and sets one with My PIN.</span>";
         list.forEach(p => { const b = $("pinPeople").querySelector(`[data-pid="${p.id}"]`); b.textContent = `${p.name} · ${p.role}`; });
       });
     } else setTimeout(() => $("pinInput").focus(), 0);
@@ -315,13 +320,15 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     signup = !signup;
     $("signinBtn").textContent = signup ? "Create account" : "Sign in";
     $("modeBtn").textContent = signup ? "Already have an account? Sign in" : "First time? Create your account";
-    $("signinIntro").textContent = signup ? "Use the email an owner added for you, and choose a password of at least 8 characters. An owner or manager then approves your account." : "Sign in with your work email and password.";
+    $("signinIntro").textContent = signup ? "Use the email an owner added for you, and choose a password of at least 8 characters. An owner or manager then approves your account. (No email? Ask an owner or manager to make you a username account.)" : "Sign in with your work email, or the username you were given (like Brooklyn.Smith), and your password.";
+    $("emailLbl").textContent = signup ? "Email" : "Email or username";
     $("password").autocomplete = signup ? "new-password" : "current-password";
     setMsg("");
   };
   $("signinForm").onsubmit = async e => {
     e.preventDefault();
-    const email = $("email").value.trim(), password = $("password").value;
+    const email = signup ? $("email").value.trim() : toLogin($("email").value), password = $("password").value;
+    if (signup && !email.includes("@")) { setMsg("Creating an account here needs an email. Without one, ask an owner or manager to make you a username account.", true); return; }
     $("signinBtn").disabled = true; setMsg(signup ? "Creating your account…" : "Signing in…");
     try {
       if (signup) {
@@ -338,18 +345,20 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     } catch (err) {
       const m = String(err && err.message || err);
       setMsg(/confirm/i.test(m) ? "This account hasn't been approved yet. Ask an owner or manager to approve it in Settings, then try again."
-        : /invalid login/i.test(m) ? "That email and password don't match." : m, true);
+        : /invalid login/i.test(m) ? "That username or email and password don't match." : m, true);
     } finally { $("signinBtn").disabled = false; }
   };
   $("forgotBtn").onclick = async () => {
     const email = $("email").value.trim();
     if (!email) { setMsg("Type your email above first, then press Forgot password.", true); return; }
+    if (!email.includes("@")) { setMsg("Username accounts don't get reset emails. Ask an owner or manager to reset your password in Settings.", true); return; }
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
     setMsg(error ? error.message : "If that email has an account, a reset link is on its way.", !!error);
   };
   $("newpwForm").onsubmit = async e => {
     e.preventDefault();
-    const { error } = await sb.auth.updateUser({ password: $("newPassword").value });
+    const { error } = await sb.auth.updateUser({ password: $("newPassword").value, data: { must_change: false } });
+    if (!error) $("newpwWhy").hidden = true;
     $("newpwMsg").textContent = error ? error.message : "Saved. Opening the Workspace…";
     if (!error) { const { data } = await sb.auth.getSession(); await refresh(data.session); }
   };
