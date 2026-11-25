@@ -236,6 +236,8 @@ li.target .badge { background: var(--accent); color: var(--on-accent, #0e1915); 
 .ctrls legend, .fh { font-family: var(--f-ui); letter-spacing: 0; text-transform: none; }
 .dlgTitle, .bridgeFail h2 { font-family: var(--f-ui); font-weight: 700; }
 .prevStage { background: repeating-conic-gradient(color-mix(in srgb, var(--ink) 8%, var(--bg)) 0% 25%, var(--bg) 0% 50%) 0 0 / 16px 16px; }
+.stats > span:last-child::after { content: "Sold so far"; }
+.appbar #printerStatus.bad #pTxt { color: #ff9b8f; } .appbar #printerStatus.warn #pTxt { color: #f2c35a; }
 @media (max-width: 760px) {
   .rail { display: none; }
   .shell > .wrap { padding: 12px 12px 40px; }
