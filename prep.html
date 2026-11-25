@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><script src="theme.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Show Prep · Reliant Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -71,15 +71,46 @@ ol.items .acts .wide { font-size: 13px; }
 .bridgeFail h2 { font: 400 32px var(--f-display); margin: 0 0 8px; }
 .bridgeFail a { color: var(--gilt); }
 @media (max-width: 520px) { .head .btn { flex: 1; } }
+
+/* ===== App look: top bar, icon rail, colors (Show Prep works exactly as before) ===== */
+.appbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 8px 14px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--bar, #10261f); color: var(--bar-ink, #eef0ea); }
+.appbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; color: inherit; text-decoration: none; white-space: nowrap; }
+.appbar .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--accent); color: var(--on-accent, #0e1915); display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.appbar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.appbar .colors { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+.appbar .colors select { font: 600 12px var(--f-ui); color: inherit; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 5px 8px; min-height: 0; }
+.appbar .colors option { color: #1c2420; background: #fff; }
+.appbar .avatar { width: 28px; height: 28px; border-radius: 50%; background: #d2a54a; color: #10261f; display: grid; place-items: center; font-weight: 700; font-size: 12px; text-decoration: none; }
+.rail { position: fixed; left: 0; top: 0; bottom: 0; z-index: 20; width: 56px; padding: 58px 8px 10px; background: var(--side, var(--surface)); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.rail a { width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); }
+.rail a:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.rail a.here { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.rail .sep { width: 24px; height: 1px; background: var(--line); margin: 4px 0; }
+body { padding-left: 56px; }
+.appbar { margin-left: -56px; padding-left: 70px; }
+.wrap > section > div:first-child .eyebrow { display: none; }
+h1 { font: 700 24px/1.2 var(--f-ui); letter-spacing: -.01em; }
+.btn.primary, .lotchip, #add2nd.on { color: var(--on-accent, #0e1915); }
+@media (max-width: 700px) {
+  .rail { display: none; } body { padding-left: 0; } .appbar { margin-left: 0; padding-left: 12px; }
+  .appbar .colors .lab, .appbar .brand span:last-child { display: none; }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="live-bridge.js"></script>
 </head>
 <body>
+<header class="appbar">
+  <a class="brand" href="index.html"><span class="logo">R</span><span>Reliant Distribution</span></a>
+  <div class="right">
+    <label class="colors"><span class="lab">Colors</span><select id="themeSel" aria-label="Colors"></select></label>
+    <a class="avatar" href="index.html" title="Back to the Workspace">R</a>
+  </div>
+</header>
+<nav class="rail" aria-label="Main menu"><a href="index.html" title="Home" aria-label="Home"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a><a href="index.html#inventory/on-hand" title="Inventory" aria-label="Inventory"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/></svg></a><a href="index.html#books/book-info" title="Books" aria-label="Books"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"/></svg></a><a href="index.html#shows/all-shows" title="Shows" aria-label="Shows"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h13v12H3zM16 10l5-3v10l-5-3"/></svg></a><a href="index.html#fulfillment/new-book-show" title="Fulfillment" aria-label="Fulfillment"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h13v10H3zM16 10h3l2 3v4h-5M7 20a1.5 1.5 0 1 0 0-.01M18 20a1.5 1.5 0 1 0 0-.01"/></svg></a><span class="sep"></span><a href="prep.html" class="here" aria-current="page" title="Show Prep" aria-label="Show Prep"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9zM6 6h3M15 6h3v15H6V6M9 12h6M9 16h4"/></svg></a><a href="live.html" title="Book Spotlight" aria-label="Book Spotlight"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg></a><a href="station.html" title="Ticket System" aria-label="Ticket System"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4zM9 7v12"/></svg></a></nav>
 <div class="wrap">
   <div class="topbar">
-    <a class="btn" href="index.html">⌂ Home</a>
     <span class="sp"></span>
     <a class="btn" href="live.html">Open the live show →</a>
   </div>
@@ -126,6 +157,20 @@ ol.items .acts .wide { font-size: 13px; }
   </section>
 </div>
 
+<script>
+// Colors menu: the same 10 schemes as the rest of the App, saved with the person's sign-in
+(() => {
+  const RT = window.RELIANT_THEME, sel = document.getElementById("themeSel"), R = window.RELIANT;
+  if (!RT || !sel) return;
+  sel.innerHTML = RT.list.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+  sel.value = RT.current();
+  sel.onchange = async () => { RT.save(sel.value); try { await R.sb.auth.updateUser({ data: { theme: sel.value } }); } catch {} };
+  if (R && R.sb) R.sb.auth.getSession().then(({ data }) => {
+    const u = data && data.session && data.session.user, id = u && u.user_metadata && u.user_metadata.theme;
+    if (id && RT.list.some(t => t.id === id) && id !== RT.current()) { RT.save(id); sel.value = id; }
+  }).catch(() => {});
+})();
+</script>
 <script>
 (() => {
   "use strict";

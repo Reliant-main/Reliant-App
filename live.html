@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live Show · Reliant Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&family=Figtree:wght@400;500;600&display=swap">
 <style>
 /* Layout: one full-screen text card, set left like a title page; search drawer rises from the bottom.
    Single deliberate look: bookcloth green with gilt stamping, readable across a room. */
@@ -577,6 +577,25 @@ body.mode-operator[data-optheme="blush"] .search, body.mode-operator[data-opthem
 body.mode-operator[data-optheme="rose"], body:not(.mode-operator)[data-tvtheme="rose"] { --cloth: #2a0f1d; --cloth-2: #3a1529; --cloth-3: #4d1d37; --paper: #fbe9f1; --paper-dim: #d4a9bd; --gilt: #ff7eb6; --rule: #5e2944; --stem: #8fd19e; --chili: #ff9a3d; --on-accent: #2a0f1d; --warn-ink: #ffc2a8; }
 body.mode-operator[data-optheme="crimson"], body:not(.mode-operator)[data-tvtheme="crimson"] { --cloth: #240a0c; --cloth-2: #341013; --cloth-3: #49171b; --paper: #f8e9e6; --paper-dim: #cfa7a2; --gilt: #ff7a6b; --rule: #5a2226; --stem: #8fd19e; --chili: #ffa23d; --on-accent: #240a0c; --warn-ink: #ffc9a8; }
 body.mode-operator[data-optheme="bordeaux"], body:not(.mode-operator)[data-tvtheme="bordeaux"] { --cloth: #2b1117; --cloth-2: #3a1820; --cloth-3: #4c222b; --paper: #f3e6d8; --paper-dim: #c9ae9c; --gilt: #d9b77a; --rule: #5c2c35; --stem: #9bc48a; --chili: #e0663f; --on-accent: #2b1117; --warn-ink: #f5b49c; }
+/* App color schemes (match the rest of the App: same colors and the Inter typeface) — operator screen only; the TV keeps its own */
+body.mode-operator[data-optheme="clean-light"] { --cloth: #f1f2f0; --cloth-2: #ffffff; --cloth-3: #e9ece8; --paper: #1c2420; --paper-dim: #5f6a63; --gilt: #1d5a45; --rule: #dfe3dd; --stem: #2f7a3a; --chili: #c2410c; --on-accent: #ffffff; --warn-ink: #b42318; color-scheme: light;
+  --f-display: "Inter", system-ui, sans-serif; --f-text: "Inter", system-ui, sans-serif; --f-ui: "Inter", system-ui, sans-serif; }
+body.mode-operator[data-optheme="clean-dark"] { --cloth: #0e1915; --cloth-2: #15231e; --cloth-3: #1f3029; --paper: #eef0ea; --paper-dim: #9aa59d; --gilt: #7fc7a6; --rule: #2a3d35; --stem: #8fd19e; --chili: #ff8a5c; --on-accent: #0e1915; --warn-ink: #f0b49f; color-scheme: dark;
+  --f-display: "Inter", system-ui, sans-serif; --f-text: "Inter", system-ui, sans-serif; --f-ui: "Inter", system-ui, sans-serif; }
+body.mode-operator[data-optheme="clean-light"] .slist li:nth-child(odd) { background: rgba(0,0,0,.03); }
+body.mode-operator[data-optheme="clean-light"] .search { box-shadow: 0 0 0 100vmax rgba(20, 30, 25, .35), 0 20px 50px rgba(0,0,0,.25); }
+body.mode-operator[data-optheme^="clean-"] .ops-top .brand, body.mode-operator[data-optheme^="clean-"] .onair .t, body.mode-operator[data-optheme^="clean-"] .tile .v { font-weight: 700; letter-spacing: -.01em; }
+body.mode-operator[data-optheme^="clean-"] .onair .a { font-style: normal; }
+/* quick menu on the left of the operator screen (same as the Ticket System and Show Prep); links open in a new tab so the show keeps running here */
+.oprail { display: none; }
+body.mode-operator .oprail { display: flex; position: fixed; left: 0; top: 0; bottom: 0; z-index: 600; width: 56px; padding: 10px 8px; flex-direction: column; gap: 4px; align-items: center; background: var(--cloth-2); border-right: 1px solid var(--rule); }
+.oprail .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--gilt); color: var(--on-accent); display: grid; place-items: center; font: 700 14px var(--f-ui); text-decoration: none; margin-bottom: 8px; }
+.oprail a:not(.logo) { width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; color: var(--paper-dim); }
+.oprail a:not(.logo):hover { background: color-mix(in srgb, var(--paper) 8%, transparent); color: var(--paper); }
+.oprail a.here { background: color-mix(in srgb, var(--gilt) 18%, transparent); color: var(--gilt); }
+.oprail .sep { width: 24px; height: 1px; background: var(--rule); margin: 4px 0; }
+body.mode-operator .ops { margin-left: 56px; }
+@media (max-width: 900px) { body.mode-operator .oprail { display: none; } body.mode-operator .ops { margin-left: 0; } }
 body[data-optheme] .ws-layer, body[data-tvtheme] .ws-layer { --cloth: #10261f; --cloth-2: #173329; --cloth-3: #21443a; --paper: #efe7d4; --paper-dim: #b9b29f; --gilt: #d2a54a; --rule: #2f5348; --on-accent: #10261f; --warn-ink: #f0b49f; color-scheme: dark; }
 .themepick { display: flex; align-items: center; gap: 6px; }
 .themepick label { font: 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--paper-dim); }
@@ -895,6 +914,7 @@ body.mode-display #btnHome2 { display: none !important; }
   <div class="keys"><span><b>Enter</b> show now</span><span><b>Ctrl+Enter</b> play next</span><span><b>Shift+Enter</b> add to end</span><span><b>↑ ↓</b> choose</span><span><b>Esc</b> close</span></div>
 </div>
 
+<nav class="oprail" aria-label="Main menu"><a class="logo" href="index.html" target="_blank" rel="noopener" title="Reliant Workspace (opens in a new tab)" aria-label="Reliant Workspace">R</a><a href="index.html" target="_blank" rel="noopener" title="Home (opens in a new tab)" aria-label="Home"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a><a href="index.html#inventory/on-hand" target="_blank" rel="noopener" title="Inventory (opens in a new tab)" aria-label="Inventory"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/></svg></a><a href="index.html#books/book-info" target="_blank" rel="noopener" title="Books (opens in a new tab)" aria-label="Books"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"/></svg></a><a href="index.html#shows/all-shows" target="_blank" rel="noopener" title="Shows (opens in a new tab)" aria-label="Shows"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h13v12H3zM16 10l5-3v10l-5-3"/></svg></a><a href="index.html#fulfillment/new-book-show" target="_blank" rel="noopener" title="Fulfillment (opens in a new tab)" aria-label="Fulfillment"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h13v10H3zM16 10h3l2 3v4h-5M7 20a1.5 1.5 0 1 0 0-.01M18 20a1.5 1.5 0 1 0 0-.01"/></svg></a><span class="sep"></span><a href="prep.html" target="_blank" rel="noopener" title="Show Prep (opens in a new tab)" aria-label="Show Prep"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9zM6 6h3M15 6h3v15H6V6M9 12h6M9 16h4"/></svg></a><a href="live.html" class="here" aria-current="page" title="Book Spotlight" aria-label="Book Spotlight"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg></a><a href="station.html" target="_blank" rel="noopener" title="Ticket System (opens in a new tab)" aria-label="Ticket System"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4zM9 7v12"/></svg></a></nav>
 <div class="ops" id="ops">
   <header class="ops-top" id="opsTop">
     <button class="btn" id="btnHome" type="button">⌂ Home</button>
@@ -915,7 +935,7 @@ body.mode-display #btnHome2 { display: none !important; }
       <button class="btn warn" id="btnLayoutDelete" type="button" hidden>Delete</button>
     </span>
     <span class="themepick"><label for="themeSel">Colors</label><select id="themeSel" aria-label="Operator colors">
-      <option value="bookcloth">Bookcloth green</option><option value="blush">Blush pink (light)</option><option value="paper">Paper cream (light)</option><option value="midnight">Midnight blue</option><option value="plum">Plum</option><option value="rose">Dark rose</option><option value="crimson">Crimson</option><option value="bordeaux">Bordeaux &amp; gold</option>
+      <option value="clean-light">Clean light (App)</option><option value="clean-dark">Clean dark (App)</option><option value="bookcloth">Bookcloth green</option><option value="blush">Blush pink (light)</option><option value="paper">Paper cream (light)</option><option value="midnight">Midnight blue</option><option value="plum">Plum</option><option value="rose">Dark rose</option><option value="crimson">Crimson</option><option value="bordeaux">Bordeaux &amp; gold</option>
     </select></span>
     <span class="themepick"><label for="tvThemeSel">TV colors</label><select id="tvThemeSel" aria-label="TV colors">
       <option value="bookcloth">Bookcloth green</option><option value="blush">Blush pink (light)</option><option value="paper">Paper cream (light)</option><option value="midnight">Midnight blue</option><option value="plum">Plum</option><option value="rose">Dark rose</option><option value="crimson">Crimson</option><option value="bordeaux">Bordeaux &amp; gold</option>
