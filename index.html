@@ -92,7 +92,13 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   .iconbtn.menuBtn { display: grid; }
   .topbar .brand { width: auto; }
   .topbar .brand span:last-child, .colors .lab, .user .uname { display: none; }
-  .search { flex: 1 1 120px; }
+  .topbar { gap: 6px; padding-left: 8px; padding-right: 8px; }
+  .search { flex: 1 1 60px; min-width: 0; }
+  .colors svg { display: none; }
+  .colors select { max-width: 96px; }
+  .user > summary { padding: 2px; }
+  .hk { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hk .v { font-size: 22px; }
   .side { position: fixed; z-index: 40; top: 0; bottom: 0; left: 0; width: min(300px, 86vw); transform: translateX(-102%); transition: transform .2s; padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
   .app.navopen .side { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.35); }
   .app.navopen .scrim { display: block; position: fixed; inset: 0; z-index: 35; background: rgba(0,0,0,.35); }
@@ -435,7 +441,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
     if (push) history.pushState({ k: "settings" }, "", "#settings");
   }
   function goHome(push) {
-    here = { grp: "home", kid: null }; markNav(); closeNav();
+    here = { grp: "home", kid: null }; if (push) { openGrps = new Set(); saveOpen(); } markNav(); closeNav();
     document.title = "Reliant Workspace";
     $("sectionFrame").hidden = true; $("homeView").hidden = false;
     if (push && location.hash) history.pushState({ k: "home" }, "", location.pathname);
