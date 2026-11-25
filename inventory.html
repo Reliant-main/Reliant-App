@@ -100,6 +100,14 @@ tr:last-child td { border-bottom: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #0e1915; }
 .ok { color: var(--good); } .no { color: var(--bad); } .diff.pos { color: var(--good); } .diff.neg { color: var(--bad); }
 .big { font-size: 16px; font-weight: 600; }
+
+/* Presentation: slimmer page header (the top bar already names the section) and tidy number boxes */
+header.top .eyebrow { display: none; }
+header.top h1 { font-size: 26px; }
+.wrap { padding-top: 14px; }
+.kpis { background: var(--surface); }
+.kpis > .kpi { box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line); }
+@media (min-width: 900px) { #kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 </style>
 </head>
 <body>

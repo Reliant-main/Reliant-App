@@ -115,6 +115,13 @@ details.cust { border-bottom: 1px solid var(--line); }
 details.cust summary { cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: 14px; padding: 8px; align-items: baseline; }
 details.cust summary span.num { font-variant-numeric: tabular-nums; }
 details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--ink-2); }
+
+/* Presentation: slimmer page header (the top bar already names the section) and tidy number boxes */
+header.top .eyebrow { display: none; }
+header.top h1 { font-size: 26px; }
+.wrap { padding-top: 14px; }
+.kpis { background: var(--surface); }
+.kpis > .kpi { box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line); }
 </style>
 </head>
 <body>

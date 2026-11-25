@@ -107,6 +107,13 @@ tr:last-child td { border-bottom: 0; }
 .cons .payrow input { font: 14px var(--f-ui); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
 .cons .grow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 @media (max-width: 720px) { .cons .hm { display: none; } }
+
+/* Presentation: slimmer page header (the top bar already names the section) and tidy number boxes */
+header.top .eyebrow { display: none; }
+header.top h1 { font-size: 26px; }
+.wrap { padding-top: 14px; }
+.kpis { background: var(--surface); }
+.kpis > .kpi { box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line); }
 </style>
 </head>
 <body>
