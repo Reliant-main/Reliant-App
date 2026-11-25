@@ -143,10 +143,11 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   <div data-pane="show" style="display:contents">
     <section class="panel">
       <div class="ph">
-        <div class="ctrls"><label class="fl" style="min-width:min(380px,100%)">Show<select class="seltop" id="showSel" aria-label="Show"></select></label></div>
+        <div class="ctrls"><label class="fl" style="min-width:min(380px,100%)">Show<select class="seltop" id="showSel" aria-label="Show"></select></label>
+          <label class="chk" style="align-self:flex-end;padding-bottom:8px"><input type="checkbox" id="showClosed"> Show closed shows</label></div>
         <div class="ctrls" id="showBtns"></div>
       </div>
-      <div id="bundleRow" hidden><div class="how" style="margin:2px 0 6px">TikTok bundles orders across shows. Tick the other shows to work them together, buyer by buyer.</div><div class="chips" id="bundleChips"></div></div>
+      <div id="bundleRow" hidden><div class="how" style="margin:2px 0 6px">TikTok bundles orders across shows. Tick the other open TikTok shows to work them together, buyer by buyer.</div><div class="chips" id="bundleChips"></div></div>
       <div class="statusline" id="showState"></div>
       <section class="kpis" id="kpis" aria-label="Show totals"></section>
       <p class="how">New-book shows use new-book inventory; used and vintage shows use used inventory. A canceled book goes back to the inventory it came from.</p>
@@ -154,6 +155,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
 
     <section class="panel" id="pendPanel" hidden>
       <div><h2>Giveaways waiting for a book</h2><span class="sub">Won during the show and logged by the Ticket System. Assign the book each winner gets.</span></div>
+      <input type="search" class="search" id="pq" style="width:100%" placeholder="Search waiting giveaways by winner or buyer #" autocomplete="off" aria-label="Search waiting giveaways">
       <div id="pendList"></div>
     </section>
 
@@ -170,6 +172,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
 
     <section class="panel">
       <div class="ph"><div><h2 id="giftH">Giveaways for this show</h2><span class="sub" id="giftSub"></span></div></div>
+      <input type="search" class="search" id="gq" style="width:100%" placeholder="Search giveaways by recipient, book, ISBN or type" autocomplete="off" aria-label="Search giveaways">
       <div id="giftList"></div>
       <div id="giftForm"></div>
     </section>
@@ -227,7 +230,11 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   const TYPE = { used: "used", vintage: "vintage" };
   const showOf = x => D && D.byId[x.showId];
   const edOf = x => { const s = showOf(x); return !!(s && s.editable); };
+  // closed in the App, or (until switch day) already copied to the Roster in the sheets
+  const isDone = s => !!(s && (s.closed || s.roster));
   const shortName = s => s ? s.name.replace(/^(\d+)\.(\d+)\.\d{4}\s*/, "$1/$2 ") : "";
+  // "Name · show · Buyer #": buyer numbers start over each show, so staff need all three to find an order
+  const orderTag = (name, show, bnum) => [name || "No buyer name", show ? show.name : "", bnum != null ? "Buyer #" + bnum : ""].filter(Boolean).join(" · ");
 
   function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
   function showErr(t) { $("err").hidden = !t; $("err").textContent = t || ""; }
@@ -241,7 +248,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     showErr(""); L = data;
     $("testNote").hidden = L.live;
     const want = +P.get("show") || showId;
-    showId = want || (L.shows[0] && L.shows[0].id) || null;
+    showId = want || ((L.shows.find(s => !isDone(s)) || L.shows[0] || {}).id) || null;
     P.delete("show");
     drawSel();
     setStatus("live", `${int(L.shows.length)} shows from the last 120 days · signed in as ${L.me || "staff"}`);
@@ -250,15 +257,16 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     await loadShow();
   }
   function drawSel() {
-    const opts = L.shows.map(s => `<option value="${s.id}">${esc(s.name)} · ${esc(PLAT[s.plat] || s.plat)}${TYPE[s.type] ? " · " + TYPE[s.type] : ""}${s.test ? " · TEST" : ""}${s.closed ? " · closed" : ""} · ${int(s.sold)} sold${s.canceled ? `, ${int(s.canceled)} canceled` : ""}</option>`);
+    const shown = L.shows.filter(s => !isDone(s) || $("showClosed").checked || s.id === showId);
+    const opts = shown.map(s => `<option value="${s.id}">${esc(s.name)} · ${esc(PLAT[s.plat] || s.plat)}${TYPE[s.type] ? " · " + TYPE[s.type] : ""}${s.test ? " · TEST" : ""}${s.closed ? " · closed" : s.roster ? " · on the Roster" : ""} · ${int(s.sold)} sold${s.canceled ? `, ${int(s.canceled)} canceled` : ""}</option>`);
     if (showId && !L.shows.some(s => s.id === showId) && D && D.show.id === showId) opts.unshift(`<option value="${showId}">${esc(D.show.name)}</option>`);
     $("showSel").innerHTML = opts.join("") || `<option value="">No shows yet</option>`;
     if (showId) $("showSel").value = String(showId);
   }
-  // TikTok: other TikTok shows within 10 days can be worked together
+  // TikTok: any other open (not closed) TikTok show can be worked together
   function drawBundle() {
     const me = L && L.shows.find(s => s.id === showId);
-    const near = me && me.plat === "TT" ? L.shows.filter(s => s.plat === "TT" && s.id !== showId && Math.abs(Date.parse(s.date) - Date.parse(me.date)) <= 10 * 864e5) : [];
+    const near = me && me.plat === "TT" ? L.shows.filter(s => s.plat === "TT" && s.id !== showId && !isDone(s)) : [];
     [...extra].forEach(id => { if (!near.some(s => s.id === id)) extra.delete(id); });
     $("bundleRow").hidden = !near.length;
     $("bundleChips").innerHTML = near.map(s => `<button type="button" data-b="${s.id}" aria-pressed="${extra.has(s.id)}">${esc(s.name)}${TYPE[s.type] ? " · " + TYPE[s.type] : ""}<span class="n">${int(s.sold)}</span></button>`).join("");
@@ -268,6 +276,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     const id = +b.dataset.b; extra.has(id) ? extra.delete(id) : extra.add(id);
     openSale = ""; openBuyer = ""; openAssign = ""; drawBundle(); loadShow();
   });
+  $("showClosed").onchange = () => L && drawSel();
   const selIds = () => [showId, ...[...extra].filter(x => x !== showId)].filter(Boolean);
   async function loadShow() {
     if (!showId) { D = null; drawShow(); return; }
@@ -327,7 +336,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     }
     return [...g.values()];
   }
-  const lineNote = (l, ed) => `${esc(l.code && l.stock === "used" ? l.code : l.isbn)}${l.stock === "used" && l.source ? " · " + esc(l.source) : ""}${l.bundle ? " · bundle" : ""}${D.manager && l.status === "sold" && l.cost == null ? ' · <span class="pill">no cost</span>' : ""}${l.status === "sold" ? (l.dmg ? ` · <span class="pill">Damaged copy</span>${ed && l.stock !== "used" ? ` <button class="btn sm" type="button" data-dmg="${l.id}" data-on="0">Not damaged</button>` : ""}` : ed && l.stock !== "used" ? ` · <button class="btn sm" type="button" data-dmg="${l.id}" data-on="1">Damaged copy</button>` : "") : ""}${l.status === "canceled" ? ` · <span class="pill bad">Canceled${l.customer ? " · " + esc(l.customer) : ""}</span> ${esc(l.reason)}${l.cnote ? " · " + esc(l.cnote) : ""}${l.cby ? ` · by ${esc(l.cby)}` : ""}${ed && l.origin !== "cancel_tab" && (l.stock !== "used" || !showOf(l).tab || l.ucid) ? ` <button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}` : ""}`;
+  const lineNote = (l, ed) => `${esc(l.code && l.stock === "used" ? l.code : l.isbn)}${l.stock === "used" && l.source ? " · " + esc(l.source) : ""}${l.bundle ? " · bundle" : ""}${D.manager && l.status === "sold" && l.cost == null ? ' · <span class="pill">no cost</span>' : ""}${l.status === "sold" && ed ? ` · <button class="btn sm" type="button" data-c1="${l.id}">${openSale === "l:" + l.id ? "Close" : "Cancel this book"}</button>` : ""}${l.status === "sold" ? (l.dmg ? ` · <span class="pill">Damaged copy</span>${ed && l.stock !== "used" ? ` <button class="btn sm" type="button" data-dmg="${l.id}" data-on="0">Not damaged</button>` : ""}` : ed && l.stock !== "used" ? ` · <button class="btn sm" type="button" data-dmg="${l.id}" data-on="1">Damaged copy</button>` : "") : ""}${l.status === "canceled" ? ` · <span class="pill bad">Canceled${l.customer ? " · " + esc(l.customer) : ""}</span> ${esc(l.reason)}${l.cnote ? " · " + esc(l.cnote) : ""}${l.cby ? ` · by ${esc(l.cby)}` : ""}${ed && l.origin !== "cancel_tab" && (l.stock !== "used" || !showOf(l).tab || l.ucid) ? ` <button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}` : ""}`;
   function matches(lines, qv) {
     if (!qv) return true;
     const digits = qv.replace(/[^0-9x]/g, "");
@@ -336,28 +345,31 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     const toks = qv.split(/\s+/);
     return lines.some(l => toks.every(t => (l.title + " " + l.author + " " + l.isbn + " " + l.customer).toLowerCase().includes(t)));
   }
-  const cancelBox = (id, lines, who) => `<div class="box">
+  const cancelBox = (id, lines, who, only) => `<div class="box">
         <b>${esc(id.title)}</b>
-        ${lines.map(l => `<label class="chk"><input type="checkbox" data-cl="${l.id}" checked> ${esc(l.title)} <span class="a">${money(l.price)}${D.multi ? " · " + esc(shortName(showOf(l))) : ""}${l.stock === "used" ? " · used" : ""}</span></label>`).join("")}
+        ${lines.length > 1 ? '<div class="how">Only the book you picked is ticked. Tick any others from this order that are canceled too.</div>' : ""}
+        ${lines.map(l => `<label class="chk"><input type="checkbox" data-cl="${l.id}"${only == null || l.id === only ? " checked" : ""}> ${esc(l.title)} <span class="a">${money(l.price)}${D.multi ? " · " + esc(shortName(showOf(l))) : ""}${l.stock === "used" ? " · used" : ""}</span></label>`).join("")}
         <div class="fg"><label class="fl">Customer<input id="cxWho" placeholder="Username or name" value="${esc(who || "")}"></label>
           <label class="fl">Reason<select id="cxWhy"><option>Buyer canceled</option><option>Didn't pay</option><option>Shipping problem</option><option>Other</option></select></label>
           <label class="fl">Notes<input id="cxNote" placeholder="Optional"></label></div>
-        <div class="row"><button class="btn pri" type="button" id="cxGo">Cancel and put back in stock</button><span class="msg" id="cxMsg"></span></div></div>`;
+        <div class="row"><button class="btn pri" type="button" id="cxGo">Cancel ticked book(s) and put back in stock</button><span class="msg" id="cxMsg"></span></div></div>`;
   function drawSales() {
     const qv = $("q").value.trim().toLowerCase();
     $("saleView").hidden = view !== "sale"; $("buyerView").hidden = view !== "buyer";
     document.querySelectorAll("#viewSeg [data-v]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === view)));
-    if (view === "buyer") { drawBuyers(qv); return; }
+    if (view === "buyer") { $("salesTbl").innerHTML = ""; drawBuyers(qv); return; }
+    $("buyerView").innerHTML = "";
     const G = groups(), list = G.filter(g => matches(g.lines, qv));
     $("salesSub").textContent = `${int(G.length)} sales · ${int(D.sales.length)} books${qv ? ` · ${int(list.length)} match` : ""}`;
     $("salesTbl").innerHTML = list.length ? list.map(g => {
       const ed = !!D.byId[g.showId].editable, live = g.lines.filter(l => l.status === "sold"), allCan = !live.length;
       const total = g.lines.reduce((a, l) => a + (+l.price || 0), 0);
       const main = `<tr${allCan ? ' style="opacity:.75"' : ""}><td class="num big">${g.sale != null ? esc(g.sale) : '<span class="a">–</span>'}${D.multi ? `<div class="a" style="font-weight:400">${esc(shortName(D.byId[g.showId]))}</div>` : ""}</td><td class="hide-sm a">${esc(g.time || "")}</td>
-        <td>${g.lines.map(l => `<div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${lineNote(l, ed)}</div>`).join("")}${g.lines[0].customer ? `<div class="a">Buyer: ${esc(g.lines[0].customer)}</div>` : ""}</td>
-        <td class="num">${money(total)}</td><td class="num">${live.length && ed ? `<button class="btn sm" type="button" data-cx="${esc(g.key)}">${openSale === g.key ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
-      if (openSale !== g.key || !live.length || !ed) return main;
-      return main + `<tr><td colspan="5">${cancelBox({ title: "Cancel " + (g.sale != null ? "sale #" + g.sale : "this sale") }, live, live[0].customer)}</td></tr>`;
+        <td>${g.lines.map(l => `<div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${lineNote(l, ed)}</div>`).join("")}${g.lines[0].customer || g.lines[0].bnum != null ? `<div class="a">${esc(orderTag(g.lines[0].customer, D.byId[g.showId], g.lines[0].bnum))}</div>` : ""}</td>
+        <td class="num">${money(total)}</td><td></td></tr>`;
+      const pickId = openSale.startsWith("l:") ? +openSale.slice(2) : null;
+      if (!ed || pickId == null || !live.some(l => l.id === pickId)) return main;
+      return main + `<tr><td colspan="5">${cancelBox({ title: "Cancel a book" + (g.sale != null ? " from sale #" + g.sale : "") }, live, live[0].customer, pickId)}</td></tr>`;
     }).join("") : `<tr><td colspan="5" class="empty">${qv ? "No sale matches that search." : "No sales yet."}</td></tr>`;
   }
 
@@ -371,7 +383,8 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     return [...m.values()].sort((a, b) => (a.key === "~") - (b.key === "~") || (b.pend.length > 0) - (a.pend.length > 0) || a.name.localeCompare(b.name));
   }
   function drawBuyers(qv) {
-    const all = buyers(), list = all.filter(b => !qv || b.name.toLowerCase().includes(qv) || (b.lines.length && matches(b.lines, qv)));
+    const bn = qv.replace(/^buyer\s*/, "").replace("#", "");
+    const all = buyers(), list = all.filter(b => !qv || b.name.toLowerCase().includes(qv) || (b.lines.length && matches(b.lines, qv)) || (/^\d{1,4}$/.test(bn) && (b.lines.some(l => String(l.bnum) === bn) || b.pend.some(p => String(p.buyer) === bn))));
     const books = all.reduce((a, b) => a + b.lines.length, 0);
     $("salesSub").textContent = `${int(all.filter(b => b.key !== "~").length)} buyers · ${int(books)} books${qv ? ` · ${int(list.length)} match` : ""}`;
     $("buyerView").innerHTML = list.length ? list.map(b => {
@@ -379,10 +392,14 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
       const shows = new Set(b.lines.map(l => l.showId)).size, edLive = live.filter(edOf), open = openBuyer === b.key;
       return `<details class="cust"${open ? " open" : ""} data-bk="${esc(b.key)}"><summary><span class="t">${esc(b.name)} ${b.pend.length ? `<span class="pill">${b.pend.length} giveaway${b.pend.length === 1 ? "" : "s"} need a book</span>` : ""} <span class="a">${int(shows)} show${shows === 1 ? "" : "s"}</span></span><span class="num">${int(live.length)}</span><span class="num">${money(total)}</span><span class="num a">${b.gifts.length ? int(b.gifts.length) + " given" : ""}</span></summary>
         <div class="items" style="display:grid;gap:8px">
-          ${b.lines.map(l => `<div><div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)} <span class="a">${money(l.price)} · ${l.sale != null ? "sale #" + esc(l.sale) : "no sale #"}${D.multi ? " · " + esc(shortName(showOf(l))) : ""}${l.stock === "used" ? " · used" : ""}</span></div><div class="a">${lineNote(l, edOf(l))}</div></div>`).join("")}
+          ${[...new Set(b.lines.map(l => l.showId + "|" + (l.bnum ?? "")))].map(k => { const ls = b.lines.filter(l => l.showId + "|" + (l.bnum ?? "") === k), f = ls[0];
+            return `<div style="display:grid;gap:4px"><div class="sub" style="font-weight:600">${esc(orderTag(b.key === "~" ? "" : b.name, showOf(f), f.bnum))}</div>${ls.map(l => `<div style="padding-left:10px"><div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)} <span class="a">${money(l.price)} · ${l.sale != null ? "sale #" + esc(l.sale) : "no sale #"}${l.stock === "used" ? " · used" : ""}</span></div><div class="a">${lineNote(l, edOf(l))}</div></div>`).join("")}</div>`; }).join("")}
           ${b.pend.map(p => pendRow(p)).join("")}
           ${b.gifts.map(g => `<div class="a">Giveaway: ${esc(g.title)} · ${esc(g.type)}${D.multi ? " · " + esc(shortName(showOf(g))) : ""}</div>`).join("")}
-          ${edLive.length ? (open && openSale === "b:" + b.key ? cancelBox({ title: b.key === "~" ? "Cancel books" : "Cancel for " + b.name }, edLive, b.key === "~" ? "" : b.name) : `<div><button class="btn sm" type="button" data-bcx="${esc(b.key)}">${b.key === "~" ? "Cancel books…" : "Cancel books for " + esc(b.name) + "…"}</button></div>`) : ""}
+          ${(() => { const pickId = openSale.startsWith("l:") ? +openSale.slice(2) : null, f = edLive.find(l => l.id === pickId);
+            if (!f) return "";
+            const same = b.key === "~" ? edLive.filter(l => l.showId === f.showId && l.sale === f.sale) : edLive;
+            return cancelBox({ title: "Cancel a book for " + orderTag(b.key === "~" ? "" : b.name, showOf(f), f.bnum) }, same, b.key === "~" ? "" : b.name, pickId); })()}
         </div></details>`;
     }).join("") : `<p class="empty">${qv ? "No buyer matches." : "No sales yet."}</p>`;
     // forms for open assignments inside the buyer cards
@@ -390,8 +407,6 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   }
   $("buyerView").addEventListener("toggle", e => { const d = e.target.closest && e.target.closest("details[data-bk]"); if (d) openBuyer = d.open ? d.dataset.bk : (openBuyer === d.dataset.bk ? "" : openBuyer); }, true);
   $("buyerView").addEventListener("click", e => {
-    const b = e.target.closest("[data-bcx]");
-    if (b) { openBuyer = b.dataset.bcx; openSale = "b:" + b.dataset.bcx; drawSales(); if ($("cxWho")) $("cxNote").focus(); return; }
     salesClick(e);
   });
   $("viewSeg").addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (!b) return; view = b.dataset.v; ls.set("ful.view", view); openSale = ""; D && drawSales(); });
@@ -400,17 +415,21 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   const pendRow = p => {
     const s = showOf(p), ed = s && s.editable;
     return `<div class="pend" style="border:1px dashed var(--accent);border-radius:10px;padding:8px 10px">
-      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span><b>${esc(p.user)}</b> <span class="a">${p.buyer != null ? "buyer #" + esc(p.buyer) + " · " : ""}won a giveaway${p.time ? " at " + esc(p.time) : ""}${p.prize ? " · " + esc(p.prize) : ""}${D.multi ? " · " + esc(shortName(s)) : ""}${s && s.type !== "new" ? " · used" : ""}</span></span>
+      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span><b>${esc(orderTag(p.user, s, p.buyer))}</b> <span class="a">won a giveaway${p.time ? " at " + esc(p.time) : ""}${p.prize ? " · " + esc(p.prize) : ""}${s && s.type !== "new" ? " · used inventory" : ""}</span></span>
       ${ed ? `<button class="btn sm${openAssign === String(p.id) ? "" : " pri"}" type="button" data-assign="${p.id}">${openAssign === String(p.id) ? "Close" : "Assign a book"}</button>` : `<span class="a">${esc(s ? (s.closed ? "Show closed" : s.why || "") : "")}</span>`}</div>
       ${openAssign === String(p.id) && ed ? `<div data-asgbox="${p.id}"></div>` : ""}</div>`;
   };
+  $("pq").addEventListener("input", () => D && drawPending());
+  $("gq").addEventListener("input", () => D && drawGifts());
   function mountAssign(box) {
     const p = D.pending.find(x => String(x.id) === box.dataset.asgbox); if (!p) return;
     makeGiftForm(box, { show: p.showId, preset: { ticket: p.id, who: p.user, buyer: p.buyer } });
   }
   function drawPending() {
     $("pendPanel").hidden = !D.pending.length;
-    $("pendList").innerHTML = `<div style="display:grid;gap:8px">${D.pending.map(pendRow).join("")}</div>`;
+    const pv = $("pq").value.trim().toLowerCase().replace(/^buyer\s*/, "").replace("#", "");
+    const list = D.pending.filter(p => !pv || String(p.user).toLowerCase().includes(pv) || String(p.buyer) === pv || shortName(showOf(p)).toLowerCase().includes(pv));
+    $("pendList").innerHTML = `<div style="display:grid;gap:8px">${list.map(pendRow).join("") || '<p class="empty">No waiting giveaway matches.</p>'}</div>`;
     document.querySelectorAll("#pendList [data-asgbox]").forEach(mountAssign);
   }
   document.addEventListener("click", e => {
@@ -430,8 +449,8 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   $("q").addEventListener("input", () => D && drawSales());
   $("salesTbl").addEventListener("click", salesClick);
   async function salesClick(e) {
-    const cx = e.target.closest("[data-cx]");
-    if (cx) { openSale = openSale === cx.dataset.cx ? "" : cx.dataset.cx; drawSales(); if ($("cxWho")) $("cxWho").focus(); return; }
+    const c1 = e.target.closest("[data-c1]");
+    if (c1) { const k = "l:" + c1.dataset.c1; openSale = openSale === k ? "" : k; drawSales(); if ($("cxWho")) ($("cxWho").value ? $("cxWhy") : $("cxWho")).focus(); return; }
     const un = e.target.closest("[data-undo]");
     if (un) {
       if (!un.dataset.armed) { un.dataset.armed = "1"; un.textContent = "Yes, undo"; un.classList.add("pri"); return; }
@@ -516,10 +535,13 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
         ${list.some(x => x.cost != null) ? `<td class="num">${money(g.cost)}</td>` : ""}<td class="num">${removable(g) ? `<button class="btn sm" type="button" ${g.kind === "used" ? "data-gurm" : "data-grm"}="${esc(g.id)}">Remove</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   }
   function drawGifts() {
-    const gs = D.giveaways, n = gs.reduce((a, g) => a + (+g.qty || 0), 0);
+    const gv = $("gq").value.trim().toLowerCase(), all = D.giveaways;
+    const gs = all.filter(g => !gv || gv.split(/\s+/).every(t => [g.who, g.title, g.isbn, g.type, g.note, shortName(showOf(g))].join(" ").toLowerCase().includes(t)));
+    const n = all.reduce((a, g) => a + (+g.qty || 0), 0);
     $("giftH").textContent = D.multi ? "Giveaways for these shows" : "Giveaways for this show";
-    $("giftSub").textContent = gs.length ? `${int(n)} book${n === 1 ? "" : "s"}${D.manager ? " · " + money(D.totals.gcost) + " off profit" : ""}` : "";
-    $("giftList").innerHTML = giftTable(gs, g => edOf(g) && (g.kind !== "used" || g.origin === "app") && g.origin !== "spotlight") + `<p class="msg" id="giftMsg"></p>`;
+    $("giftSub").textContent = all.length ? `${int(n)} book${n === 1 ? "" : "s"}${D.manager ? " · " + money(D.totals.gcost) + " off profit" : ""}${gv ? ` · ${int(gs.length)} match` : ""}` : "";
+    $("gq").hidden = !all.length;
+    $("giftList").innerHTML = (gv && !gs.length ? `<p class="empty">No giveaway matches.</p>` : giftTable(gs, g => edOf(g) && (g.kind !== "used" || g.origin === "app") && g.origin !== "spotlight")) + `<p class="msg" id="giftMsg"></p>`;
     if (!D.shows.some(x => x.editable)) { $("giftForm").innerHTML = D.show.closed ? `<p class="how">This show is closed, so giveaways can’t be added or removed.</p>` : `<p class="how">${esc(D.show.why)}</p>`; $("giftForm").dataset.show = ""; return; }
     const key = selIds().join(",");
     if ($("giftForm").dataset.show !== key) { makeGiftForm($("giftForm"), { show: (D.shows.find(x => x.editable) || D.show).id }); $("giftForm").dataset.show = key; }
