@@ -43,6 +43,32 @@
     };
   }
 
+  // TikTok LIVE giveaways: when a giveaway ends, the dashboard asks TikTok for its winners
+  // (/api/v1/draw/manage/winner_list?activity_id=...). Learned from the 11/19/2026 show ("PagePeach won the giveaway").
+  // Each winner becomes a $0 "giveaway" ticket (one per giveaway + winner), so the chit prints and Book Spotlight
+  // saves the book to Fulfillment's giveaways. TikTok only gives the winner's display name here.
+  const TT_WINNERS = /\/draw\/manage\/winner_list/;
+  function ttWinners(text, url) {
+    let j;
+    try { j = JSON.parse(text); } catch { return []; }
+    if (!j || j.code !== 0 || !j.data || !Array.isArray(j.data.winners)) return [];
+    let act = "";
+    try { act = new URL(url, location.href).searchParams.get("activity_id") || ""; } catch {}
+    return j.data.winners.map(w => {
+      const uid = w && w.user_id != null ? String(w.user_id) : "";
+      if (!uid || uid === "0") return null;
+      const name = w.nick_name || w.unique_id || null;
+      return {
+        event_id: "G" + (String(act).replace(/\W/g, "") || "x") + "-" + uid.replace(/\W/g, ""),
+        buyer: { id: uid, username: w.unique_id || name || ("tiktok-" + uid), display_name: name },
+        price: 0,
+        title: (w.winner_info && w.winner_info.incentive_name) || "Giveaway",
+        kind: "giveaway",
+        status: "paid",
+      };
+    }).filter(Boolean);
+  }
+
   window.RPR_READERS = {
     WN: {
       name: "Whatnot",
@@ -59,6 +85,7 @@
       session: () => queryKey("session_id"),
       showKey: () => "TT-" + (queryKey("session_id") || pathKey(/@([\w.-]+)\/live/) || "page") + "-" + today(),
       fromData(kind, text, url) {
+        if (TT_WINNERS.test(url || "")) return ttWinners(text, url);
         if (!TT_FEED.test(url || "")) return [];
         let j;
         try { j = JSON.parse(text); } catch { throw new Error("TikTok's auction results couldn't be read (the page may have changed)"); }

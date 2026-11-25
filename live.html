@@ -3936,7 +3936,7 @@ body.mode-display #btnHome2 { display: none !important; }
     if (isUsedShow()) items = stampUsed(items);
     const rec = { items, total, loggedAt: Date.now(), rejected: !!noSale, noSale: !!noSale, note: "" };
     const ts = !noSale && opts.ts ? opts.ts : null;
-    if (ts) rec.ts = { sale: ts.id, show: ts.showId, buyer: ts.buyerNo, user: ts.user || "", order: ts.order || "" };
+    if (ts) rec.ts = { sale: ts.id, show: ts.showId, buyer: ts.buyerNo, user: ts.user || "", order: ts.order || "", ...(ts.gift ? { gift: true } : {}) };
     const label = items.length > 1 ? `Bundle of ${items.length}` : itemLabel(items[0]);
     const ref = S.db ? salesCol(S.show.id).doc() : null;
     if (ts) {   // claim the Ticket System sale first, so two screens can never log the same one
@@ -4023,7 +4023,7 @@ body.mode-display #btnHome2 { display: none !important; }
   const tsSb = () => (window.RELIANT && window.RELIANT.sb) || null;
   const TS_PLAT = { WN: "Whatnot", TT: "TikTok", EB: "eBay" };
   const tsPrice = x => Math.round(+(x.adj_price ?? x.subtotal ?? x.total ?? 0) * 100) / 100;
-  const tsWho = c => `<span class="tsbuy"><span class="bn">#${esc(String(c.buyerNo ?? "?"))}</span>${esc(c.user || "Buyer")} bought for ${money(c.price)}</span>`;
+  const tsWho = c => `<span class="tsbuy"><span class="bn">#${esc(String(c.buyerNo ?? "?"))}</span>${esc(c.user || "Buyer")} ${c.gift ? "won the giveaway (scan the book they get)" : "bought for " + money(c.price)}</span>`;
   function tsDone(id) {
     TSX.done.add(id);
     if (TSX.cur && TSX.cur.id === id) { if ($("salePrice").value === String(TSX.cur.price)) $("salePrice").value = ""; TSX.cur = null; if (saleMode === "table") T.awaitPick = null; }
@@ -4102,7 +4102,7 @@ body.mode-display #btnHome2 { display: none !important; }
       if (S.show.tsShow) {
         const sid = S.show.tsShow;
         const [a, b] = await Promise.all([
-          sb.from("live_sales").select("id,live_buyer_id,subtotal,total,adj_price,status,order_created_at,received_at,spotlight_state,spotlight_ref,platform_order_id")
+          sb.from("live_sales").select("id,live_buyer_id,subtotal,total,adj_price,status,order_created_at,received_at,spotlight_state,spotlight_ref,platform_order_id,transaction_type")
             .eq("live_show_id", sid).order("order_created_at", { ascending: true }).order("id"),
           sb.from("live_buyers").select("id,buyer_number,username,display_name").eq("live_show_id", sid)]);
         if (!a.error) TSX.sales = a.data || [];
@@ -4128,7 +4128,8 @@ body.mode-display #btnHome2 { display: none !important; }
       return;
     }
     const x = q[0], b = TSX.buyers.get(x.live_buyer_id);
-    const cur = { id: x.id, showId: S.show.tsShow, price: tsPrice(x), buyerNo: b ? b.buyer_number : null, user: b ? (b.username || b.display_name || "") : "", order: x.platform_order_id || "", readyAt: Date.now() };
+    const gift = x.transaction_type === "giveaway";
+    const cur = { id: x.id, showId: S.show.tsShow, price: gift ? 0 : tsPrice(x), gift, buyerNo: b ? b.buyer_number : null, user: b ? (b.username || b.display_name || "") : "", order: x.platform_order_id || "", readyAt: Date.now() };
     TSX.cur = cur;
     if (saleMode === "table") {
       T.multi = false; T.sel.clear();
@@ -4182,6 +4183,7 @@ body.mode-display #btnHome2 { display: none !important; }
   }
 
   function statsOf(sales) {
+    sales = sales.filter(s => !(s.ts && s.ts.gift));   // platform giveaways go to Fulfillment, not the sales totals
     const live = sales.filter(s => !s.rejected);
     const noSales = sales.filter(s => s.noSale).length;
     const books = live.reduce((n, s) => n + (s.items || []).length, 0);
@@ -4207,7 +4209,7 @@ body.mode-display #btnHome2 { display: none !important; }
     ul.innerHTML = ordered.map((s, k) => ({ s, n: k + 1 })).reverse().map(({ s, n }) => {
       const items = s.items || [];
       const per = items.length > 1 && !s.noSale ? splitCents(Math.round(s.total * 100), items.length).map(c => money(c / 100)) : null;
-      const tsTag = s.ts ? `<span class="tstag" title="From the Ticket System${s.ts.user ? ": " + esc(s.ts.user) : ""}${s.ts.unsynced ? " · not yet sent to the Ticket System" : ""}">Buyer ${esc(String(s.ts.buyer ?? "?"))}${s.ts.unsynced ? " ⚠" : ""}</span>` : "";
+      const tsTag = s.ts ? `<span class="tstag" title="From the Ticket System${s.ts.user ? ": " + esc(s.ts.user) : ""}${s.ts.gift ? " · giveaway, saved to Fulfillment giveaways" : ""}${s.ts.unsynced ? " · not yet sent to the Ticket System" : ""}">${s.ts.gift ? "GIVEAWAY · " : ""}Buyer ${esc(String(s.ts.buyer ?? "?"))}${s.ts.unsynced ? " ⚠" : ""}</span>` : "";
       const ttl = tsTag + (items.length > 1
         ? `${items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}<b>${s.noSale ? "Lot" : "Bundle"} of ${items.length}</b><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copies</span> ` : ""}${items.map((it, i) => `${esc((it.pos ? "#" + it.pos + " " : "") + itemLabel(it))}${per ? " " + per[i] : ""}`).join(" · ")}</span>`
         : `${items[0] && items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}${items[0] && items[0].pos ? `<span class="pos">#${items[0].pos}</span>` : ""}<span class="${items[0] && !items[0].found && !items[0].used ? "miss" : ""}">${esc(itemLabel(items[0] || {}))}</span><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copy</span> ` : ""}${esc([fixAuthor(items[0]?.author || ""), items[0]?.isbn].filter(Boolean).join(" · "))}${s.note ? " · " + esc(s.note) : ""}${items[0] && items[0].used ? usedTags(items[0]) : ""}</span>`);

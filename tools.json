@@ -24,7 +24,7 @@
     {
       "id": "page-reader",
       "name": "Reliant Page Reader",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "kind": "chrome",
       "file": "extension/reliant-page-reader.zip",
       "where": "The computer that runs the live show page (TikTok, Whatnot or eBay) in Chrome.",
@@ -42,6 +42,7 @@
         "In Chrome, go to chrome://extensions and click the round arrow on Reliant Page Reader. Its connection stays."
       ],
       "changes": [
+        "0.5.0 (Nov 25): TikTok LIVE giveaway winners come in as giveaway tickets.",
         "0.4.1 (Nov 25): shows its version and “Update available” in its menu.",
         "0.4.0 (Nov 20): Reliant Tickets sidebar."
       ]

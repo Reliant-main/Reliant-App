@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Reliant Page Reader",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Reads sales off your Whatnot, TikTok and eBay live pages and sends them to the Reliant Ticket System. The Reliant Tickets sidebar shows the show's sales, buyer history and payments.",
   "permissions": [
     "storage",
