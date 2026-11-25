@@ -114,6 +114,10 @@ td.big { font-weight: 700; font-size: 15px; }
 details.cust { border-bottom: 1px solid var(--line); }
 details.cust summary { cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: 14px; padding: 8px; align-items: baseline; }
 details.cust summary span.num { font-variant-numeric: tabular-nums; }
+.bhead, details.cust.buyer summary { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 90px 70px; gap: 14px; align-items: start; }
+.bhead { padding: 0 8px 4px 28px; }
+details.cust.buyer summary { padding: 10px 8px; }
+details.cust.buyer .items { padding: 0 8px 12px 8px; }
 details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--ink-2); }
 
 /* tighter top now the App's top bar and sidebar frame every page */
@@ -387,19 +391,35 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     const all = buyers(), list = all.filter(b => !qv || b.name.toLowerCase().includes(qv) || (b.lines.length && matches(b.lines, qv)) || (/^\d{1,4}$/.test(bn) && (b.lines.some(l => String(l.bnum) === bn) || b.pend.some(p => String(p.buyer) === bn))));
     const books = all.reduce((a, b) => a + b.lines.length, 0);
     $("salesSub").textContent = `${int(all.filter(b => b.key !== "~").length)} buyers · ${int(books)} books${qv ? ` · ${int(list.length)} match` : ""}`;
-    $("buyerView").innerHTML = list.length ? list.map(b => {
-      const live = b.lines.filter(l => l.status === "sold"), total = live.reduce((a, l) => a + (+l.price || 0), 0);
-      const shows = new Set(b.lines.map(l => l.showId)).size, edLive = live.filter(edOf), open = openBuyer === b.key;
-      return `<details class="cust"${open ? " open" : ""} data-bk="${esc(b.key)}"><summary><span class="t">${esc(b.name)} ${b.pend.length ? `<span class="pill">${b.pend.length} giveaway${b.pend.length === 1 ? "" : "s"} need a book</span>` : ""} <span class="a">${int(shows)} show${shows === 1 ? "" : "s"}</span></span><span class="num">${int(live.length)}</span><span class="num">${money(total)}</span><span class="num a">${b.gifts.length ? int(b.gifts.length) + " given" : ""}</span></summary>
-        <div class="items" style="display:grid;gap:8px">
-          ${[...new Set(b.lines.map(l => l.showId + "|" + (l.bnum ?? "")))].map(k => { const ls = b.lines.filter(l => l.showId + "|" + (l.bnum ?? "") === k), f = ls[0];
-            return `<div style="display:grid;gap:4px"><div class="sub" style="font-weight:600">${esc(orderTag(b.key === "~" ? "" : b.name, showOf(f), f.bnum))}</div>${ls.map(l => `<div style="padding-left:10px"><div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)} <span class="a">${money(l.price)} · ${l.sale != null ? "sale #" + esc(l.sale) : "no sale #"}${l.stock === "used" ? " · used" : ""}</span></div><div class="a">${lineNote(l, edOf(l))}</div></div>`).join("")}</div>`; }).join("")}
+    const when = l => l.at ? Date.parse(l.at) : Date.parse((showOf(l) || {}).date || 0) + (l.sale || 0);
+    const stamp = l => { if (!l.at) return dfmt((showOf(l) || {}).date) + (l.time ? ", " + l.time : ""); const d = new Date(l.at);
+      return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}, ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`; };
+    $("buyerView").innerHTML = list.length ? `<div class="bhead sub"><span>Buyer</span><span>Order quantity</span><span class="num">Total</span><span class="num">Shows</span></div>` + list.map(b => {
+      const lines = b.lines.slice().sort((x, y) => when(x) - when(y) || (x.sale ?? 0) - (y.sale ?? 0) || x.id - y.id);
+      const live = lines.filter(l => l.status === "sold"), total = live.reduce((a, l) => a + (+l.price || 0), 0);
+      const shows = new Set(lines.map(l => l.showId)).size, edLive = live.filter(edOf), open = openBuyer === b.key;
+      const dn = (lines.find(l => l.dname && l.dname.toLowerCase() !== b.name.toLowerCase()) || {}).dname || "";
+      const pickId = openSale.startsWith("l:") ? +openSale.slice(2) : null;
+      const rows = lines.map(l => {
+        const sh = showOf(l), ed = edOf(l), row = `<tr${l.status === "canceled" ? ' style="opacity:.7"' : ""}>
+          <td><div class="t">${l.sale != null ? "Sale #" + esc(l.sale) : "No sale #"}</div><div class="a">${esc(stamp(l))}</div></td>
+          <td>${l.status === "canceled" ? `<span class="pill bad">Canceled</span>${l.reason ? `<div class="a">${esc(l.reason)}</div>` : ""}` : `<span class="pill ok">Sold</span>`}</td>
+          <td><div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${esc([l.code && l.stock === "used" ? l.code : l.isbn, l.stock === "used" ? "used" : "", l.bundle ? "lot" : "", l.dmg ? "damaged copy" : ""].filter(Boolean).join(" · "))}</div></td>
+          <td class="num">${money(l.price)}</td>
+          <td><div class="t">${esc(sh ? sh.name : "")}</div><div class="a">${esc([PLAT[sh && sh.plat] || "", l.bnum != null ? "Buyer #" + l.bnum : ""].filter(Boolean).join(" · "))}</div></td>
+          <td class="num">${l.status === "sold" && ed ? `<button class="btn sm" type="button" data-c1="${l.id}">${pickId === l.id ? "Close" : "Cancel this book"}</button>` : l.status === "canceled" && ed && l.origin !== "cancel_tab" && (l.stock !== "used" || !sh.tab || l.ucid) ? `<button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}</td></tr>`;
+        if (pickId !== l.id || l.status !== "sold" || !ed) return row;
+        const same = edLive.filter(x => x.showId === l.showId && (b.key !== "~" || x.sale === l.sale));   // the rest of this order: same show
+        return row + `<tr><td colspan="6">${cancelBox({ title: "Cancel a book for " + orderTag(b.key === "~" ? "" : b.name, sh, l.bnum) }, same, b.key === "~" ? "" : b.name, l.id)}</td></tr>`;
+      }).join("");
+      return `<details class="cust buyer"${open ? " open" : ""} data-bk="${esc(b.key)}"><summary>
+          <span><span class="t">${esc(b.name)}</span>${dn ? `<div class="a">${esc(dn)}</div>` : ""}${b.pend.length ? ` <span class="pill">${b.pend.length} giveaway${b.pend.length === 1 ? "" : "s"} need a book</span>` : ""}</span>
+          <span>Order quantity: ${int(live.length)}<div class="a">Total items: ${int(lines.length)}${lines.length > live.length ? ` · ${int(lines.length - live.length)} canceled` : ""}</div></span>
+          <span class="num">${money(total)}</span><span class="num a">${int(shows)}${b.gifts.length ? `<div>${int(b.gifts.length)} given</div>` : ""}</span></summary>
+        <div class="items" style="display:grid;gap:10px">
+          ${lines.length ? `<div class="tbl"><table><thead><tr><th class="plain">Order</th><th class="plain">Status</th><th class="plain">Item</th><th class="plain num">Amount</th><th class="plain">LIVE session</th><th class="plain"></th></tr></thead><tbody>${rows}</tbody></table></div>` : ""}
           ${b.pend.map(p => pendRow(p)).join("")}
-          ${b.gifts.map(g => `<div class="a">Giveaway: ${esc(g.title)} · ${esc(g.type)}${D.multi ? " · " + esc(shortName(showOf(g))) : ""}</div>`).join("")}
-          ${(() => { const pickId = openSale.startsWith("l:") ? +openSale.slice(2) : null, f = edLive.find(l => l.id === pickId);
-            if (!f) return "";
-            const same = b.key === "~" ? edLive.filter(l => l.showId === f.showId && l.sale === f.sale) : edLive;
-            return cancelBox({ title: "Cancel a book for " + orderTag(b.key === "~" ? "" : b.name, showOf(f), f.bnum) }, same, b.key === "~" ? "" : b.name, pickId); })()}
+          ${b.gifts.map(g => `<div class="a">Giveaway: ${esc(g.title)} · ${esc(g.type)} · ${esc(showOf(g) ? showOf(g).name : "")}</div>`).join("")}
         </div></details>`;
     }).join("") : `<p class="empty">${qv ? "No buyer matches." : "No sales yet."}</p>`;
     // forms for open assignments inside the buyer cards
