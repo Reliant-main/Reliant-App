@@ -1,5 +1,6 @@
 // Close show / Reopen show: one shared confirmation window, used by Shows, Fulfillment and Used Books.
-// ReliantClose.open({ sb, show: { id, name }, onDone })    — shows the summary, then closes (owners and managers)
+// ReliantClose.open({ sb, show: { id, name }, onDone })    — shows the summary, then closes (owners and managers);
+//   operators send it to a manager or owner for approval instead
 // ReliantClose.reopen({ sb, show: { id, name }, onDone })  — owners only; asks why
 (() => {
   "use strict";
@@ -53,16 +54,29 @@
       <div class="rc-grid">
         <div><span class="k">Books sold</span><span class="v">${int(p.sold)}</span><span class="d">${money(p.revenue)} revenue</span></div>
         <div><span class="k">Canceled</span><span class="v">${int(p.canceled)}</span><span class="d">${p.canceled ? money(p.canrev) + " · back on the shelf" : "none"}</span></div>
-        <div><span class="k">Given away</span><span class="v">${int(p.given)}</span><span class="d">${p.given ? money(p.gcost) + " cost" : "none"}</span></div>
+        <div><span class="k">Given away</span><span class="v">${int(p.given)}</span><span class="d">${p.given ? (p.gcost != null ? money(p.gcost) + " cost" : "logged") : "none"}</span></div>
         <div><span class="k">R’s</span><span class="v">${int(p.rejects)}</span><span class="d">shown, didn’t sell</span></div>
-        <div><span class="k">Profit</span><span class="v">${money(p.after)}</span><span class="d">after giveaways · ${money(p.profit)} before</span></div>
+        ${p.after != null ? `<div><span class="k">Profit</span><span class="v">${money(p.after)}</span><span class="d">after giveaways · ${money(p.profit)} before</span></div>` : ""}
       </div>
       <div><div class="rc-how" style="margin-bottom:6px">Check before closing</div>
         <ul class="rc-checks">${checks.length ? checks.map(c => `<li>${c}</li>`).join("") : `<li class="ok">Nothing looks off.</li>`}</ul></div>
       <p class="rc-how">Closing makes the show final: no more cancellations, giveaways or changes unless an owner reopens it. This summary is saved with the show.</p>
-      ${p.can_close ? "" : `<p class="rc-msg no">${esc(p.why || "This show can’t be closed right now.")}</p>`}
-      <div class="rc-row">${p.can_close ? `<button class="btn pri" type="button" data-go>Close show</button>` : ""}<button class="btn" type="button" data-x>Back</button><span class="rc-msg" data-msg></span></div>`;
+      ${p.request && p.request.status === "pending" ? `<p class="rc-msg ok">${p.manager ? `${esc(p.request.by || "Staff")} asked for this show to be closed.` : `Sent for approval${p.request.by ? " by " + esc(p.request.by) : ""}. A manager or owner will review and close it.`}</p>` : ""}
+      ${p.request && p.request.status === "sent back" ? `<p class="rc-msg no">Sent back: ${esc(p.request.answer)}</p>` : ""}
+      ${p.can_close || !p.manager ? "" : `<p class="rc-msg no">${esc(p.why || "This show can’t be closed right now.")}</p>`}
+      ${!p.manager && !(p.request && p.request.status === "pending") ? `<label class="rc-how" for="rcNote">Note for the manager (optional)</label><input id="rcNote" placeholder="e.g. all cancellations and giveaways are done">` : ""}
+      <div class="rc-row">${p.can_close ? `<button class="btn pri" type="button" data-go>Close show</button>` : !p.manager && !(p.request && p.request.status === "pending") ? `<button class="btn pri" type="button" data-ask>Send for approval</button>` : ""}<button class="btn" type="button" data-x>Back</button><span class="rc-msg" data-msg></span></div>`;
     m.el.querySelector("[data-x]").onclick = m.close;
+    const ask = m.el.querySelector("[data-ask]");
+    if (ask) ask.onclick = async () => {
+      ask.disabled = true;
+      const msg = m.el.querySelector("[data-msg]");
+      const { error: e3 } = await sb.rpc("ful_request_close", { p_show: show.id, p_note: (m.el.querySelector("#rcNote") || {}).value || "" });
+      if (e3) { ask.disabled = false; msg.className = "rc-msg no"; msg.textContent = e3.message; return; }
+      msg.className = "rc-msg ok"; msg.textContent = "Sent. A manager or owner will review and close it."; ask.remove();
+      m.el.querySelector("[data-x]").textContent = "Done";
+      if (onDone) onDone();
+    };
     const go = m.el.querySelector("[data-go]");
     if (go) go.onclick = async () => {
       go.disabled = true; m.el.querySelector("[data-msg]").textContent = "Closing…";

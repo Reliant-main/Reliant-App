@@ -135,6 +135,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     <button class="btn" id="btnRefresh" type="button">Refresh</button>
   </header>
   <div class="notice bad" id="err" hidden></div>
+  <div class="notice" id="reqNote" hidden></div>
   <div class="notice" id="testNote" hidden><b>Test mode until switch day.</b> Only the test show can be changed here. Real shows can be viewed but not changed, because the nightly copy still rebuilds them from the sheets. Giveaways outside a show also start on switch day.</div>
 
   <nav class="tabs" role="tablist" id="tabs">
@@ -258,8 +259,17 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     setStatus("live", `${int(L.shows.length)} shows from the last 120 days · signed in as ${L.me || "staff"}`);
     if (tab === "off") drawOff();
     if (tab === "cust") loadCust();
+    drawReqs();
     await loadShow();
   }
+  async function drawReqs() {
+    if (!L || !L.manager) { $("reqNote").hidden = true; return; }
+    const { data } = await sb().rpc("close_requests_pending");
+    const list = data || [];
+    $("reqNote").hidden = !list.length;
+    $("reqNote").innerHTML = `<b>${list.length} show${list.length === 1 ? "" : "s"} waiting for you to close:</b> ` + list.map(r => `<button class="btn sm" type="button" data-req="${r.show}">${esc(r.name)} · ${esc(PLAT[r.plat] || r.plat)} · asked by ${esc(r.by || "staff")}</button>`).join(" ");
+  }
+  $("reqNote").addEventListener("click", e => { const b = e.target.closest("[data-req]"); if (!b) return; showId = +b.dataset.req; extra.clear(); $("showClosed").checked = true; drawSel(); setTab("show"); drawBundle(); loadShow(); });
   function drawSel() {
     const shown = L.shows.filter(s => !isDone(s) || $("showClosed").checked || s.id === showId);
     const opts = shown.map(s => `<option value="${s.id}">${esc(s.name)} · ${esc(PLAT[s.plat] || s.plat)}${TYPE[s.type] ? " · " + TYPE[s.type] : ""}${s.test ? " · TEST" : ""}${s.closed ? " · closed" : s.roster ? " · on the Roster" : ""} · ${int(s.sold)} sold${s.canceled ? `, ${int(s.canceled)} canceled` : ""}</option>`);
@@ -299,7 +309,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     parts.forEach(p => { byId[p.show.id] = p.show; });
     const sum = k => parts.reduce((a, p) => a + (+p.totals[k] || 0), 0);
     const tag = (arr, p) => (arr || []).map(x => ({ ...x, showId: p.show.id }));
-    return { show: P0.show, shows: parts.map(p => p.show), byId, multi: parts.length > 1, manager: P0.manager, owner: P0.owner, live: P0.live, log: P0.log,
+    return { show: P0.show, shows: parts.map(p => p.show), byId, multi: parts.length > 1, manager: P0.manager, owner: P0.owner, live: P0.live, log: P0.log, req: P0.close_req,
       totals: { sold: sum("sold"), revenue: sum("revenue"), profit: sum("profit"), gcost: sum("gcost"), after: sum("after"), canceled: sum("canceled"),
                 canrev: sum("canrev"), given: sum("given"), damaged: sum("damaged") },
       sales: parts.flatMap(p => tag(p.sales, p)), giveaways: parts.flatMap(p => tag(p.giveaways, p)), pending: parts.flatMap(p => tag(p.pending, p)) };
@@ -317,15 +327,19 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
         : s.roster ? `<span class="pill">Copied to the Roster</span> not closed in the App yet` : `<span class="pill">Open</span>`;
       const last = D.log[0];
       $("showState").innerHTML = `${s.test ? '<span class="pill bad">Test show</span>' : ""} ${state} · ${esc(PLAT[s.plat] || s.plat)}${TYPE[s.type] ? " · " + TYPE[s.type] + " books" : " · new books"} · ${dfmt(s.date)}${last && last.action === "reopened" && !s.closed ? ` · reopened by ${esc(last.by)}: ${esc(last.reason)}` : ""}${!s.editable && !s.closed ? ` · <span class="a">${esc(s.why)}</span>` : ""}`;
+      const rq = D.req, waiting = rq && rq.status === "pending" && !s.closed;
       $("showBtns").innerHTML = (s.closed ? (D.owner ? `<button class="btn" type="button" id="reopenBtn">Reopen show</button>` : `<span class="sub">Only an owner can reopen it.</span>`)
-        : `<button class="btn${D.manager ? " pri" : ""}" type="button" id="closeBtn">${D.manager ? "Close show…" : "Closing summary"}</button>`);
+        : D.manager ? `${waiting ? `<button class="btn" type="button" id="sendBackBtn">Send back…</button>` : ""}<button class="btn pri" type="button" id="closeBtn">${waiting ? "Review and close…" : "Close show…"}</button>`
+        : waiting ? `<span class="pill">Waiting for a manager to close it</span>` : `<button class="btn pri" type="button" id="closeBtn">Close show…</button>`);
+      if (waiting) $("showState").innerHTML += ` · <span class="pill">Close requested</span> by ${esc(rq.by || "staff")}${rq.at ? " " + esc(new Date(rq.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) : ""}${rq.note ? ": " + esc(rq.note) : ""}`;
+      else if (rq && rq.status === "sent back" && !s.closed) $("showState").innerHTML += ` · <span class="pill bad">Close sent back</span> by ${esc(rq.decided_by || "a manager")}: ${esc(rq.answer)}`;
     }
     const k = [
       ["Books sold", int(t.sold), money(t.revenue) + " revenue" + (t.damaged ? ` · ${int(t.damaged)} damaged cop${t.damaged === 1 ? "y" : "ies"}` : "")],
       ["Canceled", int(t.canceled), t.canceled ? money(t.canrev) + " · back in stock" : "none"],
       ["Given away", int(t.given), t.given ? (D.manager ? money(t.gcost) + " cost" : "logged") : "none"],
-      ["Profit before giveaways", money(t.profit), "after fees and cost"],
-      ["Profit after giveaways", money(t.after), t.gcost ? "less " + money(t.gcost) : "no giveaways"]
+      ...(D.manager ? [["Profit before giveaways", money(t.profit), "after fees and cost"],
+        ["Profit after giveaways", money(t.after), t.gcost ? "less " + money(t.gcost) : "no giveaways"]] : [])
     ];
     $("kpis").innerHTML = k.map(([kk, v, d]) => `<div class="kpi"><span class="k">${kk}</span><span class="v">${v}</span><span class="d">${esc(d)}</span></div>`).join("");
     $("q").placeholder = D.multi ? "Search these shows by title, ISBN, sale # or buyer" : "Search this show by title, ISBN, sale # (order number) or buyer";
@@ -718,9 +732,13 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   $("showSel").onchange = () => { showId = +$("showSel").value || null; extra.clear(); openSale = ""; openBuyer = ""; openAssign = ""; $("q").value = ""; drawBundle(); loadShow(); };
   $("showBtns").addEventListener("click", e => {
     const show = D && { id: D.show.id, name: D.show.name };
-    const after = async () => { await loadList(); };
+    const after = async () => { await loadList(); };   // also refreshes the waiting close requests
     if (e.target.id === "closeBtn") window.ReliantClose.open({ sb: sb(), show, onDone: after });
     if (e.target.id === "reopenBtn") window.ReliantClose.reopen({ sb: sb(), show, onDone: after });
+    if (e.target.id === "sendBackBtn") {
+      const why = prompt("What needs fixing before this show can be closed? (The person who asked will see this.)");
+      if (why && why.trim()) sb().rpc("ful_close_request_send_back", { p_id: D.req.id, p_note: why.trim() }).then(({ error }) => { if (error) showErr(error.message); else loadShow(); });
+    }
   });
   $("btnRefresh").onclick = () => { C = null; loadList(); };
   setTab("show");

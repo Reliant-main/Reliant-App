@@ -570,6 +570,10 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
         : `<div class="ok-line">No shows yet.</div>`;
       const open = shows.filter(s => !s.closed && s.status === "live");
       if (open.length) att.push(["warn", open.length, `Show${open.length === 1 ? "" : "s"} not closed yet`, "shows:All shows"]);
+      if (MANAGER.includes(me.role)) {   // operators can ask a manager or owner to close a show
+        const { data: rq } = await Promise.resolve(sb.rpc("close_requests_pending")).catch(() => ({}));
+        if (rq && rq.length) att.unshift(["warn", rq.length, `Show${rq.length === 1 ? "" : "s"} waiting for you to approve and close`, "fulfillment:Book Show"]);
+      }
     } else $("recent").innerHTML = `<div class="ok-line">Couldn’t load shows.</div>`;
 
     // inventory
