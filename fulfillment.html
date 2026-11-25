@@ -134,7 +134,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   <div class="notice" id="testNote" hidden><b>Test mode until switch day.</b> Only the test show can be changed here. Real shows can be viewed but not changed, because the nightly copy still rebuilds them from the sheets. Giveaways outside a show also start on switch day.</div>
 
   <nav class="tabs" role="tablist" id="tabs">
-    <button type="button" role="tab" data-t="show">New-book show</button>
+    <button type="button" role="tab" data-t="show">Shows</button>
     <button type="button" role="tab" data-t="off">Giveaways outside a show</button>
     <button type="button" role="tab" data-t="cust">Cancellations by customer</button>
   </nav>
@@ -146,22 +146,30 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
         <div class="ctrls"><label class="fl" style="min-width:min(380px,100%)">Show<select class="seltop" id="showSel" aria-label="Show"></select></label></div>
         <div class="ctrls" id="showBtns"></div>
       </div>
+      <div id="bundleRow" hidden><div class="how" style="margin:2px 0 6px">TikTok bundles orders across shows. Tick the other shows to work them together, buyer by buyer.</div><div class="chips" id="bundleChips"></div></div>
       <div class="statusline" id="showState"></div>
       <section class="kpis" id="kpis" aria-label="Show totals"></section>
-      <p class="how">Used and vintage shows have their cancellations and giveaways in Used Books.</p>
+      <p class="how">New-book shows use new-book inventory; used and vintage shows use used inventory. A canceled book goes back to the inventory it came from.</p>
+    </section>
+
+    <section class="panel" id="pendPanel" hidden>
+      <div><h2>Giveaways waiting for a book</h2><span class="sub">Won during the show and logged by the Ticket System. Assign the book each winner gets.</span></div>
+      <div id="pendList"></div>
     </section>
 
     <section class="panel">
       <div class="ph"><div><h2>Sales</h2><span class="sub" id="salesSub"></span></div>
-        <button class="btn sm" type="button" id="salesTog" aria-expanded="true" aria-controls="salesBody">Hide sales</button></div>
+        <div class="ctrls"><div class="seg" role="group" aria-label="Sales view" id="viewSeg"><button type="button" data-v="sale">By sale</button><button type="button" data-v="buyer">By buyer</button></div>
+        <button class="btn sm" type="button" id="salesTog" aria-expanded="true" aria-controls="salesBody">Hide sales</button></div></div>
       <div id="salesBody" style="display:contents">
         <input type="search" class="search" id="q" style="width:100%" placeholder="Search this show by title, ISBN or sale # (order number)" autocomplete="off" aria-label="Search the show's sales">
-        <div class="tbl"><table><thead><tr><th class="plain num">Sale #</th><th class="plain hide-sm">Time</th><th class="plain">Book(s)</th><th class="plain num">Price</th><th class="plain"></th></tr></thead><tbody id="salesTbl"></tbody></table></div>
+        <div class="tbl" id="saleView"><table><thead><tr><th class="plain num">Sale #</th><th class="plain hide-sm">Time</th><th class="plain">Book(s)</th><th class="plain num">Price</th><th class="plain"></th></tr></thead><tbody id="salesTbl"></tbody></table></div>
+        <div id="buyerView" hidden></div>
       </div>
     </section>
 
     <section class="panel">
-      <div class="ph"><div><h2>Giveaways for this show</h2><span class="sub" id="giftSub"></span></div></div>
+      <div class="ph"><div><h2 id="giftH">Giveaways for this show</h2><span class="sub" id="giftSub"></span></div></div>
       <div id="giftList"></div>
       <div id="giftForm"></div>
     </section>
@@ -213,8 +221,13 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     { name: "Other gift", who: "Given to", whoReq: false, help: "A gift to a guest, staff member or anyone else." }
   ];
 
-  let L = null, D = null, showId = null, openSale = "", tab = "show", C = null, cOpen = "";
+  let L = null, D = null, showId = null, extra = new Set(), view = ls.get("ful.view") === "buyer" ? "buyer" : "sale";
+  let openSale = "", openBuyer = "", openAssign = "", tab = "show", C = null, cOpen = "";
   const P = new URLSearchParams(location.search);
+  const TYPE = { used: "used", vintage: "vintage" };
+  const showOf = x => D && D.byId[x.showId];
+  const edOf = x => { const s = showOf(x); return !!(s && s.editable); };
+  const shortName = s => s ? s.name.replace(/^(\d+)\.(\d+)\.\d{4}\s*/, "$1/$2 ") : "";
 
   function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
   function showErr(t) { $("err").hidden = !t; $("err").textContent = t || ""; }
@@ -228,85 +241,184 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     showErr(""); L = data;
     $("testNote").hidden = L.live;
     const want = +P.get("show") || showId;
-    if (!L.shows.some(s => s.id === want)) {
-      // a show opened from the Shows section may be older than this list; it's still loaded
-      showId = want || (L.shows[0] && L.shows[0].id) || null;
-    } else showId = want;
+    showId = want || (L.shows[0] && L.shows[0].id) || null;
     P.delete("show");
     drawSel();
-    setStatus("live", `${int(L.shows.length)} new-book shows from the last 120 days · signed in as ${L.me || "staff"}`);
+    setStatus("live", `${int(L.shows.length)} shows from the last 120 days · signed in as ${L.me || "staff"}`);
     if (tab === "off") drawOff();
     if (tab === "cust") loadCust();
     await loadShow();
   }
   function drawSel() {
-    const opts = L.shows.map(s => `<option value="${s.id}">${esc(s.name)} · ${esc(PLAT[s.plat] || s.plat)}${s.test ? " · TEST" : ""}${s.closed ? " · closed" : ""} · ${int(s.sold)} sold${s.canceled ? `, ${int(s.canceled)} canceled` : ""}</option>`);
+    const opts = L.shows.map(s => `<option value="${s.id}">${esc(s.name)} · ${esc(PLAT[s.plat] || s.plat)}${TYPE[s.type] ? " · " + TYPE[s.type] : ""}${s.test ? " · TEST" : ""}${s.closed ? " · closed" : ""} · ${int(s.sold)} sold${s.canceled ? `, ${int(s.canceled)} canceled` : ""}</option>`);
     if (showId && !L.shows.some(s => s.id === showId) && D && D.show.id === showId) opts.unshift(`<option value="${showId}">${esc(D.show.name)}</option>`);
-    $("showSel").innerHTML = opts.join("") || `<option value="">No new-book shows yet</option>`;
+    $("showSel").innerHTML = opts.join("") || `<option value="">No shows yet</option>`;
     if (showId) $("showSel").value = String(showId);
   }
+  // TikTok: other TikTok shows within 10 days can be worked together
+  function drawBundle() {
+    const me = L && L.shows.find(s => s.id === showId);
+    const near = me && me.plat === "TT" ? L.shows.filter(s => s.plat === "TT" && s.id !== showId && Math.abs(Date.parse(s.date) - Date.parse(me.date)) <= 10 * 864e5) : [];
+    [...extra].forEach(id => { if (!near.some(s => s.id === id)) extra.delete(id); });
+    $("bundleRow").hidden = !near.length;
+    $("bundleChips").innerHTML = near.map(s => `<button type="button" data-b="${s.id}" aria-pressed="${extra.has(s.id)}">${esc(s.name)}${TYPE[s.type] ? " · " + TYPE[s.type] : ""}<span class="n">${int(s.sold)}</span></button>`).join("");
+  }
+  $("bundleChips").addEventListener("click", e => {
+    const b = e.target.closest("[data-b]"); if (!b) return;
+    const id = +b.dataset.b; extra.has(id) ? extra.delete(id) : extra.add(id);
+    openSale = ""; openBuyer = ""; openAssign = ""; drawBundle(); loadShow();
+  });
+  const selIds = () => [showId, ...[...extra].filter(x => x !== showId)].filter(Boolean);
   async function loadShow() {
     if (!showId) { D = null; drawShow(); return; }
-    const id = showId;
-    const { data, error } = await sb().rpc("ful_show", { p_show: id });
-    if (id !== showId) return;
-    if (error) { showErr(error.message); return; }
-    D = data; if (!L.shows.some(s => s.id === id)) drawSel();
-    drawShow();
+    const ids = selIds(), key = ids.join(",");
+    const res = await Promise.all(ids.map(id => sb().rpc("ful_show", { p_show: id })));
+    if (key !== selIds().join(",")) return;
+    const bad = res.find(r => r.error);
+    if (bad) { showErr(bad.error.message); return; }
+    showErr("");
+    D = merge(res.map(r => r.data));
+    if (!L.shows.some(s => s.id === showId)) drawSel();
+    drawBundle(); drawShow();
+  }
+  function merge(parts) {
+    const P0 = parts[0], byId = {};
+    parts.forEach(p => { byId[p.show.id] = p.show; });
+    const sum = k => parts.reduce((a, p) => a + (+p.totals[k] || 0), 0);
+    const tag = (arr, p) => (arr || []).map(x => ({ ...x, showId: p.show.id }));
+    return { show: P0.show, shows: parts.map(p => p.show), byId, multi: parts.length > 1, manager: P0.manager, owner: P0.owner, live: P0.live, log: P0.log,
+      totals: { sold: sum("sold"), revenue: sum("revenue"), profit: sum("profit"), gcost: sum("gcost"), after: sum("after"), canceled: sum("canceled"),
+                canrev: sum("canrev"), given: sum("given"), damaged: sum("damaged") },
+      sales: parts.flatMap(p => tag(p.sales, p)), giveaways: parts.flatMap(p => tag(p.giveaways, p)), pending: parts.flatMap(p => tag(p.pending, p)) };
   }
 
-  // ---------- one show ----------
+  // ---------- the show(s) ----------
   function drawShow() {
-    if (!D) { $("kpis").innerHTML = ""; $("salesTbl").innerHTML = ""; $("giftList").innerHTML = ""; $("giftForm").innerHTML = ""; $("showState").textContent = ""; $("showBtns").innerHTML = ""; return; }
+    if (!D) { ["kpis", "salesTbl", "buyerView", "giftList", "giftForm", "showState", "showBtns", "pendList"].forEach(k => $(k).innerHTML = ""); $("pendPanel").hidden = true; return; }
     const s = D.show, t = D.totals;
-    const state = s.closed ? `<span class="pill ok">Closed</span> by ${esc(s.closed_by || "a manager")} ${s.closed_at ? "on " + esc(new Date(s.closed_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) : ""}`
-      : s.roster ? `<span class="pill">Copied to the Roster</span> not closed in the App yet` : `<span class="pill">Open</span>`;
-    const last = D.log[0];
-    $("showState").innerHTML = `${s.test ? '<span class="pill bad">Test show</span>' : ""} ${state} · ${esc(PLAT[s.plat] || s.plat)} · ${dfmt(s.date)}${last && last.action === "reopened" && !s.closed ? ` · reopened by ${esc(last.by)}: ${esc(last.reason)}` : ""}${!s.editable && !s.closed ? ` · <span class="a">${esc(s.why)}</span>` : ""}`;
-    $("showBtns").innerHTML = (s.closed ? (D.owner ? `<button class="btn" type="button" id="reopenBtn">Reopen show</button>` : `<span class="sub">Only an owner can reopen it.</span>`)
-      : `<button class="btn${D.manager ? " pri" : ""}" type="button" id="closeBtn">${D.manager ? "Close show…" : "Closing summary"}</button>`);
+    if (D.multi) {
+      $("showState").innerHTML = `<span class="pill">${int(D.shows.length)} TikTok shows together</span> ${D.shows.map(x => esc(x.name) + (TYPE[x.type] ? " (" + TYPE[x.type] + ")" : "") + (x.closed ? " · closed" : !x.editable ? ` · <span class="a">${esc(x.why)}</span>` : "")).join(" · ")}`;
+      $("showBtns").innerHTML = `<span class="sub">Close each show on its own (pick it alone).</span>`;
+    } else {
+      const state = s.closed ? `<span class="pill ok">Closed</span> by ${esc(s.closed_by || "a manager")} ${s.closed_at ? "on " + esc(new Date(s.closed_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) : ""}`
+        : s.roster ? `<span class="pill">Copied to the Roster</span> not closed in the App yet` : `<span class="pill">Open</span>`;
+      const last = D.log[0];
+      $("showState").innerHTML = `${s.test ? '<span class="pill bad">Test show</span>' : ""} ${state} · ${esc(PLAT[s.plat] || s.plat)}${TYPE[s.type] ? " · " + TYPE[s.type] + " books" : " · new books"} · ${dfmt(s.date)}${last && last.action === "reopened" && !s.closed ? ` · reopened by ${esc(last.by)}: ${esc(last.reason)}` : ""}${!s.editable && !s.closed ? ` · <span class="a">${esc(s.why)}</span>` : ""}`;
+      $("showBtns").innerHTML = (s.closed ? (D.owner ? `<button class="btn" type="button" id="reopenBtn">Reopen show</button>` : `<span class="sub">Only an owner can reopen it.</span>`)
+        : `<button class="btn${D.manager ? " pri" : ""}" type="button" id="closeBtn">${D.manager ? "Close show…" : "Closing summary"}</button>`);
+    }
     const k = [
       ["Books sold", int(t.sold), money(t.revenue) + " revenue" + (t.damaged ? ` · ${int(t.damaged)} damaged cop${t.damaged === 1 ? "y" : "ies"}` : "")],
-      ["Canceled", int(t.canceled), t.canceled ? money(t.canrev) + " · back on the shelf" : "none"],
-      ["Given away", int(t.given), t.given ? money(t.gcost) + " cost" : "none"],
+      ["Canceled", int(t.canceled), t.canceled ? money(t.canrev) + " · back in stock" : "none"],
+      ["Given away", int(t.given), t.given ? (D.manager ? money(t.gcost) + " cost" : "logged") : "none"],
       ["Profit before giveaways", money(t.profit), "after fees and cost"],
       ["Profit after giveaways", money(t.after), t.gcost ? "less " + money(t.gcost) : "no giveaways"]
     ];
     $("kpis").innerHTML = k.map(([kk, v, d]) => `<div class="kpi"><span class="k">${kk}</span><span class="v">${v}</span><span class="d">${esc(d)}</span></div>`).join("");
-    drawSales(); drawGifts();
+    $("q").placeholder = D.multi ? "Search these shows by title, ISBN, sale # or buyer" : "Search this show by title, ISBN, sale # (order number) or buyer";
+    drawPending(); drawSales(); drawGifts();
   }
   function groups() {
     const g = new Map();
-    for (const x of D.sales) { const k = x.sale != null ? "s" + x.sale : "n" + x.id; if (!g.has(k)) g.set(k, { key: k, sale: x.sale, time: x.time, lines: [] }); g.get(k).lines.push(x); }
+    for (const x of D.sales) {
+      const k = "x" + x.showId + "-" + (x.sale != null ? "s" + x.sale : "n" + x.id);
+      if (!g.has(k)) g.set(k, { key: k, sale: x.sale, time: x.time, showId: x.showId, lines: [] });
+      g.get(k).lines.push(x);
+    }
     return [...g.values()];
   }
-  function drawSales() {
-    const s = D.show, G = groups(), qv = $("q").value.trim().toLowerCase(), digits = qv.replace(/[^0-9x]/g, "");
-    const list = G.filter(g => {
-      if (!qv) return true;
-      if (/^#?\d{1,6}$/.test(qv)) return String(g.sale) === qv.replace("#", "");
-      if (digits.length >= 10) return g.lines.some(l => l.isbn.toLowerCase().includes(digits) || (digits.length === 10 && l.isbn.slice(3, 12) === digits.slice(0, 9)));
-      const toks = qv.split(/\s+/);
-      return g.lines.some(l => toks.every(t => (l.title + " " + l.author + " " + l.isbn + " " + l.customer).toLowerCase().includes(t)));
-    });
-    const nb = D.sales.length;
-    $("salesSub").textContent = `${int(G.length)} sales · ${int(nb)} books${qv ? ` · ${int(list.length)} match` : ""}`;
-    $("salesTbl").innerHTML = list.length ? list.map(g => {
-      const live = g.lines.filter(l => l.status === "sold"), allCan = !live.length;
-      const total = g.lines.reduce((a, l) => a + (+l.price || 0), 0);
-      const main = `<tr${allCan ? ' style="opacity:.75"' : ""}><td class="num big">${g.sale != null ? esc(g.sale) : '<span class="a">–</span>'}</td><td class="hide-sm a">${esc(g.time || "")}</td>
-        <td>${g.lines.map(l => `<div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${esc(l.isbn)}${l.bundle ? " · bundle" : ""}${D.manager && l.status === "sold" && l.cost == null ? ' · <span class="pill">no cost</span>' : ""}${l.status === "sold" ? (l.dmg ? ` · <span class="pill">Damaged copy</span>${s.editable ? ` <button class="btn sm" type="button" data-dmg="${l.id}" data-on="0">Not damaged</button>` : ""}` : s.editable ? ` · <button class="btn sm" type="button" data-dmg="${l.id}" data-on="1">Damaged copy</button>` : "") : ""}${l.status === "canceled" ? ` · <span class="pill bad">Canceled${l.customer ? " · " + esc(l.customer) : ""}</span> ${esc(l.reason)}${l.cnote ? " · " + esc(l.cnote) : ""}${l.cby ? ` · by ${esc(l.cby)}` : ""}${s.editable && l.origin !== "cancel_tab" ? ` <button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}` : ""}</div>`).join("")}</td>
-        <td class="num">${money(total)}</td><td class="num">${live.length && s.editable ? `<button class="btn sm" type="button" data-cx="${esc(g.key)}">${openSale === g.key ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
-      if (openSale !== g.key || !live.length || !s.editable) return main;
-      return main + `<tr><td colspan="5"><div class="box">
-        <b>Cancel ${g.sale != null ? "sale #" + esc(g.sale) : "this sale"}</b>
-        ${live.map(l => `<label class="chk"><input type="checkbox" data-cl="${l.id}" checked> ${esc(l.title)} <span class="a">${money(l.price)}</span></label>`).join("")}
-        <div class="fg"><label class="fl">Customer<input id="cxWho" placeholder="Username or name" value="${esc(live[0].customer || "")}"></label>
+  const lineNote = (l, ed) => `${esc(l.code && l.stock === "used" ? l.code : l.isbn)}${l.stock === "used" && l.source ? " · " + esc(l.source) : ""}${l.bundle ? " · bundle" : ""}${D.manager && l.status === "sold" && l.cost == null ? ' · <span class="pill">no cost</span>' : ""}${l.status === "sold" ? (l.dmg ? ` · <span class="pill">Damaged copy</span>${ed && l.stock !== "used" ? ` <button class="btn sm" type="button" data-dmg="${l.id}" data-on="0">Not damaged</button>` : ""}` : ed && l.stock !== "used" ? ` · <button class="btn sm" type="button" data-dmg="${l.id}" data-on="1">Damaged copy</button>` : "") : ""}${l.status === "canceled" ? ` · <span class="pill bad">Canceled${l.customer ? " · " + esc(l.customer) : ""}</span> ${esc(l.reason)}${l.cnote ? " · " + esc(l.cnote) : ""}${l.cby ? ` · by ${esc(l.cby)}` : ""}${ed && l.origin !== "cancel_tab" && (l.stock !== "used" || !showOf(l).tab || l.ucid) ? ` <button class="btn sm" type="button" data-undo="${l.id}">Undo</button>` : ""}` : ""}`;
+  function matches(lines, qv) {
+    if (!qv) return true;
+    const digits = qv.replace(/[^0-9x]/g, "");
+    if (/^#?\d{1,6}$/.test(qv)) return lines.some(l => String(l.sale) === qv.replace("#", ""));
+    if (digits.length >= 10) return lines.some(l => l.isbn.toLowerCase().includes(digits) || (digits.length === 10 && l.isbn.slice(3, 12) === digits.slice(0, 9)));
+    const toks = qv.split(/\s+/);
+    return lines.some(l => toks.every(t => (l.title + " " + l.author + " " + l.isbn + " " + l.customer).toLowerCase().includes(t)));
+  }
+  const cancelBox = (id, lines, who) => `<div class="box">
+        <b>${esc(id.title)}</b>
+        ${lines.map(l => `<label class="chk"><input type="checkbox" data-cl="${l.id}" checked> ${esc(l.title)} <span class="a">${money(l.price)}${D.multi ? " · " + esc(shortName(showOf(l))) : ""}${l.stock === "used" ? " · used" : ""}</span></label>`).join("")}
+        <div class="fg"><label class="fl">Customer<input id="cxWho" placeholder="Username or name" value="${esc(who || "")}"></label>
           <label class="fl">Reason<select id="cxWhy"><option>Buyer canceled</option><option>Didn't pay</option><option>Shipping problem</option><option>Other</option></select></label>
           <label class="fl">Notes<input id="cxNote" placeholder="Optional"></label></div>
-        <div class="row"><button class="btn pri" type="button" id="cxGo">Cancel and put back on the shelf</button><span class="msg" id="cxMsg"></span></div></div></td></tr>`;
-    }).join("") : `<tr><td colspan="5" class="empty">${qv ? "No sale in this show matches that search." : "No sales in this show."}</td></tr>`;
+        <div class="row"><button class="btn pri" type="button" id="cxGo">Cancel and put back in stock</button><span class="msg" id="cxMsg"></span></div></div>`;
+  function drawSales() {
+    const qv = $("q").value.trim().toLowerCase();
+    $("saleView").hidden = view !== "sale"; $("buyerView").hidden = view !== "buyer";
+    document.querySelectorAll("#viewSeg [data-v]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === view)));
+    if (view === "buyer") { drawBuyers(qv); return; }
+    const G = groups(), list = G.filter(g => matches(g.lines, qv));
+    $("salesSub").textContent = `${int(G.length)} sales · ${int(D.sales.length)} books${qv ? ` · ${int(list.length)} match` : ""}`;
+    $("salesTbl").innerHTML = list.length ? list.map(g => {
+      const ed = !!D.byId[g.showId].editable, live = g.lines.filter(l => l.status === "sold"), allCan = !live.length;
+      const total = g.lines.reduce((a, l) => a + (+l.price || 0), 0);
+      const main = `<tr${allCan ? ' style="opacity:.75"' : ""}><td class="num big">${g.sale != null ? esc(g.sale) : '<span class="a">–</span>'}${D.multi ? `<div class="a" style="font-weight:400">${esc(shortName(D.byId[g.showId]))}</div>` : ""}</td><td class="hide-sm a">${esc(g.time || "")}</td>
+        <td>${g.lines.map(l => `<div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)}</div><div class="a">${lineNote(l, ed)}</div>`).join("")}${g.lines[0].customer ? `<div class="a">Buyer: ${esc(g.lines[0].customer)}</div>` : ""}</td>
+        <td class="num">${money(total)}</td><td class="num">${live.length && ed ? `<button class="btn sm" type="button" data-cx="${esc(g.key)}">${openSale === g.key ? "Close" : "Cancel"}</button>` : ""}</td></tr>`;
+      if (openSale !== g.key || !live.length || !ed) return main;
+      return main + `<tr><td colspan="5">${cancelBox({ title: "Cancel " + (g.sale != null ? "sale #" + g.sale : "this sale") }, live, live[0].customer)}</td></tr>`;
+    }).join("") : `<tr><td colspan="5" class="empty">${qv ? "No sale matches that search." : "No sales yet."}</td></tr>`;
   }
+
+  // ---------- by buyer (all the selected shows) ----------
+  function buyers() {
+    const m = new Map(), key = n => (n || "").trim().toLowerCase();
+    const get = name => { const k = key(name) || "~"; if (!m.has(k)) m.set(k, { key: k, name: (name || "").trim() || "No buyer name", lines: [], pend: [], gifts: [] }); return m.get(k); };
+    D.sales.forEach(l => get(l.customer).lines.push(l));
+    D.pending.forEach(p => get(p.user).pend.push(p));
+    D.giveaways.forEach(g => { if (g.who) get(g.who).gifts.push(g); });
+    return [...m.values()].sort((a, b) => (a.key === "~") - (b.key === "~") || (b.pend.length > 0) - (a.pend.length > 0) || a.name.localeCompare(b.name));
+  }
+  function drawBuyers(qv) {
+    const all = buyers(), list = all.filter(b => !qv || b.name.toLowerCase().includes(qv) || (b.lines.length && matches(b.lines, qv)));
+    const books = all.reduce((a, b) => a + b.lines.length, 0);
+    $("salesSub").textContent = `${int(all.filter(b => b.key !== "~").length)} buyers · ${int(books)} books${qv ? ` · ${int(list.length)} match` : ""}`;
+    $("buyerView").innerHTML = list.length ? list.map(b => {
+      const live = b.lines.filter(l => l.status === "sold"), total = live.reduce((a, l) => a + (+l.price || 0), 0);
+      const shows = new Set(b.lines.map(l => l.showId)).size, edLive = live.filter(edOf), open = openBuyer === b.key;
+      return `<details class="cust"${open ? " open" : ""} data-bk="${esc(b.key)}"><summary><span class="t">${esc(b.name)} ${b.pend.length ? `<span class="pill">${b.pend.length} giveaway${b.pend.length === 1 ? "" : "s"} need a book</span>` : ""} <span class="a">${int(shows)} show${shows === 1 ? "" : "s"}</span></span><span class="num">${int(live.length)}</span><span class="num">${money(total)}</span><span class="num a">${b.gifts.length ? int(b.gifts.length) + " given" : ""}</span></summary>
+        <div class="items" style="display:grid;gap:8px">
+          ${b.lines.map(l => `<div><div class="t${l.status === "canceled" ? " strike" : ""}">${esc(l.title)} <span class="a">${money(l.price)} · ${l.sale != null ? "sale #" + esc(l.sale) : "no sale #"}${D.multi ? " · " + esc(shortName(showOf(l))) : ""}${l.stock === "used" ? " · used" : ""}</span></div><div class="a">${lineNote(l, edOf(l))}</div></div>`).join("")}
+          ${b.pend.map(p => pendRow(p)).join("")}
+          ${b.gifts.map(g => `<div class="a">Giveaway: ${esc(g.title)} · ${esc(g.type)}${D.multi ? " · " + esc(shortName(showOf(g))) : ""}</div>`).join("")}
+          ${edLive.length ? (open && openSale === "b:" + b.key ? cancelBox({ title: b.key === "~" ? "Cancel books" : "Cancel for " + b.name }, edLive, b.key === "~" ? "" : b.name) : `<div><button class="btn sm" type="button" data-bcx="${esc(b.key)}">${b.key === "~" ? "Cancel books…" : "Cancel books for " + esc(b.name) + "…"}</button></div>`) : ""}
+        </div></details>`;
+    }).join("") : `<p class="empty">${qv ? "No buyer matches." : "No sales yet."}</p>`;
+    // forms for open assignments inside the buyer cards
+    document.querySelectorAll("#buyerView [data-asgbox]").forEach(mountAssign);
+  }
+  $("buyerView").addEventListener("toggle", e => { const d = e.target.closest && e.target.closest("details[data-bk]"); if (d) openBuyer = d.open ? d.dataset.bk : (openBuyer === d.dataset.bk ? "" : openBuyer); }, true);
+  $("buyerView").addEventListener("click", e => {
+    const b = e.target.closest("[data-bcx]");
+    if (b) { openBuyer = b.dataset.bcx; openSale = "b:" + b.dataset.bcx; drawSales(); if ($("cxWho")) $("cxNote").focus(); return; }
+    salesClick(e);
+  });
+  $("viewSeg").addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (!b) return; view = b.dataset.v; ls.set("ful.view", view); openSale = ""; D && drawSales(); });
+
+  // ---------- giveaways waiting for a book (from the Ticket System) ----------
+  const pendRow = p => {
+    const s = showOf(p), ed = s && s.editable;
+    return `<div class="pend" style="border:1px dashed var(--accent);border-radius:10px;padding:8px 10px">
+      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span><b>${esc(p.user)}</b> <span class="a">${p.buyer != null ? "buyer #" + esc(p.buyer) + " · " : ""}won a giveaway${p.time ? " at " + esc(p.time) : ""}${p.prize ? " · " + esc(p.prize) : ""}${D.multi ? " · " + esc(shortName(s)) : ""}${s && s.type !== "new" ? " · used" : ""}</span></span>
+      ${ed ? `<button class="btn sm${openAssign === String(p.id) ? "" : " pri"}" type="button" data-assign="${p.id}">${openAssign === String(p.id) ? "Close" : "Assign a book"}</button>` : `<span class="a">${esc(s ? (s.closed ? "Show closed" : s.why || "") : "")}</span>`}</div>
+      ${openAssign === String(p.id) && ed ? `<div data-asgbox="${p.id}"></div>` : ""}</div>`;
+  };
+  function mountAssign(box) {
+    const p = D.pending.find(x => String(x.id) === box.dataset.asgbox); if (!p) return;
+    makeGiftForm(box, { show: p.showId, preset: { ticket: p.id, who: p.user, buyer: p.buyer } });
+  }
+  function drawPending() {
+    $("pendPanel").hidden = !D.pending.length;
+    $("pendList").innerHTML = `<div style="display:grid;gap:8px">${D.pending.map(pendRow).join("")}</div>`;
+    document.querySelectorAll("#pendList [data-asgbox]").forEach(mountAssign);
+  }
+  document.addEventListener("click", e => {
+    const a = e.target.closest("[data-assign]"); if (!a) return;
+    openAssign = openAssign === a.dataset.assign ? "" : a.dataset.assign;
+    drawPending(); if (view === "buyer") drawSales();
+  });
+
   function setSalesOpen(open) {
     $("salesBody").style.display = open ? "contents" : "none";
     $("salesTog").textContent = open ? "Hide sales" : "Show sales";
@@ -316,15 +428,17 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   $("salesTog").onclick = () => setSalesOpen($("salesBody").style.display === "none");
   setSalesOpen(ls.get("ful.salesOpen") !== "0");
   $("q").addEventListener("input", () => D && drawSales());
-  $("salesTbl").addEventListener("click", async e => {
+  $("salesTbl").addEventListener("click", salesClick);
+  async function salesClick(e) {
     const cx = e.target.closest("[data-cx]");
     if (cx) { openSale = openSale === cx.dataset.cx ? "" : cx.dataset.cx; drawSales(); if ($("cxWho")) $("cxWho").focus(); return; }
     const un = e.target.closest("[data-undo]");
     if (un) {
       if (!un.dataset.armed) { un.dataset.armed = "1"; un.textContent = "Yes, undo"; un.classList.add("pri"); return; }
       un.disabled = true;
-      const { error } = await sb().rpc("ful_cancel_undo", { p_sales: [+un.dataset.undo] });
-      if (error) { un.disabled = false; un.textContent = error.message; return; }
+      const l = D.sales.find(x => x.id === +un.dataset.undo);
+      const err = await undoLines(l && l.ucid ? { sales: [], used: [l.ucid] } : { sales: [+un.dataset.undo], used: [] });
+      if (err) { un.disabled = false; un.textContent = err; return; }
       await loadShow(); return;
     }
     const dm = e.target.closest("[data-dmg]");
@@ -335,31 +449,57 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
       await loadShow(); return;
     }
     if (e.target.id === "cxGo") doCancel();
-  });
+  }
+  // new-book lines (and used lines on App shows) cancel in the App; used lines on Used Books workbook shows
+  // are kept with the Used Books cancellations so the nightly copy keeps them
+  async function cancelLines(lines, who, why, note) {
+    const viaUsed = lines.filter(l => l.stock === "used" && showOf(l).tab), rest = lines.filter(l => !viaUsed.includes(l));
+    const done = { sales: [], used: [] };
+    if (rest.length) {
+      const { error } = await sb().rpc("ful_cancel", { p_sales: rest.map(l => l.id), p_customer: who, p_reason: why, p_notes: note });
+      if (error) return { error: error.message, done };
+      done.sales = rest.map(l => l.id);
+    }
+    const tagId = "ful-" + Date.now().toString(36), today = todayISO();
+    for (let i = 0; i < viaUsed.length; i++) {
+      const l = viaUsed[i], id = `${tagId}-${i + 1}`;
+      const { error } = await sb().rpc("used_cancel", { p: { id, show: showOf(l).tab, sale: l.sale, code: l.code, title: l.code ? l.title : l.title, price: l.price, source: l.source,
+        customer: who, reason: why, notes: note, by: L.me || "", date: today } });
+      if (error) return { error: error.message, done };
+      done.used.push(id);
+    }
+    return { done };
+  }
+  async function undoLines(x) {
+    if (x.sales.length) { const { error } = await sb().rpc("ful_cancel_undo", { p_sales: x.sales }); if (error) return error.message; }
+    for (const id of x.used) { const { error } = await sb().rpc("used_cancel_undo", { p_id: id }); if (error) return error.message; }
+    return null;
+  }
   async function doCancel() {
     const ids = [...document.querySelectorAll("[data-cl]")].filter(c => c.checked).map(c => +c.dataset.cl);
     const who = $("cxWho").value.trim(), msg = $("cxMsg");
     if (!ids.length) { msg.innerHTML = `<span class="no">Tick at least one book.</span>`; return; }
     if (!who) { msg.innerHTML = `<span class="no">Enter the customer.</span>`; $("cxWho").focus(); return; }
     $("cxGo").disabled = true; msg.textContent = "Saving…";
-    const { error } = await sb().rpc("ful_cancel", { p_sales: ids, p_customer: who, p_reason: $("cxWhy").value, p_notes: $("cxNote").value.trim() });
-    if (error) { $("cxGo").disabled = false; msg.innerHTML = `<span class="no">Not canceled. ${esc(error.message)}</span>`; return; }
+    const lines = D.sales.filter(l => ids.includes(l.id));
+    const r = await cancelLines(lines, who, $("cxWhy").value, $("cxNote").value.trim());
+    if (r.error) { $("cxGo").disabled = false; msg.innerHTML = `<span class="no">Not canceled. ${esc(r.error)}</span>`; if (r.done.sales.length || r.done.used.length) loadShow(); return; }
     openSale = ""; C = null;
     await loadShow();
-    offerUndo(ids, who);
+    offerUndo(r.done, lines.length, who);
   }
   // 15-second Undo bar right after a cancellation is confirmed
   let undoT = null;
   function hideUndo() { clearInterval(undoT); undoT = null; $("undoBar").style.display = "none"; }
-  function offerUndo(ids, who) {
+  function offerUndo(done, n, who) {
     hideUndo();
     let left = 15; const btn = $("undoBtn");
-    $("undoTxt").textContent = `Canceled ${ids.length} book${ids.length === 1 ? "" : "s"} for ${who}. ${ids.length === 1 ? "It’s" : "They’re"} back on the shelf.`;
+    $("undoTxt").textContent = `Canceled ${n} book${n === 1 ? "" : "s"} for ${who}. ${n === 1 ? "It’s" : "They’re"} back in stock.`;
     btn.hidden = false; btn.disabled = false; btn.textContent = `Undo (${left})`; $("undoBar").style.display = "flex";
     btn.onclick = async () => {
       clearInterval(undoT); btn.disabled = true; btn.textContent = "Undoing…";
-      const { error } = await sb().rpc("ful_cancel_undo", { p_sales: ids });
-      if (error) { $("undoTxt").textContent = "Couldn’t undo: " + error.message; btn.hidden = true; setTimeout(hideUndo, 6000); return; }
+      const err = await undoLines(done);
+      if (err) { $("undoTxt").textContent = "Couldn’t undo: " + err; btn.hidden = true; setTimeout(hideUndo, 6000); return; }
       $("undoTxt").textContent = "Cancellation undone. The sale is back as it was."; btn.hidden = true; C = null;
       setTimeout(hideUndo, 3000); loadShow();
     };
@@ -369,53 +509,62 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
   // ---------- giveaways ----------
   function giftTable(list, removable) {
     if (!list.length) return `<p class="empty">No giveaways logged yet.</p>`;
-    return `<div class="tbl"><table><thead><tr><th class="plain">Date</th><th class="plain">Type</th><th class="plain">Book</th><th class="plain num">Qty</th><th class="plain">Recipient</th><th class="plain hide-sm">Notes</th>${list.some(g => g.cost != null) ? '<th class="plain num">Cost</th>' : ""}<th class="plain"></th></tr></thead><tbody>${
-      list.map(g => `<tr><td>${dfmt(g.date)}</td><td>${esc(g.type)}</td><td><div class="t">${esc(g.title)}</div><div class="a">${esc(g.isbn)}</div></td><td class="num">${int(g.qty)}</td>
-        <td>${esc(g.who)}${g.sale ? `<div class="a">sale #${esc(g.sale)}</div>` : ""}</td><td class="hide-sm a">${esc(g.note)}${g.by ? `<div>by ${esc(g.by)}${g.origin === "sheet" ? " · from the sheets" : ""}</div>` : ""}</td>
-        ${list.some(x => x.cost != null) ? `<td class="num">${money(g.cost)}</td>` : ""}<td class="num">${removable(g) ? `<button class="btn sm" type="button" data-grm="${g.id}">Remove</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+    const multi = D && D.multi && list.some(g => g.showId);
+    return `<div class="tbl"><table><thead><tr><th class="plain">Date</th>${multi ? '<th class="plain">Show</th>' : ""}<th class="plain">Type</th><th class="plain">Book</th><th class="plain num">Qty</th><th class="plain">Recipient</th><th class="plain hide-sm">Notes</th>${list.some(g => g.cost != null) ? '<th class="plain num">Cost</th>' : ""}<th class="plain"></th></tr></thead><tbody>${
+      list.map(g => `<tr><td>${dfmt(g.date)}</td>${multi ? `<td class="a">${esc(shortName(showOf(g)))}</td>` : ""}<td>${esc(g.type)}${g.ticket ? '<div class="a">from the Ticket System</div>' : ""}</td><td><div class="t">${esc(g.title)}</div><div class="a">${esc(g.isbn)}${g.kind === "used" ? " · used" + (g.source ? " · " + esc(g.source) : "") : ""}</div></td><td class="num">${int(g.qty)}</td>
+        <td>${esc(g.who)}${g.sale ? `<div class="a">sale #${esc(g.sale)}</div>` : ""}</td><td class="hide-sm a">${esc(g.note)}${g.by ? `<div>by ${esc(g.by)}${g.origin === "sheet" ? " · from the sheets" : g.origin === "spotlight" ? " · Book Spotlight" : ""}</div>` : ""}</td>
+        ${list.some(x => x.cost != null) ? `<td class="num">${money(g.cost)}</td>` : ""}<td class="num">${removable(g) ? `<button class="btn sm" type="button" ${g.kind === "used" ? "data-gurm" : "data-grm"}="${esc(g.id)}">Remove</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   }
   function drawGifts() {
     const gs = D.giveaways, n = gs.reduce((a, g) => a + (+g.qty || 0), 0);
-    $("giftSub").textContent = gs.length ? `${int(n)} book${n === 1 ? "" : "s"}${D.manager ? " · " + money(D.totals.gcost) + " off this show’s profit" : ""}` : "";
-    $("giftList").innerHTML = giftTable(gs, () => D.show.editable) + `<p class="msg" id="giftMsg"></p>`;
-    if (!D.show.editable) { $("giftForm").innerHTML = D.show.closed ? `<p class="how">This show is closed, so giveaways can’t be added or removed.</p>` : `<p class="how">${esc(D.show.why)}</p>`; return; }
-    if ($("giftForm").dataset.show !== String(D.show.id)) { makeGiftForm($("giftForm"), { show: D.show.id }); $("giftForm").dataset.show = String(D.show.id); }
+    $("giftH").textContent = D.multi ? "Giveaways for these shows" : "Giveaways for this show";
+    $("giftSub").textContent = gs.length ? `${int(n)} book${n === 1 ? "" : "s"}${D.manager ? " · " + money(D.totals.gcost) + " off profit" : ""}` : "";
+    $("giftList").innerHTML = giftTable(gs, g => edOf(g) && (g.kind !== "used" || g.origin === "app") && g.origin !== "spotlight") + `<p class="msg" id="giftMsg"></p>`;
+    if (!D.shows.some(x => x.editable)) { $("giftForm").innerHTML = D.show.closed ? `<p class="how">This show is closed, so giveaways can’t be added or removed.</p>` : `<p class="how">${esc(D.show.why)}</p>`; $("giftForm").dataset.show = ""; return; }
+    const key = selIds().join(",");
+    if ($("giftForm").dataset.show !== key) { makeGiftForm($("giftForm"), { show: (D.shows.find(x => x.editable) || D.show).id }); $("giftForm").dataset.show = key; }
     else if ($("giftForm")._refresh) $("giftForm")._refresh();
   }
   document.addEventListener("click", async e => {
-    const b = e.target.closest("[data-grm]"); if (!b) return;
+    const b = e.target.closest("[data-grm],[data-gurm]"); if (!b) return;
     if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Yes, remove"; b.classList.add("pri"); return; }
     b.disabled = true;
-    const { error } = await sb().rpc("ful_giveaway_remove", { p_id: +b.dataset.grm });
+    const { error } = b.dataset.gurm ? await sb().rpc("ful_used_giveaway_remove", { p_id: b.dataset.gurm }) : await sb().rpc("ful_giveaway_remove", { p_id: +b.dataset.grm });
     if (error) { b.disabled = false; b.textContent = error.message; return; }
     if (tab === "off") { await loadList(); drawOff(); } else await loadShow();
   });
 
   function makeGiftForm(root, opts) {
-    const st = { type: opts.show ? "Raffle" : "Life event", pick: null, ev: null };
+    const pre = opts.preset || null;
+    const st = { type: pre ? "Raffle" : opts.show ? "Raffle" : "Life event", pick: null, ev: null, show: opts.show || null };
     const types = opts.show ? GTYPES : GTYPES.filter(t => !t.needShow);
+    const isUsed = () => !!(st.show && D && D.byId[st.show] && D.byId[st.show].type !== "new");
+    const showChoice = !pre && opts.show && D && D.multi;
     root.innerHTML = `<div class="box">
-      <b>Log a giveaway</b>
-      <div class="seg" role="group" aria-label="Giveaway type" data-g="types">${types.map(t => `<button type="button" data-type="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>
+      <b>${pre ? `Book for ${esc(pre.who)}’s giveaway${pre.buyer != null ? " (buyer #" + esc(pre.buyer) + ")" : ""}` : "Log a giveaway"}</b>
+      ${pre ? "" : `<div class="seg" role="group" aria-label="Giveaway type" data-g="types">${types.map(t => `<button type="button" data-type="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>`}
       <p class="how" data-g="help"></p>
-      <input type="search" class="inp" data-g="q" placeholder="Find the book: title, author or ISBN (or scan)" autocomplete="off" aria-label="Find the book">
+      ${showChoice ? `<label class="fl">Show<select data-g="show">${D.shows.filter(x => x.editable).map(x => `<option value="${x.id}">${esc(x.name)}${TYPE[x.type] ? " · " + TYPE[x.type] : ""}</option>`).join("")}</select></label>` : ""}
+      <input type="search" class="inp" data-g="q" placeholder="" autocomplete="off" aria-label="Find the book">
       <ul class="results" data-g="res" hidden></ul>
       <div class="picked" data-g="pick" hidden></div>
       <div class="fg">
-        <label class="fl">How many books<input type="number" data-g="qty" min="1" step="1" value="1"></label>
+        <label class="fl" data-g="qtyWrap">How many books<input type="number" data-g="qty" min="1" step="1" value="1"></label>
         <label class="fl" data-g="saleWrap">Went with sale #<select data-g="sale"></select></label>
-        <label class="fl"><span data-g="whoL">Recipient</span><input data-g="who" placeholder="Name or username"></label>
+        <label class="fl" data-g="whoWrap"><span data-g="whoL">Recipient</span><input data-g="who" placeholder="Name or username"></label>
         <label class="fl" data-g="evWrap">Event<input data-g="ev" placeholder="Birthday, graduation…"></label>
         <label class="fl">Date given<input type="date" data-g="date"></label>
         <label class="fl">Notes<input data-g="note" placeholder="Optional"></label>
       </div>
       <div data-g="ceWrap" hidden><div class="how" style="margin-bottom:4px">Upcoming customer events: pick one to fill it in and tick it done</div><div class="chips" data-g="ce"></div></div>
-      <div class="row"><button class="btn pri" type="button" data-g="go" disabled>Save giveaway</button><span class="msg" data-g="msg"></span></div>
+      <div class="row"><button class="btn pri" type="button" data-g="go" disabled>${pre ? "Save the book for this giveaway" : "Save giveaway"}</button><span class="msg" data-g="msg"></span></div>
     </div>`;
     const q = s => root.querySelector(`[data-g="${s}"]`);
     q("date").value = todayISO(); q("date").max = todayISO();
+    if (pre) { q("who").value = pre.who || ""; q("whoWrap").hidden = true; }
+    if (showChoice) { q("show").value = String(st.show); q("show").onchange = () => { st.show = +q("show").value; st.pick = null; q("pick").hidden = true; q("go").disabled = true; applyType(); }; }
     const fillSales = () => {
-      const G = D && opts.show === D.show.id ? groups().filter(g => g.sale != null && g.lines.some(l => l.status === "sold")) : [];
+      const G = D && st.show ? groups().filter(g => g.showId === st.show && g.sale != null && g.lines.some(l => l.status === "sold")) : [];
       const cur = q("sale").value;
       q("sale").innerHTML = `<option value="">—</option>` + G.map(g => `<option value="${esc(g.sale)}">#${esc(g.sale)} · ${esc(g.lines.map(l => l.title).join(" + ").slice(0, 60))}</option>`).join("");
       q("sale").value = cur;
@@ -433,9 +582,10 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     const applyType = () => {
       const t = GTYPES.find(x => x.name === st.type);
       root.querySelectorAll("[data-type]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === st.type)));
-      q("help").textContent = t.help;
+      q("help").textContent = pre ? (isUsed() ? "Pick the copy from used inventory. It comes out of used stock." : "Pick the book from new-book inventory.") + " Saved as a Raffle giveaway for this show." : t.help + (isUsed() ? " Used show: the copy comes out of used inventory." : "");
+      q("q").placeholder = isUsed() ? "Find the used copy: title, author or ISBN (or scan)" : "Find the book: title, author or ISBN (or scan)";
       q("whoL").textContent = t.who + (t.whoReq ? "" : " (optional)");
-      q("evWrap").hidden = !t.event; q("saleWrap").hidden = !t.sale;
+      q("evWrap").hidden = !t.event; q("saleWrap").hidden = !t.sale; q("qtyWrap").hidden = isUsed();
       if (t.sale) fillSales();
       if (!t.event) st.ev = null;
       fillCE();
@@ -443,9 +593,9 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     root.querySelectorAll("[data-type]").forEach(b => b.onclick = () => { st.type = b.dataset.type; applyType(); });
     const pick = it => {
       st.pick = it; q("res").hidden = true; q("q").value = ""; q("pick").hidden = false;
-      q("pick").innerHTML = `<div class="grow"><div class="t">${esc(it.title)}</div><div class="a">${esc([it.author, it.isbn, it.onhand != null ? int(it.onhand) + " on hand" : ""].filter(Boolean).join(" · "))}</div></div><button class="btn sm" type="button">Change</button>`;
+      q("pick").innerHTML = `<div class="grow"><div class="t">${esc(it.title)}</div><div class="a">${esc([it.author, it.isbn || it.code, it.source, it.onhand != null ? int(it.onhand) + " on hand" : ""].filter(Boolean).join(" · "))}</div></div><button class="btn sm" type="button">Change</button>`;
       q("pick").querySelector("button").onclick = () => { st.pick = null; q("pick").hidden = true; q("go").disabled = true; q("q").focus(); };
-      q("go").disabled = false; q("msg").textContent = ""; q("qty").focus(); q("qty").select();
+      q("go").disabled = false; q("msg").textContent = ""; if (!isUsed()) { q("qty").focus(); q("qty").select(); }
     };
     let sT = null, sN = 0, hits = [];
     q("q").addEventListener("input", () => {
@@ -453,33 +603,36 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
       const v = q("q").value.trim();
       if (v.length < 2) { q("res").hidden = true; return; }
       sT = setTimeout(async () => {
-        const n = ++sN;
-        const { data, error } = await sb().rpc("ful_book_search", { p_q: v });
+        const n = ++sN, used = isUsed();
+        const { data, error } = await sb().rpc(used ? "ful_used_search" : "ful_book_search", { p_q: v });
         if (n !== sN) return;
         hits = error ? [] : data;
         q("res").hidden = false;
-        q("res").innerHTML = hits.length ? hits.map((h, i) => `<li data-i="${i}"><span><span class="t">${esc(h.title)}</span><div class="m">${esc([h.author, h.isbn].filter(Boolean).join(" · "))}</div></span><span class="m">${h.onhand != null ? int(h.onhand) + " on hand" : ""}</span></li>`).join("")
-          : `<li><span class="m">${error ? esc(error.message) : "No book matches."}</span></li>`;
+        q("res").innerHTML = hits.length ? hits.map((h, i) => `<li data-i="${i}"><span><span class="t">${esc(h.title)}</span><div class="m">${esc([h.author, h.isbn || h.code, h.source].filter(Boolean).join(" · "))}</div></span><span class="m">${h.onhand != null ? int(h.onhand) + " on hand" : ""}</span></li>`).join("")
+          : `<li><span class="m">${error ? esc(error.message) : used ? "No used copy in stock matches." : "No book matches."}</span></li>`;
         if (hits.length === 1 && /^[0-9xX-]{10,17}$/.test(v)) pick(hits[0]);   // a scan picks the book straight away
       }, 220);
     });
     q("res").addEventListener("click", e => { const li = e.target.closest("[data-i]"); if (li) pick(hits[+li.dataset.i]); });
     q("go").onclick = async () => {
       const t = GTYPES.find(x => x.name === st.type), it = st.pick, bad = m => { q("msg").innerHTML = `<span class="no">${esc(m)}</span>`; };
-      const qty = Math.round(+q("qty").value), who = q("who").value.trim(), ev = t.event ? q("ev").value.trim() : "", d = q("date").value;
+      const used = isUsed(), qty = used ? 1 : Math.round(+q("qty").value), who = q("who").value.trim(), ev = t.event ? q("ev").value.trim() : "", d = q("date").value;
       if (!it) return bad("Pick the book first.");
       if (!(qty > 0)) return bad("Enter how many books (1 or more).");
       if (t.whoReq && !who) return bad(`Enter the ${t.who.toLowerCase()}.`);
       if (t.event && !ev) return bad("Enter the event (birthday, graduation…).");
       if (!d || d > todayISO()) return bad("Pick a date that isn’t in the future.");
       q("go").disabled = true; q("msg").textContent = "Saving…";
-      const { error } = await sb().rpc("ful_giveaway_save", { p: { type: t.name, isbn: it.isbn, qty, show: opts.show || null, sale: t.sale ? q("sale").value : "", who,
-        note: [ev, q("note").value.trim()].filter(Boolean).join(" · "), date: d, event: st.ev ? st.ev.id : null } });
+      const note = [ev, q("note").value.trim()].filter(Boolean).join(" · "), sale = t.sale ? q("sale").value : "";
+      const { error } = used
+        ? await sb().rpc("ful_used_giveaway_save", { p: { show: st.show, copy: it.copy, type: t.name, who, sale, note, date: d, ticket: pre ? pre.ticket : null } })
+        : await sb().rpc("ful_giveaway_save", { p: { type: t.name, isbn: it.isbn, qty, show: st.show || null, sale, who, note, date: d, event: st.ev ? st.ev.id : null, ticket: pre ? pre.ticket : null } });
       if (error) { q("go").disabled = false; return bad("Not saved. " + error.message); }
       const done = st.ev;
       q("msg").innerHTML = `<span class="ok">Saved: ${int(qty)} × ${esc(it.title)} (${esc(t.name.toLowerCase())}${who ? " · " + esc(who) : ""}).${done ? ` Ticked ${esc(done.user)}’s event done.` : ""}</span>`;
-      st.pick = null; st.ev = null; q("pick").hidden = true; q("qty").value = 1; q("who").value = ""; q("ev").value = ""; q("note").value = "";
+      st.pick = null; st.ev = null; q("pick").hidden = true; q("qty").value = 1; if (!pre) q("who").value = ""; q("ev").value = ""; q("note").value = "";
       if (done) L.events = L.events.filter(x => x.id !== done.id);
+      if (pre) openAssign = "";
       if (opts.show) await loadShow(); else { await loadList(); drawOff(); }
     };
     root._refresh = () => { applyType(); };
@@ -520,7 +673,7 @@ details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--in
     if (t === "off") drawOff(); if (t === "cust") loadCust();
   }
   $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (b) setTab(b.dataset.t); });
-  $("showSel").onchange = () => { showId = +$("showSel").value || null; openSale = ""; $("q").value = ""; loadShow(); };
+  $("showSel").onchange = () => { showId = +$("showSel").value || null; extra.clear(); openSale = ""; openBuyer = ""; openAssign = ""; $("q").value = ""; drawBundle(); loadShow(); };
   $("showBtns").addEventListener("click", e => {
     const show = D && { id: D.show.id, name: D.show.name };
     const after = async () => { await loadList(); };
