@@ -7,7 +7,7 @@
 #   Remove:               powershell -ExecutionPolicy Bypass -File ReliantChitPrinter.ps1 -Uninstall
 #   Check it is running:  open http://127.0.0.1:17861 in a browser on this computer
 #   Updates:              it checks the Reliant App for a newer version when it starts and every 6 hours,
-#                         and swaps itself in when no chit has printed for 15 minutes (never mid-show).
+#                         and swaps itself in when no chit has printed for 1 hour (never mid-show).
 
 param([switch]$Install, [switch]$Uninstall)
 
@@ -21,7 +21,7 @@ $SettingsPath = Join-Path $AppDir 'settings.json'
 $LogPath = Join-Path $AppDir 'chit-printer.log'
 $UpdateBase = 'https://reliant-main.github.io/Reliant-App'
 $UpdateEvery = [TimeSpan]::FromHours(6)
-$QuietFor = [TimeSpan]::FromMinutes(15)
+$QuietFor = [TimeSpan]::FromHours(1)
 
 Add-Type -AssemblyName System.Drawing
 
@@ -210,7 +210,7 @@ function Check-Updates {
   if ($now -ge $script:nextCheck -and ($now - $script:lastPrint) -ge $QuietFor) {
     $script:nextCheck = $now.Add($UpdateEvery)
     $v = Find-Update
-    if ($v) { $script:pendingUpdate = $v; Write-Log "Version $v is available; it will go in once no chit has printed for 15 minutes." }
+    if ($v) { $script:pendingUpdate = $v; Write-Log "Version $v is available; it will go in once no chit has printed for 1 hour." }
   }
   if ($script:pendingUpdate -and ($now - $script:lastPrint) -ge $QuietFor) {
     $v = $script:pendingUpdate; $script:pendingUpdate = $null

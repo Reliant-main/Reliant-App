@@ -9,7 +9,7 @@
       "file": "chit-printer/reliant-chit-printer.zip",
       "where": "The Windows computer connected to the chit printer (Star TSP700II).",
       "what": "Prints Ticket System chits straight to the chit printer, with no print window.",
-      "updates": "Updates itself. It checks for a new version when the computer starts and every 6 hours, and only swaps it in after no chit has printed for 15 minutes.",
+      "updates": "Updates itself. It checks for a new version when the computer starts and every 6 hours, and only swaps it in after no chit has printed for 1 hour.",
       "steps": [
         "Download it and open the zip.",
         "Double-click Install Reliant Chit Printer. If Windows warns about an unknown program, choose More info, then Run anyway.",

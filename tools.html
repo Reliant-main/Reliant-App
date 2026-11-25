@@ -98,7 +98,7 @@ code { font: 13px var(--f-mono); background: var(--bg); padding: 1px 5px; border
       if (h.none) return { v: "Not running here", d: "Not installed on this computer, or switched off. Only the computer that prints chits needs it.", cls: "dim" };
       if (newer(t.version, h.version)) {
         if (h.version === "1.0.0") return { v: h.version, d: "Update available. Download and run the installer once more; from 1.1.0 on it updates itself.", cls: "bad", behind: true };
-        return { v: h.version, d: h.updating ? `Version ${h.updating} is downloaded and goes in once no chit has printed for 15 minutes.` : "It will update itself within 6 hours (or restart the computer).", cls: "bad", behind: true };
+        return { v: h.version, d: h.updating ? `Version ${h.updating} is downloaded and goes in once no chit has printed for 1 hour.` : "It will update itself within 6 hours (or restart the computer).", cls: "bad", behind: true };
       }
       return { v: h.version, d: "Up to date. " + (h.note || ""), cls: "ok" };
     }
