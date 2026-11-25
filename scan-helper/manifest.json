@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Reliant Scan Helper",
+  "version": "0.6.6",
+  "description": "Sits beside the CashMonkey scan screen. Sends books staff route to the front end into Reliant's used-book inventory. Read-only: never types into or changes CashMonkey.",
+  "permissions": [
+    "storage",
+    "scripting",
+    "alarms",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://vmpysxfmfyvwheqbuicj.supabase.co/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Reliant Scan Helper"
+  },
+  "commands": {
+    "front-end": {
+      "suggested_key": {
+        "default": "Alt+Shift+F"
+      },
+      "description": "Add the current book to front-end inventory"
+    },
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "Show or hide the Reliant panel"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://reliant-main.github.io/Reliant-App/*"
+      ],
+      "js": [
+        "announce.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": true
+    }
+  ]
+}
