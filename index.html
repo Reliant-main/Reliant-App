@@ -43,10 +43,10 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
 /* ---------- the app: top bar, sidebar, content ---------- */
 .app { height: 100%; display: grid; grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 .topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 8px 14px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--bar); color: var(--bar-ink); }
-.topbar .brand { display: flex; align-items: center; gap: 10px; width: 222px; font-weight: 600; font-size: 14px; white-space: nowrap; }
-.menuBtn { display: none; }
+.topbar .brand { text-decoration: none; display: flex; align-items: center; gap: 10px; width: 222px; font-weight: 600; font-size: 14px; white-space: nowrap; }
 .iconbtn { all: unset; cursor: pointer; width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; color: inherit; }
 .iconbtn:hover { background: rgba(255,255,255,.10); }
+.iconbtn.menuBtn { display: none; }
 .search { flex: 1 1 320px; max-width: 560px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 0 10px; }
 .search input { all: unset; flex: 1; min-width: 0; padding: 8px 0; font: 14px var(--f-ui); color: inherit; }
 .search input::placeholder { color: inherit; opacity: .65; }
@@ -89,7 +89,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
 
 @media (max-width: 860px) {
   .app { grid-template-columns: minmax(0, 1fr); }
-  .menuBtn { display: grid; }
+  .iconbtn.menuBtn { display: grid; }
   .topbar .brand { width: auto; }
   .topbar .brand span:last-child, .colors .lab, .user .uname { display: none; }
   .search { flex: 1 1 120px; }
@@ -346,8 +346,10 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   const allowed = (x, role) => !x.roles || x.roles.includes(role);
   let navFor = [];                       // the menu for this person's role
   let here = { grp: "home", kid: null }; // what's open
+  let hereClosed = false;                // the open screen's group folded up by hand
   const OPEN_KEY = "reliant.navOpen";
   let openGrps = new Set(); try { openGrps = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || "[]")); } catch {}
+  const saveOpen = () => { try { localStorage.setItem(OPEN_KEY, JSON.stringify([...openGrps])); } catch {} };
 
   function drawNav(me) {
     navFor = NAV.filter(g => allowed(g, me.role)).map(g => ({ ...g, kids: (g.kids || []).filter(k => allowed(k, me.role)) }))
@@ -367,7 +369,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   }
   function markNav() {
     $("nav").querySelectorAll(".navgrp").forEach(el => {
-      const g = el.dataset.g, isOpen = openGrps.has(g) || here.grp === g;
+      const g = el.dataset.g, isOpen = openGrps.has(g) || (here.grp === g && !hereClosed);
       el.classList.toggle("open", g !== "home" && isOpen);
       const t = el.querySelector("[data-toggle]"); if (t) t.setAttribute("aria-expanded", String(isOpen));
       el.querySelector(".navbtn").classList.toggle("here", here.grp === g);
@@ -378,8 +380,10 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   $("nav").addEventListener("click", e => {
     const t = e.target.closest("[data-toggle]"), k = e.target.closest("[data-k]"), h = e.target.closest("[data-home]");
     if (h) { goHome(true); return; }
-    if (t) { const g = t.dataset.toggle; openGrps.has(g) ? openGrps.delete(g) : openGrps.add(g);
-      try { localStorage.setItem(OPEN_KEY, JSON.stringify([...openGrps])); } catch {} markNav(); return; }
+    if (t) { const g = t.dataset.toggle;
+      if (here.grp === g) { hereClosed = !hereClosed; openGrps.delete(g); }
+      else if (openGrps.has(g)) openGrps.delete(g); else openGrps.add(g);
+      saveOpen(); markNav(); return; }
     if (k) { const [g, i] = k.dataset.k.split(":"); openKid(g, +i, true); }
   });
   $("sidefoot").addEventListener("click", e => { if (e.target.closest("[data-settings]")) openSettings(true); });
@@ -411,7 +415,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
     const g = navFor.find(x => x.id === gid); if (!g) return;
     const kid = g.kids[i]; if (!kid) return;
     if (kid.page) { location.href = kid.page; return; }
-    here = { grp: gid, kid: `${gid}:${i}` }; markNav(); closeNav();
+    here = { grp: gid, kid: `${gid}:${i}` }; openGrps = new Set([gid]); hereClosed = false; saveOpen(); markNav(); closeNav();
     document.title = `${kid.label} · Reliant Workspace`;
     act(kid, setFrame(kid.url));
     if (push) history.pushState({ k: here.kid }, "", "#" + gid + "/" + encodeURIComponent(kid.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")));

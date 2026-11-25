@@ -69,7 +69,18 @@
     "html[data-rtheme] th,html[data-rtheme] th .sorth{font-size:12px;font-weight:600}",
     "html[data-rtheme] .fld label{font-size:12px;font-weight:600}",
     // buttons on the accent color use the scheme's matching text color
-    "html[data-rtheme] .btn.primary,html[data-rtheme] .seg button[aria-pressed=\"true\"]{color:var(--on-accent)}",
+    "html[data-rtheme] .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}",
+    "html[data-rtheme] .seg button[aria-pressed=\"true\"]{color:var(--on-accent)}",
+    "html[data-rtheme] .btn.warn.armed{background:var(--badbg)}",
+    // number boxes share the row evenly (Analytics has 7)
+    "html[data-rtheme] .kpis{grid-template-columns:repeat(auto-fit,minmax(min(132px,100%),1fr))}",
+    // small capitals labels become plain text; Settings gets the same page heading as the rest
+    "html[data-rtheme] .eyebrow{font-family:var(--f-ui);letter-spacing:.06em}",
+    "html[data-rtheme] label.f{font:600 12px var(--f-ui);letter-spacing:0;text-transform:none}",
+    "html[data-rtheme] .wrap>header:first-child .eyebrow{display:none}",
+    "html[data-rtheme] .wrap>header:first-child h1{font-size:22px}",
+    "html[data-rtheme] .sech h2{font-size:18px}",
+    "html[data-rtheme] .level b{font-size:16px;font-weight:700}",
     "html[data-rtheme] .tag.used{background:var(--warnbg);color:var(--warnfg)}",
     // no stray scroll arrows on the tab rows
     "html[data-rtheme] .tabs{scrollbar-width:none}",
