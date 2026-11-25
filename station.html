@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"><script src="theme.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ticket System · Reliant Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -149,20 +149,120 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
 .readerbar.bad { background: var(--badbg); color: var(--bad); border: 2px solid var(--bad); font-size: 18px; }
 .readerbar.bad .fallback { font-size: 15px; }
 #printFrame { position: fixed; width: 0; height: 0; border: 0; left: -9999px; top: 0; }
+
+/* ===== App redesign: top bar, icon rail, cards (the page works exactly as before) ===== */
+html, body { font-size: 15px; }
+.appbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 8px 14px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--bar, #10261f); color: var(--bar-ink, #eef0ea); flex-wrap: wrap; }
+.appbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; color: inherit; text-decoration: none; white-space: nowrap; }
+.appbar .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--accent); color: var(--on-accent, #0e1915); display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.showbadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #e5484d; color: #fff; font-weight: 700; font-size: 11px; letter-spacing: .06em; white-space: nowrap; }
+.showbadge.practice { background: #c98500; }
+.showname { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 32ch; }
+.appbar .right { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.appbar .conn { color: inherit; font-family: var(--f-ui); font-size: 12px; opacity: .92; }
+.appbar .colors { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+.appbar .colors select { min-height: 0; font: 600 12px var(--f-ui); color: inherit; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 5px 8px; }
+.appbar .colors option { color: #1c2420; background: #fff; }
+.appbar .avatar { width: 28px; height: 28px; border-radius: 50%; background: #d2a54a; color: #10261f; display: grid; place-items: center; font-weight: 700; font-size: 12px; text-decoration: none; }
+.shell { display: flex; min-height: calc(100vh - 48px); }
+.rail { width: 56px; flex: none; background: var(--side, var(--surface)); border-right: 1px solid var(--line); padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; align-items: center; position: sticky; top: 48px; height: calc(100vh - 48px); }
+.rail a { width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); }
+.rail a:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.rail a.here { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.rail .sep { width: 24px; height: 1px; background: var(--line); margin: 4px 0; }
+.shell > .wrap { flex: 1; min-width: 0; max-width: 1320px; padding: 16px 22px 48px; }
+.titlerow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.titlerow .crumb { font-size: 12px; color: var(--muted); }
+.titlerow h1 { margin: 2px 0 0; font: 700 22px/1.2 var(--f-ui); letter-spacing: -.01em; }
+.printbar { margin-left: auto; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+.printbar label.chk { font-size: 13px; font-weight: 500; color: var(--muted); }
+.printbar select { min-height: 34px; padding: 4px 8px; font-size: 13px; font-weight: 600; background: var(--bg); border-radius: 7px; }
+.printbar .sp { display: none; }
+.printbar .more { display: none; }
+.printbar.open .more { display: inline-flex; }
+.printbar .moreBtn { min-height: 34px; padding: 4px 10px; font-size: 13px; }
+/* show totals as cards */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; font: inherit; color: var(--muted); }
+.stats > span { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 12px; font-weight: 500; box-shadow: var(--card-shadow, none); }
+.stats > span b { color: var(--ink); font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.stats > span.w { background: var(--warnbg); border-color: var(--warnfg); color: var(--warnfg); }
+.stats > span.w b { color: var(--warnfg); }
+.stats:empty { display: none; }
+.grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+.panel { background: transparent; border: 0; padding: 0; gap: 12px; }
+.card2 { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--card-shadow, none); }
+.card2 > .ph { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.card2 > .ph h2 { font: 700 14px var(--f-ui); letter-spacing: 0; text-transform: none; color: var(--ink); }
+.card2 > .ph .sub { font-size: 12px; }
+.card2 > .bd { padding: 10px; }
+h2 { font: 700 14px var(--f-ui); letter-spacing: 0; text-transform: none; color: var(--ink); }
+.eyebrow { font-family: var(--f-ui); letter-spacing: .06em; }
+/* next-scan card */
+.next { background: var(--surface); border-radius: 14px; min-height: 150px; box-shadow: var(--card-shadow, none); }
+.next .lbl { font: 600 12px var(--f-ui); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.next .num { color: var(--accent); font-size: clamp(60px, 8vw, 96px); }
+.next .num.q { color: var(--warnfg); }
+.next .meta { font: 14px var(--f-ui); color: var(--muted); }
+.next .wait { font: 600 clamp(18px, 2.2vw, 24px)/1.3 var(--f-ui); color: var(--muted); }
+.next.same { border-color: var(--warnfg); background: var(--surface); }
+.next.same .lbl { color: var(--warnfg); }
+.scanrow input { font: 20px var(--f-ui); letter-spacing: 0; background: var(--surface); border-color: var(--accent); }
+.scanrow input.same { border-color: var(--warnfg); }
+.scanrow .btn.primary { padding: 0 26px; font-size: 16px; font-weight: 700; }
+.panel > .acts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.panel > .acts .btn { min-height: 48px; font-weight: 700; }
+.btn.primary { color: var(--on-accent, #0e1915); }
+.btn.on { background: var(--warnbg); color: var(--warnfg); border-color: var(--warnfg); }
+.hint { line-height: 1.5; }
+.hint b { color: var(--ink); }
+kbd { font: 600 11px var(--f-ui); background: transparent; border-color: currentColor; opacity: .75; }
+.results .k { font-family: var(--f-ui); color: var(--accent); }
+/* sales list */
+ol.sales { border: 0; border-radius: 0; }
+ol.sales li { grid-template-columns: 48px 1fr auto; padding: 10px 14px; }
+ol.sales li.target { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.badge { font-size: 16px; border: 0; border-radius: 8px; padding: 6px 0; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+li.target .badge { background: var(--accent); color: var(--on-accent, #0e1915); }
+.m { font-family: var(--f-ui); }
+.tag { font: 700 11px var(--f-ui); border-radius: 999px; padding: 1px 8px; }
+.tag.lot { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.bk .miss { display: inline-block; margin-top: 3px; border-radius: 6px; padding: 1px 8px; font-size: 12px; background: var(--warnbg); }
+/* buyers */
+.buyers { gap: 1px; background: var(--line); }
+.buyers div { background: var(--surface); border: 0; border-radius: 0; padding: 9px 12px; }
+.buyers .n { font-size: 14px; border-radius: 8px; padding: 3px 6px; min-width: 34px; text-align: center; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.buyers .c { font-family: var(--f-ui); }
+.buyers > .sub { background: var(--surface); padding: 10px 12px; grid-column: 1 / -1; }
+.ctrls legend, .fh { font-family: var(--f-ui); letter-spacing: 0; text-transform: none; }
+.dlgTitle, .bridgeFail h2 { font-family: var(--f-ui); font-weight: 700; }
+.prevStage { background: repeating-conic-gradient(color-mix(in srgb, var(--ink) 8%, var(--bg)) 0% 25%, var(--bg) 0% 50%) 0 0 / 16px 16px; }
+@media (max-width: 760px) {
+  .rail { display: none; }
+  .shell > .wrap { padding: 12px 12px 40px; }
+  .appbar .colors .lab, .showname { display: none; }
+  .printbar { margin-left: 0; }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <div class="topbar">
-    <a class="btn" href="index.html">⌂ Home</a>
-    <div><span class="eyebrow">Shows · live</span><h1>Ticket System</h1></div>
-    <span class="sp"></span>
+<header class="appbar">
+  <a class="brand" href="index.html"><span class="logo">R</span><span>Reliant Distribution</span></a>
+  <span class="showbadge" id="showBadge" hidden></span>
+  <span class="showname" id="showName"></span>
+  <div class="right">
     <span class="conn" id="printerStatus" title="Which computer is printing chits"><span class="dot" id="pDot"></span><span id="pTxt">Chit printer: checking…</span></span>
     <span class="conn" id="conn"><span class="dot" id="connDot"></span><span id="connTxt">Connecting…</span></span>
+    <label class="colors"><span class="lab">Colors</span><select id="themeSel" aria-label="Colors"></select></label>
+    <a class="avatar" id="avatar" href="index.html" title="Back to the Workspace">R</a>
   </div>
-
+</header>
+<div class="shell">
+<nav class="rail" aria-label="Main menu"><a href="index.html" title="Home" aria-label="Home"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a><a href="index.html#inventory/on-hand" title="Inventory" aria-label="Inventory"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/></svg></a><a href="index.html#books/book-info" title="Books" aria-label="Books"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"/></svg></a><a href="index.html#shows/all-shows" title="Shows" aria-label="Shows"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h13v12H3zM16 10l5-3v10l-5-3"/></svg></a><a href="index.html#fulfillment/new-book-show" title="Fulfillment" aria-label="Fulfillment"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h13v10H3zM16 10h3l2 3v4h-5M7 20a1.5 1.5 0 1 0 0-.01M18 20a1.5 1.5 0 1 0 0-.01"/></svg></a><span class="sep"></span><a href="prep.html" title="Show Prep" aria-label="Show Prep"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9zM6 6h3M15 6h3v15H6V6M9 12h6M9 16h4"/></svg></a><a href="live.html" title="Book Spotlight" aria-label="Book Spotlight"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg></a><a href="station.html" class="here" aria-current="page" title="Ticket System" aria-label="Ticket System"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4zM9 7v12"/></svg></a></nav>
+<div class="wrap">
+  <div class="titlerow">
+    <div><div class="crumb">Shows › Ticket System</div><h1>Ticket System</h1></div>
   <div class="printbar">
     <label class="chk">App
       <select id="platPick" aria-label="Which app this page follows" title="Pick the app this studio streams on. The page only shows and prints that app's shows.">
@@ -175,9 +275,9 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
     <label class="chk">Show
       <select id="showPick" aria-label="Show"></select>
     </label>
-    <label class="chk"><input type="checkbox" id="follow" checked> Switch to a new show automatically</label>
+    <label class="chk more"><input type="checkbox" id="follow" checked> Switch to a new show automatically</label>
     <span class="sp"></span>
-    <label class="chk"><input type="checkbox" id="printer"> This computer prints chits <span id="helperNote" style="color:var(--ink-3, #888);font-size:13px" hidden></span></label>
+    <label class="chk more"><input type="checkbox" id="printer"> This computer prints chits <span id="helperNote" style="color:var(--ink-3, #888);font-size:13px" hidden></span></label>
     <label class="chk">Chits
       <select id="chitMode" aria-label="When chits print">
         <option value="sale">At the sale</option>
@@ -186,9 +286,13 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
         <option value="off">Don't print</option>
       </select>
     </label>
-    <button class="btn small" type="button" id="layoutBtn">Chit layout…</button>
-    <button class="btn small" type="button" id="srcBtn">Sale sources…</button>
+    <button class="btn small more" type="button" id="layoutBtn">Chit layout…</button>
+    <button class="btn small more" type="button" id="srcBtn">Sale sources…</button>
+    <button class="btn moreBtn" type="button" id="moreBtn" aria-expanded="false">More settings ▾</button>
   </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
 
   <div class="readerbar" id="readerBar" role="status" aria-live="assertive" hidden></div>
 
@@ -216,16 +320,16 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
           <button class="btn warn" type="button" id="pClear" hidden>Clear this practice show</button>
         </div>
       </details>
+      <div class="card2"><div class="ph"><h2>Buyers · lot bins</h2></div>
+        <div class="buyers" id="buyers"></div></div>
     </section>
 
     <section class="panel" aria-label="This show">
-      <div class="stats" id="stats"></div>
-      <h2>Buyers · lot bins</h2>
-      <div class="buyers" id="buyers"></div>
-      <h2>Sales · newest first</h2>
-      <ol class="sales" id="sales"></ol>
+      <div class="card2"><div class="ph"><h2>Sales</h2><span class="sub">newest first</span></div>
+        <ol class="sales" id="sales"></ol></div>
     </section>
   </div>
+</div>
 </div>
 <dialog id="layoutDlg" aria-labelledby="layoutTitle">
   <form method="dialog" id="layoutForm" autocomplete="off">
@@ -324,6 +428,22 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
   if (!window.supabase || !cfg) { fail("The Workspace couldn't load. Check the internet connection and reload."); return; }
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
 
+  // ---------- App look: Colors menu (saved with the person's sign-in) and "More settings" ----------
+  (() => {
+    const RT = window.RELIANT_THEME, sel = document.getElementById("themeSel");
+    if (RT && sel) {
+      sel.innerHTML = RT.list.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+      sel.value = RT.current();
+      sel.onchange = async () => { RT.save(sel.value); try { await sb.auth.updateUser({ data: { theme: sel.value } }); } catch {} };
+      sb.auth.getSession().then(({ data }) => {
+        const u = data && data.session && data.session.user, id = u && u.user_metadata && u.user_metadata.theme;
+        if (id && RT.list.some(t => t.id === id) && id !== RT.current()) { RT.save(id); sel.value = id; }
+      }).catch(() => {});
+    }
+    const mb = document.getElementById("moreBtn");
+    if (mb) mb.onclick = () => { const o = document.querySelector(".printbar").classList.toggle("open"); mb.setAttribute("aria-expanded", String(o)); mb.textContent = o ? "Fewer settings ▴" : "More settings ▾"; };
+  })();
+
   let shows = [], showId = null, sales = [], items = [], buyers = [], sameArmed = false, results = [], lastSaleTouched = null, lastQuery = "", practiceJust = false;
 
   // ---------------------------------------------------------------- settings
@@ -391,6 +511,9 @@ dialog#srcDlg::backdrop { background: rgba(0,0,0,.6); }
   function draw() {
     const cur = shows.find(s => s.id === showId);
     $("pClear").hidden = !(cur && cur.is_practice);
+    // top bar: which show this page is on (display only)
+    $("showBadge").hidden = !cur; $("showName").textContent = cur ? (cur.title || showLabel(cur)) : "";
+    if (cur) { $("showBadge").className = "showbadge" + (cur.is_practice ? " practice" : ""); $("showBadge").textContent = cur.is_practice ? "PRACTICE" : "● " + String(PLAT[cur.platform_code] || cur.platform_code).toUpperCase(); }
 
     const t = target(), card = $("next");
     card.className = "next" + (t ? (sameArmed ? " same" : "") : " idle");
