@@ -271,3 +271,5 @@ grant execute on function public.order_create(jsonb), public.order_receive(jsonb
 -- orders_export: adds 'live' (switch-day flag), an "added in the App" flag per order, and line id + author per line.
 -- app.analytics_meta: each R carries its used-book source (its load's source, else the main source of its show's sales),
 --   so Analytics can show sell-through by source.
+-- staff_save: accounts on @staff.reliantbookstore.com (username accounts, no email) can only be Operator or Scanner.
+-- Edge function staff-account creates username accounts and resets their passwords (owners and managers only).

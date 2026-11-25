@@ -74,7 +74,7 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
   <header>
     <span class="eyebrow">Workspace</span>
     <h1>Settings</h1>
-    <p class="sub">Who can open the Workspace, the name it shows for them, and what they can get into. Passwords stay private: each person chooses their own.</p>
+    <p class="sub">Who can open the Workspace, the name it shows for them, and what they can get into. Passwords stay private: each person chooses their own (username accounts start with one you set).</p>
   </header>
 
   <div class="msg bad" id="loadMsg" role="status"></div>
@@ -95,6 +95,25 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
     </ol>
   </section>
 
+  <section id="nameSec" hidden>
+    <div class="sech"><h2>Add a person without an email</h2><span class="d">They sign in with a username and a password you give them</span></div>
+    <form class="add" id="nameForm" autocomplete="off">
+      <label class="f">Name<input id="nName" type="text" maxlength="60" placeholder="First and last name"></label>
+      <label class="f">Username<input id="nUser" type="text" maxlength="40" placeholder="Brooklyn.Smith" autocapitalize="off" spellcheck="false"></label>
+      <label class="f">Starting password<input id="nPass" type="text" maxlength="72" placeholder="At least 8 characters"></label>
+      <label class="f">PIN (optional)<input id="nPin" type="text" inputmode="numeric" maxlength="6" placeholder="4–6 digits"></label>
+      <label class="f">Access level<select id="nRole"><option value="operator">Operator</option><option value="scanner">Scanner</option></select></label>
+      <button class="btn primary" type="submit" id="nGo">Add</button>
+    </form>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px"><input type="checkbox" id="nMust" checked><label for="nMust">Ask them to choose their own password the first time they sign in</label></div>
+    <div class="msg" id="nameMsg" role="status"></div>
+    <ol class="steps">
+      <li>Fill in their name, a username (first.last), a starting password and, if you like, their PIN.</li>
+      <li>They sign in on the Workspace with the username and starting password. If the box above is ticked, they then choose their own password.</li>
+      <li>With a PIN, others on a shared device can hand over to them with <b>Switch person</b>. They can change their PIN any time with <b>My PIN</b>.</li>
+    </ol>
+  </section>
+
   <section id="peopleSec" hidden>
     <div class="sech"><h2>People</h2><span class="d" id="peopleCount"></span></div>
     <ol class="people" id="people"></ol>
@@ -112,6 +131,7 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
       <div class="level"><b>Manager</b><span>Everything, including Settings, but can't add, change or remove owners.</span></div>
       <div class="level"><b>Operator</b><span>Show day (Show Prep, Book Spotlight, Ticket System), plus Inventory and Shows.</span></div>
       <div class="level"><b>Scanner</b><span>Orders &amp; Receiving, plus Inventory and Shows.</span></div>
+      <div class="level"><b>Username accounts</b><span>People without an email get Operator or Scanner only. Owners and managers need an email so they can reset their own password.</span></div>
     </div>
   </section>
 </div>
@@ -141,7 +161,7 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
     setMsg($("loadMsg"), "");
     data = d; myRole = d.me_role;
     $("aRole").innerHTML = roleOptions(null, "operator");
-    $("addSec").hidden = false; $("peopleSec").hidden = false;
+    $("addSec").hidden = false; $("nameSec").hidden = false; $("peopleSec").hidden = false;
     draw();
   }
 
@@ -164,12 +184,13 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
       const emailLocked = lockAll || (p.linked && p.active);
       return `<li class="person ${p.active ? "" : "off"}" data-id="${esc(p.id)}">
         <label class="f"><span>Name${p.is_me ? '<span class="tag">You</span>' : ""}</span><input data-k="name" value="${esc(p.name)}" maxlength="60" ${lockAll ? "disabled" : ""}></label>
-        <label class="f">Email<input data-k="email" type="email" value="${esc(p.email || "")}" maxlength="200" ${emailLocked ? 'disabled title="They already have an account under this email. Remove them first to change it."' : ""}></label>
-        <label class="f">Access level<select data-k="role" ${lockRole ? "disabled" : ""}>${roleOptions(null, p.role, false)}</select></label>
+        ${isName(p) ? `<label class="f">Username<input data-k="email" type="hidden" value="${esc(p.email)}"><span style="padding:9px 0;font:500 15px var(--f-ui, inherit);text-transform:none;letter-spacing:0;color:inherit">${esc(uname(p))}</span></label>` : `<label class="f">Email<input data-k="email" type="email" value="${esc(p.email || "")}" maxlength="200" ${emailLocked ? 'disabled title="They already have an account under this email. Remove them first to change it."' : ""}></label>`}
+        <label class="f">Access level<select data-k="role" ${lockRole ? "disabled" : ""}>${isName(p) ? LEVELS.filter(([v]) => v === "operator" || v === "scanner").map(([v, l]) => `<option value="${v}" ${v === p.role ? "selected" : ""}>${l}</option>`).join("") : roleOptions(null, p.role, false)}</select></label>
         <div class="stat">
           <span class="s ${st.cls}">${st.t}</span>
           <button class="btn primary" type="button" data-a="save" hidden>Save</button>
           ${st.approve && !lockAll ? '<button class="btn primary" type="button" data-a="approve">Approve</button>' : ""}
+          ${isName(p) && p.active ? '<button class="btn" type="button" data-a="reset">Reset password</button>' : ""}
           ${p.is_me || lockAll ? "" : p.active ? '<button class="btn warn" type="button" data-a="remove">Remove</button>' : '<button class="btn" type="button" data-a="restore">Restore</button>'}
         </div>
         <div class="msg" data-k="msg" style="grid-column:1/-1;min-height:0"></div>
@@ -180,6 +201,15 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
     $("others").innerHTML = others.map(o => `<li><span class="e">${esc(o.email)}</span><span class="w">signed up ${esc(when(o.signup_at))}</span><button class="btn" type="button" data-email="${esc(o.email)}">Add to the list</button></li>`).join("");
   }
 
+  const NAME_DOMAIN = "@staff.reliantbookstore.com";
+  const isName = p => (p.email || "").endsWith(NAME_DOMAIN);
+  const uname = p => (p.email || "").slice(0, -NAME_DOMAIN.length);
+  async function callFn(body) {
+    const { data, error } = await sb.functions.invoke("staff-account", { body });
+    if (error) { let m = error.message; try { const j = error.context && await error.context.json(); if (j && j.error) m = j.error; } catch {} return { error: m }; }
+    if (data && data.error) return { error: data.error };
+    return { data };
+  }
   const rowVals = li => ({ name: li.querySelector('[data-k="name"]').value, email: li.querySelector('[data-k="email"]').value, role: li.querySelector('[data-k="role"]').value });
   const person = id => (data.staff || []).find(p => p.id === id);
   function dirty(li) {
@@ -221,6 +251,16 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
       return;
     }
     if (a === "restore") { await save(p, { name: p.name, email: p.email, role: p.role }, true, li, "Restored."); return; }
+    if (a === "reset") {
+      const pw = prompt(`New starting password for ${p.name} (at least 8 characters). They'll be asked to choose their own when they next sign in.`);
+      if (pw == null) return;
+      if (pw.length < 8) { setMsg(m, "The password needs at least 8 characters.", "bad"); return; }
+      b.disabled = true;
+      const r = await callFn({ action: "reset", staff_id: p.id, password: pw, must_change: true });
+      b.disabled = false;
+      setMsg(m, r.error ? r.error : `Password reset. ${p.name} signs in as ${uname(p)} with the new password.`, r.error ? "bad" : "ok");
+      return;
+    }
     if (a === "approve") {
       b.disabled = true;
       const { error } = await sb.rpc("staff_approve", { p_id: p.id });
@@ -237,6 +277,29 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
     setMsg($("addMsg"), "Type their name and pick an access level, then press Add. Approve them in People afterwards.");
     $("addSec").scrollIntoView({ behavior: "smooth", block: "start" }); $("aName").focus();
   });
+
+  $("nName").addEventListener("input", () => {
+    if ($("nUser").dataset.touched) return;
+    const parts = $("nName").value.trim().split(/\s+/).filter(Boolean).map(w => w.replace(/[^A-Za-z0-9]/g, ""));
+    $("nUser").value = parts.length ? [parts[0], parts.length > 1 ? parts[parts.length - 1] : ""].filter(Boolean).join(".") : "";
+  });
+  $("nUser").addEventListener("input", () => { $("nUser").dataset.touched = "1"; });
+  $("nameForm").onsubmit = async e => {
+    e.preventDefault();
+    const name = $("nName").value.trim(), username = $("nUser").value.trim(), password = $("nPass").value, pin = $("nPin").value.trim();
+    const msg = $("nameMsg");
+    if (!name) { setMsg(msg, "Type their name.", "bad"); return; }
+    if (!/^[A-Za-z0-9]+([.\-_][A-Za-z0-9]+)*$/.test(username)) { setMsg(msg, "Use a username like Brooklyn.Smith (letters and numbers, a dot between names).", "bad"); return; }
+    if (password.length < 8) { setMsg(msg, "The starting password needs at least 8 characters.", "bad"); return; }
+    if (pin && !/^\d{4,6}$/.test(pin)) { setMsg(msg, "A PIN is 4 to 6 digits.", "bad"); return; }
+    $("nGo").disabled = true; setMsg(msg, "Adding…");
+    const r = await callFn({ action: "create", name, username, password, pin, role: $("nRole").value, must_change: $("nMust").checked });
+    $("nGo").disabled = false;
+    if (r.error) { setMsg(msg, r.error, "bad"); return; }
+    ["nName", "nUser", "nPass", "nPin"].forEach(id => { $(id).value = ""; }); delete $("nUser").dataset.touched;
+    await load(); tellHome();
+    setMsg(msg, `${name} can sign in now with username ${username}${$("nMust").checked ? " and the starting password, then choose their own" : ""}.${pin ? " Their PIN is set." : ""}${r.data && r.data.warning ? " " + r.data.warning : ""}`, r.data && r.data.warning ? "bad" : "ok");
+  };
 
   $("addForm").onsubmit = async e => {
     e.preventDefault();
