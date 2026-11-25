@@ -298,7 +298,8 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
     ana: "M4 20V10M10 20V4M16 20v-7M22 20H2",
     used: "M5 4h14v4H5zM6 8v12h12V8M10 12h4",
     gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
-    tv: "M3 5h18v12H3zM8 21h8M12 17v4"
+    tv: "M3 5h18v12H3zM8 21h8M12 17v4",
+    scan: "M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M16 8v8"
   };
   const NAV = [
     { id: "home", label: "Home", icon: I.home },
@@ -340,6 +341,10 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
       { label: "Compare", url: "analytics.html", click: '[data-t="compare"]' },
       { label: "Cancels & giveaways", url: "analytics.html", click: '[data-t="events"]' },
       { label: "More", url: "analytics.html", click: '[data-t="more"]' } ] },
+    { id: "scanner", label: "Scanner", icon: I.scan, roles: MANAGER, kids: [
+      { label: "By scanner", url: "scanner.html", click: '[data-t="who"]' },
+      { label: "By load", url: "scanner.html", click: '[data-t="load"]' },
+      { label: "By day", url: "scanner.html", click: '[data-t="day"]' } ] },
     { id: "used", label: "Used books", icon: I.used, roles: MANAGER, kids: [
       { label: "Loads", url: "used.html", scroll: "section.panel" },
       { label: "Check-ins due", url: "used.html", scroll: "#duePanel" },

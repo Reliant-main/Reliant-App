@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"><script src="theme.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<style>
+:root {
+  --bg: #0e1915; --surface: #15231e; --surface-2: #1b2c26; --ink: #eef0ea; --ink-2: #c0c6bd; --muted: #8d978f;
+  --line: rgba(255,255,255,.10); --accent: #7fc7a6; --accent-wash: rgba(127,199,166,.10); --gilt: #d2a54a;
+  --good: #2fbf4f; --bad: #ef6b6b; --warnbg: #3a2e12; --warnfg: #f2c35a; --badbg: #3a1d1d;
+  --f-display: "Libre Caslon Display", Georgia, serif;
+  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-ui); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.eyebrow { font: 500 11px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
+h1 { margin: 0; font: 400 clamp(28px, 4vw, 40px)/1.05 var(--f-display); }
+.status { font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: #2fa84f; } .dot.err { background: var(--bad); } .dot.busy { background: var(--gilt); }
+.btn { font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice { border-radius: 10px; padding: 12px 16px; background: var(--warnbg); color: var(--warnfg); font-size: 14px; }
+.notice.bad { background: var(--badbg); color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.kpi { all: unset; box-sizing: border-box; background: var(--surface); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+button.kpi { cursor: pointer; } button.kpi:hover { background: var(--surface-2); }
+.kpi .k { font: 500 11px var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font: 600 clamp(22px, 2.4vw, 30px)/1.1 var(--f-ui); }
+.kpi .d { font-size: 12.5px; color: var(--ink-2); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { font: 600 14px var(--f-ui); color: var(--muted); background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.ph h2 { margin: 0; font: 600 16px var(--f-ui); }
+.sub { font-size: 13px; color: var(--muted); }
+.search { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: min(300px, 100%); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); border-color: var(--accent); }
+.chips .n { font: 500 11.5px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th .sorth { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 6px 8px; cursor: pointer; width: 100%; text-align: inherit; }
+th .sorth.on, th .sorth:hover { color: var(--ink); }
+th.plain { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num, th.num .sorth { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .t { font-weight: 500; } td .a { color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.trow { cursor: pointer; } .trow:hover td { background: var(--accent-wash); }
+.pill { display: inline-block; font: 600 11px var(--f-ui); padding: 2px 8px; border-radius: 999px; background: var(--warnbg); color: var(--warnfg); white-space: nowrap; }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.ok { background: rgba(47,191,79,.14); color: var(--good); }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.how { font-size: 12.5px; color: var(--muted); margin: 0; }
+/* title detail */
+.drawer { position: fixed; inset: 0; background: rgba(5,12,10,.6); display: flex; justify-content: flex-end; z-index: 20; }
+.drawer .card { width: min(520px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 400 26px/1.15 var(--f-display); }
+.calc { width: 100%; font-size: 14px; }
+.calc td { padding: 6px 4px; }
+.calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+@media (max-width: 700px) {
+  .wrap { padding-inline: 12px; }
+  input, .search { font-size: 16px !important; }
+  .search { width: 100%; }
+  .hide-sm { display: none; }
+}
+</style>
+<style>
+.ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seltop { font: 500 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; max-width: 100%; }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.seg { align-self: flex-start; display: inline-flex; flex-wrap: wrap; gap: 2px; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: var(--bg); }
+.seg button { font: 500 13px var(--f-ui); color: var(--ink-2); background: transparent; border: 0; border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+.fg { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 10px; }
+.fl { display: flex; flex-direction: column; gap: 3px; font: 500 11px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.fl input, .fl select, input.inp { font: 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; text-transform: none; letter-spacing: 0; min-width: 0; }
+.box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ok { color: var(--good); } .no { color: var(--bad); }
+.msg { font-size: 13.5px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.results { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.results li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.results li:last-child { border-bottom: 0; } .results li:hover { background: var(--accent-wash); }
+.results .m { font: 12px var(--f-mono); color: var(--muted); }
+.picked { border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--accent-wash); }
+.picked .grow { flex: 1 1 220px; min-width: 0; }
+.statusline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
+td.big { font-weight: 700; font-size: 15px; }
+.strike { text-decoration: line-through; }
+#undoBar { display: none; position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 10px; background: var(--ink); color: var(--bg); box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100vw - 32px); }
+#undoBar .btn { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+details.cust { border-bottom: 1px solid var(--line); }
+details.cust summary { cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: 14px; padding: 8px; align-items: baseline; }
+details.cust summary span.num { font-variant-numeric: tabular-nums; }
+.bhead, details.cust.buyer summary { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 90px 70px; gap: 14px; align-items: start; }
+.bhead { padding: 0 8px 4px 28px; }
+details.cust.buyer summary { padding: 10px 8px; }
+details.cust.buyer .items { padding: 0 8px 12px 8px; }
+details.cust .items { padding: 0 8px 10px 20px; font-size: 13px; color: var(--ink-2); }
+
+/* tighter top now the App's top bar and sidebar frame every page */
+.wrap { padding-top: 14px; }
+.tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); min-width: 120px; }
+.bar span { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.range { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.range input { font: 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="eyebrow">Reliant Distribution</span>
+      <h1>Scanner</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    </div>
+    <button class="btn" id="btnRefresh" type="button">Refresh</button>
+  </header>
+  <div class="notice bad" id="err" hidden></div>
+
+  <section class="panel">
+    <div class="ph">
+      <div class="range">
+        <div class="seg" role="group" aria-label="Dates" id="quick"><button type="button" data-q="0">Today</button><button type="button" data-q="6">7 days</button><button type="button" data-q="29">30 days</button><button type="button" data-q="89">90 days</button></div>
+        <label class="fl">From<input type="date" id="from"></label><label class="fl">To<input type="date" id="to"></label>
+      </div>
+    </div>
+    <section class="kpis" id="kpis" aria-label="Totals"></section>
+    <div class="legend" id="legend"></div>
+    <p class="how">Scanned is CashMonkey's count at the station. Stream, Accept and Do not add are the books the Scan Helper recorded; Rejected is what's left (scanned but not kept). Active time adds up the gaps of 10 minutes or less between recorded books, so long breaks and shifts left open don't count.</p>
+  </section>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button type="button" role="tab" data-t="who">By scanner</button>
+    <button type="button" role="tab" data-t="load">By load</button>
+    <button type="button" role="tab" data-t="day">By day</button>
+  </nav>
+
+  <section class="panel" data-pane="who"><div><h2>By scanner</h2><span class="sub" id="whoSub"></span></div><div class="tbl" id="whoTbl"></div></section>
+  <section class="panel" data-pane="load" hidden><div><h2>By load</h2><span class="sub">Where each load's scanned books went</span></div><div class="tbl" id="loadTbl"></div></section>
+  <section class="panel" data-pane="day" hidden><div><h2>Destinations by day</h2><span class="sub">Books recorded each day, by banner and stream box</span></div><div class="tbl" id="dayTbl"></div></section>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+  const money = v => v == null || !isFinite(v) ? "–" : "$" + (+v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct = (a, b) => b ? Math.round(100 * a / b) + "%" : "–";
+  const hrs = h => !h ? "–" : h < 1 ? Math.round(h * 60) + " min" : (+h).toFixed(1) + " h";
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dfmt = s => { if (!s) return "–"; const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return `${MON[m - 1]} ${d}, ${y}`; };
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  let own = null;
+  const sb = () => {
+    try { if (window.parent !== window && window.parent.RELIANT && window.parent.RELIANT.sb) return window.parent.RELIANT.sb; } catch {}
+    if (!own && window.supabase && window.RELIANT_CONFIG) own = window.supabase.createClient(window.RELIANT_CONFIG.supabaseUrl, window.RELIANT_CONFIG.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
+    return own;
+  };
+  const COL = { accept: "#2fbf4f", stream: "#7fc7a6", not_added: "#d2a54a", rejected: "#ef6b6b" };
+  const NAMES = { accept: "Accept (back end)", stream: "Stream", not_added: "Do not add", rejected: "Rejected" };
+  let A = null, tab = ls.get("scan.tab") || "who";
+
+  function setStatus(kind, t) { $("dot").className = "dot " + kind; $("statusText").textContent = t; }
+  const bar = r => { const t = (r.accept || 0) + (r.stream || 0) + (r.not_added || 0) + (r.rejected || 0);
+    return t ? `<div class="bar" title="${["accept", "stream", "not_added", "rejected"].map(k => `${NAMES[k]} ${int(r[k])}`).join(" · ")}">${["accept", "stream", "not_added", "rejected"].map(k => r[k] ? `<span style="width:${100 * r[k] / t}%;background:${COL[k]}"></span>` : "").join("")}</div>` : ""; };
+
+  async function load() {
+    const c = sb(); if (!c) { setStatus("err", "Not signed in"); return; }
+    setStatus("busy", "Loading…");
+    const { data, error } = await c.rpc("scan_analytics", { p_from: $("from").value, p_to: $("to").value });
+    if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = /owner or manager/.test(error.message) ? "Scan analytics are for owners and managers." : error.message; return; }
+    $("err").hidden = true; A = data;
+    setStatus("live", `${dfmt(A.from)} – ${dfmt(A.to)}`);
+    draw();
+  }
+  function draw() {
+    const S = A.scanners, sum = k => S.reduce((a, r) => a + (+r[k] || 0), 0);
+    const T = { scanned: sum("scanned"), stream: sum("stream"), accept: sum("accept"), not_added: sum("not_added"), rejected: sum("rejected"), hours: sum("hours") };
+    $("kpis").innerHTML = [["Scanned", int(T.scanned), T.hours ? int(T.scanned / T.hours) + " per active hour" : ""],
+      ["Accept", int(T.accept), pct(T.accept, T.scanned) + " of scanned"], ["Stream", int(T.stream), pct(T.stream, T.scanned) + " of scanned"],
+      ["Do not add", int(T.not_added), pct(T.not_added, T.scanned) + " of scanned"], ["Rejected", int(T.rejected), pct(T.rejected, T.scanned) + " of scanned"],
+      ["Active time", hrs(T.hours), `${int(S.length)} scanner${S.length === 1 ? "" : "s"}`]]
+      .map(([k, v, d]) => `<div class="kpi"><span class="k">${k}</span><span class="v">${v}</span><span class="d">${esc(d)}</span></div>`).join("");
+    $("legend").innerHTML = Object.keys(COL).map(k => `<span><i style="background:${COL[k]}"></i>${NAMES[k]}</span>`).join("");
+    document.querySelectorAll("#tabs [data-t]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === tab)));
+    document.querySelectorAll("[data-pane]").forEach(p => p.hidden = p.dataset.pane !== tab);
+
+    $("whoSub").textContent = S.some(r => !r.linked) ? "Names typed at the station until scanners sign in with their own account and PIN" : "";
+    $("whoTbl").innerHTML = S.length ? `<table><thead><tr><th class="plain">Scanner</th><th class="plain num">Scanned</th><th class="plain num">Per hour</th><th class="plain num">Accept</th><th class="plain num">Stream</th><th class="plain num">Do not add</th><th class="plain num">Rejected</th><th class="plain num">Active time</th><th class="plain num">Shifts</th><th class="plain hide-sm"></th></tr></thead><tbody>${
+      S.map(r => `<tr><td><div class="t">${esc(r.name)}</div><div class="a">${r.linked ? "Account" : "Typed name"}</div></td><td class="num"><b>${int(r.scanned)}</b></td><td class="num">${r.hours ? int(r.scanned / r.hours) : "–"}</td>
+        <td class="num">${int(r.accept)}<div class="a">${pct(r.accept, r.scanned)}</div></td><td class="num">${int(r.stream)}<div class="a">${pct(r.stream, r.scanned)}</div></td>
+        <td class="num">${int(r.not_added)}<div class="a">${pct(r.not_added, r.scanned)}</div></td><td class="num">${int(r.rejected)}<div class="a">${pct(r.rejected, r.scanned)}</div></td>
+        <td class="num">${hrs(r.hours)}</td><td class="num">${int(r.shifts)}</td><td class="hide-sm">${bar(r)}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">No scanning in these dates.</p>`;
+
+    const Ld = A.loads;
+    $("loadTbl").innerHTML = Ld.length ? `<table><thead><tr><th class="plain">Load</th><th class="plain num">Scanned</th><th class="plain num">Accept</th><th class="plain num">Stream</th><th class="plain num">Do not add</th><th class="plain num">Rejected</th><th class="plain num">Avg accept profit</th><th class="plain hide-sm"></th></tr></thead><tbody>${
+      Ld.map(r => `<tr><td><div class="t">${esc(r.name)}</div><div class="a">${esc([r.source, r.received ? "received " + dfmt(r.received) : "", r.scanners].filter(Boolean).join(" · "))}</div></td><td class="num"><b>${int(r.scanned)}</b></td>
+        <td class="num">${int(r.accept)}<div class="a">${pct(r.accept, r.scanned)}</div></td><td class="num">${int(r.stream)}<div class="a">${pct(r.stream, r.scanned)}</div></td>
+        <td class="num">${int(r.not_added)}<div class="a">${pct(r.not_added, r.scanned)}</div></td><td class="num">${int(r.rejected)}<div class="a">${pct(r.rejected, r.scanned)}</div></td>
+        <td class="num">${money(r.accept_profit)}<div class="a">CashMonkey, merchant</div></td><td class="hide-sm">${bar(r)}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">No loads scanned in these dates.</p>`;
+
+    const Dy = A.days, labels = A.box_labels || {};
+    const boxKeys = [...new Set(Dy.flatMap(d => Object.keys(d.boxes || {})))].sort((a, b) => (labels[a] ? labels[a].label : a).localeCompare(labels[b] ? labels[b].label : b));
+    const bl = k => k === "none" ? "No box" : labels[k] ? labels[k].label : k;
+    $("dayTbl").innerHTML = Dy.length ? `<table><thead><tr><th class="plain">Day</th><th class="plain num">Accept</th><th class="plain num">Stream</th><th class="plain num">BE ACCEPT tag</th><th class="plain num">SBYB tag</th><th class="plain num">Do not add</th>${boxKeys.map(k => `<th class="plain num">${esc(bl(k))}</th>`).join("")}</tr></thead><tbody>${
+      Dy.map(d => `<tr><td>${dfmt(d.date)}</td><td class="num"><b>${int(d.accept)}</b></td><td class="num"><b>${int(d.stream)}</b></td><td class="num">${int(d.be_accept)}</td><td class="num">${int(d.sbyb)}</td>
+        <td class="num">${int(d.not_added)}${d.reasons ? `<div class="a">${esc(Object.entries(d.reasons).map(([k, v]) => k + " " + v).join(", "))}</div>` : ""}</td>${boxKeys.map(k => `<td class="num">${(d.boxes || {})[k] ? int(d.boxes[k]) : ""}</td>`).join("")}</tr>`).join("")}</tbody></table>
+      <p class="how">Rejected books aren't recorded one by one at the station (only the count), so they show per scanner and per load, not by day.</p>` : `<p class="empty">No scanning in these dates.</p>`;
+  }
+  function setRange(days) {
+    const t = new Date(), f = new Date(); f.setDate(t.getDate() - days);
+    $("from").value = iso(f); $("to").value = iso(t); $("to").max = iso(t);
+    document.querySelectorAll("#quick [data-q]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.q === days)));
+    ls.set("scan.days", String(days));
+  }
+  $("quick").addEventListener("click", e => { const b = e.target.closest("[data-q]"); if (!b) return; setRange(+b.dataset.q); load(); });
+  ["from", "to"].forEach(id => $(id).addEventListener("change", () => { document.querySelectorAll("#quick [data-q]").forEach(b => b.setAttribute("aria-pressed", "false")); if ($("from").value && $("to").value) load(); }));
+  $("tabs").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; tab = b.dataset.t; ls.set("scan.tab", tab); if (A) draw(); });
+  $("btnRefresh").onclick = load;
+  setRange(+(ls.get("scan.days") || 6));
+  load();
+})();
+</script>
+</body>
+</html>
