@@ -97,8 +97,8 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   .colors svg { display: none; }
   .colors select { max-width: 96px; }
   .user > summary { padding: 2px; }
-  .hk { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hk .v { font-size: 22px; }
+  .home .hk { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home .hk .v { font-size: 22px; }
   .side { position: fixed; z-index: 40; top: 0; bottom: 0; left: 0; width: min(300px, 86vw); transform: translateX(-102%); transition: transform .2s; padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
   .app.navopen .side { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.35); }
   .app.navopen .scrim { display: block; position: fixed; inset: 0; z-index: 35; background: rgba(0,0,0,.35); }
@@ -409,30 +409,28 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
     if (el && !el.hidden) { fn(el); return; }
     if (tries > 0) setTimeout(() => inFrame(sel, fn, tries - 1), 150);
   }
-  function act(kid, fresh) {
+  function act(kid, fresh, extra) {
     const run = () => {
       if (kid.click) inFrame(kid.click, el => el.click());
       if (kid.scroll) inFrame(kid.scroll, el => el.scrollIntoView({ behavior: fresh ? "auto" : "smooth", block: "start" }));
-      if (kid.after) kid.after();
+      if (extra) extra();
     };
     if (fresh) $("sectionFrame").addEventListener("load", run, { once: true }); else run();
   }
-  function openKid(gid, i, push) {
+  function openKid(gid, i, push, extra) {
     const g = navFor.find(x => x.id === gid); if (!g) return;
     const kid = g.kids[i]; if (!kid) return;
     if (kid.page) { location.href = kid.page; return; }
     here = { grp: gid, kid: `${gid}:${i}` }; openGrps = new Set([gid]); hereClosed = false; saveOpen(); markNav(); closeNav();
     document.title = `${kid.label} · Reliant Workspace`;
-    act(kid, setFrame(kid.url));
+    act(kid, setFrame(kid.url), extra);
     if (push) history.pushState({ k: here.kid }, "", "#" + gid + "/" + encodeURIComponent(kid.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")));
   }
   function goKid(spec, extra) {       // "group:Kid label" from the Home page and search
     const [gid, label] = spec.split(":");
     const g = navFor.find(x => x.id === gid); if (!g) return;
     const i = g.kids.findIndex(k => k.label === label); if (i < 0) return;
-    if (extra) g.kids[i] = { ...g.kids[i], after: extra };
-    openKid(gid, i, true);
-    if (extra) delete g.kids[i].after;
+    openKid(gid, i, true, extra);
   }
   function openSettings(push) {
     here = { grp: "settings", kid: null }; markNav(); closeNav();
