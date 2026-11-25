@@ -3,90 +3,162 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10261f">
 <title>Reliant Workspace</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="theme.js"></script>
 <style>
 :root {
-  --cloth: #10261f; --cloth-2: #173329; --cloth-3: #21443a;
-  --paper: #efe7d4; --paper-dim: #b9b29f; --gilt: #d2a54a; --rule: #2f5348;
-  --on-accent: #10261f; --bad: #f0b49f;
-  --f-display: "Libre Caslon Display", Georgia, serif;
-  --f-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  color-scheme: dark;
+  --bg: #f1f2f0; --surface: #fff; --surface-2: #f6f7f5; --ink: #1c2420; --muted: #5f6a63; --line: #dfe3dd;
+  --accent: #1d5a45; --on-accent: #fff; --side: #e9ebe8; --bar: #10261f; --bar-ink: #eef0ea; --bad: #b42318; --good: #1f7a3a;
+  --f-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
-body { background: var(--cloth); color: var(--paper); font: 16px/1.5 var(--f-ui); }
-.eyebrow { font: 500 12px var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gilt); }
-h1 { font: 400 clamp(34px, 6vw, 56px)/1.05 var(--f-display); margin: 0; }
-h2 { font: 400 28px/1.1 var(--f-display); margin: 0; }
-.btn { font: 600 15px var(--f-ui); color: var(--paper); background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 16px; cursor: pointer; }
-.btn:hover { border-color: var(--gilt); }
-.btn.primary { background: var(--gilt); color: var(--on-accent); border-color: var(--gilt); }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-ui); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.btn { font: 600 14px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .btn:disabled { opacity: .55; cursor: default; }
-.link { all: unset; cursor: pointer; color: var(--gilt); font: 500 14px var(--f-ui); text-decoration: underline; text-underline-offset: 3px; }
-button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+.link { all: unset; cursor: pointer; color: var(--accent); font: 500 14px var(--f-ui); text-decoration: underline; text-underline-offset: 3px; }
+button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* sign-in */
+/* sign-in, new password, pending, PIN */
 .gate { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
-.card { width: min(420px, 100%); background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 16px; }
-.card p { margin: 0; color: var(--paper-dim); font-size: 15px; }
+.card { width: min(420px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.card h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+.card h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; }
+.brandmark { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 13px; color: var(--muted); }
+.logo { width: 28px; height: 28px; border-radius: 7px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: none; }
 .fld { display: flex; flex-direction: column; gap: 6px; }
-.fld label { font: 500 11px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--paper-dim); }
-.fld input { font: 500 16px var(--f-ui); color: var(--paper); background: var(--cloth); border: 1px solid var(--rule); border-radius: 8px; padding: 11px 12px; }
-.msg { font-size: 14px; color: var(--paper-dim); min-height: 1.2em; }
+.fld label { font: 600 12px var(--f-ui); color: var(--muted); }
+.fld input { font: 500 16px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.msg { font-size: 14px; color: var(--muted); min-height: 1.2em; }
 .msg.bad { color: var(--bad); }
+.eyebrow { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
 .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
 
-/* home: laid out like the Workspace home (numbered groups of tiles) */
-.home { min-height: 100%; display: flex; flex-direction: column; align-items: center; padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(32px + env(safe-area-inset-bottom, 0px)); }
-.home-in { width: min(1080px, 100%); display: flex; flex-direction: column; gap: 28px; }
-.home-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
-.home-head > div:first-child { margin-right: auto; }
-.home-head h1 { margin: 4px 0 0; font: 400 clamp(36px, 6vw, 60px)/1.05 var(--f-display); }
-.who { font: 500 14px var(--f-ui); color: var(--paper-dim); }
-.who b { color: var(--paper); }
-.acct { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.acct .btn { padding: 7px 12px; font-size: 14px; }
-.secs { display: flex; flex-direction: column; gap: 26px; }
-.sec { display: flex; flex-direction: column; gap: 12px; }
-.sech { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
-.sech h3 { margin: 0; font: 400 26px/1.1 var(--f-display); color: var(--paper); }
-.secn { align-self: center; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--gilt); color: var(--on-accent); font: 600 14px var(--f-mono); flex: none; }
-.secd { font: 14px var(--f-ui); color: var(--paper-dim); }
-.tiles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-@media (min-width: 640px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 940px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.tile { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 8px; min-height: 150px; padding: 20px; border: 1px solid var(--rule); border-radius: 10px; background: var(--cloth-2); transition: border-color .15s, background .15s; }
-.tile:hover:not([aria-disabled="true"]) { border-color: var(--gilt); background: var(--cloth-3); }
-.tile:focus-visible { outline: 2px solid var(--gilt); outline-offset: 3px; }
-.tile h2 { margin: 0; font: 400 28px/1.1 var(--f-display); }
-.tile p { margin: 0; color: var(--paper-dim); font: 14px/1.45 var(--f-ui); }
-.tile .st { margin-top: auto; font: 13px var(--f-mono); color: var(--paper); }
-.tile .st.dim { color: var(--paper-dim); }
-.tile[aria-disabled="true"] { cursor: default; opacity: .55; }
-.sub { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; color: var(--paper-dim); font: 13px var(--f-ui); }
-.sub a { color: var(--gilt); }
-@media (max-width: 639px) { .home-head h1 { font-size: 34px; } .tile { min-height: 0; padding: 18px; } .tile h2 { font-size: 26px; } }
+/* ---------- the app: top bar, sidebar, content ---------- */
+.app { height: 100%; display: grid; grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 8px 14px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--bar); color: var(--bar-ink); }
+.topbar .brand { display: flex; align-items: center; gap: 10px; width: 222px; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.menuBtn { display: none; }
+.iconbtn { all: unset; cursor: pointer; width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; color: inherit; }
+.iconbtn:hover { background: rgba(255,255,255,.10); }
+.search { flex: 1 1 320px; max-width: 560px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 0 10px; }
+.search input { all: unset; flex: 1; min-width: 0; padding: 8px 0; font: 14px var(--f-ui); color: inherit; }
+.search input::placeholder { color: inherit; opacity: .65; }
+.topright { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.colors { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; }
+.colors select { font: 600 13px var(--f-ui); color: inherit; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 6px 8px; }
+.colors option { color: #1c2420; background: #fff; }
+.user { position: relative; }
+.user > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 8px; font-weight: 500; white-space: nowrap; }
+.user > summary::-webkit-details-marker { display: none; }
+.user > summary:hover { background: rgba(255,255,255,.10); }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: #d2a54a; color: #10261f; display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+.usermenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.22); display: flex; flex-direction: column; }
+.usermenu .who { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; font-size: 13px; color: var(--muted); }
+.usermenu .who b { display: block; color: var(--ink); font-size: 14px; }
+.usermenu button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 6px; font-size: 14px; }
+.usermenu button:hover { background: var(--surface-2); }
 
-/* a section opened full screen */
-.section { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--cloth); z-index: 10; }
-.section .bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--rule); background: var(--cloth-2); }
-.section .bar .ttl { font: 400 20px var(--f-display); color: var(--gilt); }
-.section iframe { flex: 1; width: 100%; border: 0; background: #0e1915; }
+.side { background: var(--side); border-right: 1px solid var(--line); overflow-y: auto; padding: 12px 10px 16px; display: flex; flex-direction: column; gap: 2px; }
+.navgrp { display: flex; flex-direction: column; }
+.navbtn { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; font-weight: 600; color: var(--ink); }
+.navbtn:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.navbtn.here { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.navbtn svg { flex: none; }
+.navbtn .lab { flex: 1; }
+.navbtn .chev { transition: transform .15s; opacity: .7; }
+.navgrp.open .chev { transform: rotate(90deg); }
+.kids { display: none; flex-direction: column; gap: 1px; padding: 2px 0 6px 36px; }
+.navgrp.open .kids { display: flex; }
+.kid { all: unset; box-sizing: border-box; cursor: pointer; padding: 5px 10px; border-radius: 6px; color: var(--muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.kid:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.kid.here { color: var(--accent); background: var(--surface); font-weight: 600; }
+.kid .ext { margin-left: auto; opacity: .6; }
+.sidefoot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+
+.content { position: relative; min-width: 0; min-height: 0; }
+.content iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+.homeview { position: absolute; inset: 0; overflow-y: auto; }
+.scrim { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .menuBtn { display: grid; }
+  .topbar .brand { width: auto; }
+  .topbar .brand span:last-child, .colors .lab, .user .uname { display: none; }
+  .search { flex: 1 1 120px; }
+  .side { position: fixed; z-index: 40; top: 0; bottom: 0; left: 0; width: min(300px, 86vw); transform: translateX(-102%); transition: transform .2s; padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+  .app.navopen .side { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.35); }
+  .app.navopen .scrim { display: block; position: fixed; inset: 0; z-index: 35; background: rgba(0,0,0,.35); }
+}
+
+/* ---------- Home ---------- */
+.home { max-width: 1240px; margin: 0 auto; padding: 22px clamp(14px, 3vw, 32px) 56px; display: flex; flex-direction: column; gap: 16px; }
+.hhead { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.hhead .date { font-size: 12px; color: var(--muted); }
+.hhead h1 { margin: 2px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.hhead .note { margin-left: auto; font-size: 12px; color: var(--muted); }
+.pane { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--card-shadow, none); overflow: hidden; }
+.pane > .ph { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.pane > .ph h2 { margin: 0; font-size: 14px; font-weight: 700; }
+.pane > .ph .sub { color: var(--muted); font-size: 13px; }
+.pane > .ph .more { margin-left: auto; all: unset; margin-left: auto; cursor: pointer; font-weight: 600; color: var(--accent); }
+.today { display: flex; flex-direction: column; }
+.today .ev { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.today .ev:first-of-type { border-top: 0; }
+.today .dotc { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.today .t { font-weight: 600; }
+.today .d { color: var(--muted); }
+.hk { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.hk .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--card-shadow, none); }
+.hk .k { font-size: 12px; font-weight: 500; color: var(--muted); }
+.hk .v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.hk .d { font-size: 12px; color: var(--muted); }
+.cols { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.cols > .pane:first-child { flex: 1 1 300px; }
+.cols > .pane:last-child { flex: 2 1 460px; min-width: 0; }
+.att { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid var(--line); width: 100%; }
+.att:first-of-type { border-top: 0; }
+.att:hover { background: var(--surface-2); }
+.att .n { min-width: 40px; text-align: center; border-radius: 999px; padding: 2px 8px; font-weight: 700; font-size: 12px; }
+.att .n.warn { background: var(--warnbg); color: var(--warnfg); }
+.att .n.bad { background: var(--badbg); color: var(--bad); }
+.att .n.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.att .tx { flex: 1; }
+.att .go { color: var(--muted); }
+.ok-line { padding: 14px 16px; color: var(--muted); }
+.tbl { overflow-x: auto; }
+.tbl table { width: 100%; border-collapse: collapse; }
+.tbl td { padding: 9px 16px; border-top: 1px solid var(--line); vertical-align: top; }
+.tbl tr:first-child td { border-top: 0; }
+.tbl tr.click { cursor: pointer; }
+.tbl tr.click:hover td { background: var(--surface-2); }
+.tbl .num { text-align: right; white-space: nowrap; }
+.tbl .t { font-weight: 600; }
+.tbl .a { color: var(--muted); font-size: 12px; }
+.tag { margin-left: 4px; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); white-space: nowrap; }
+.tag.used { background: var(--warnbg); color: var(--warnfg); }
+.tag.vintage { background: color-mix(in srgb, #a46ee0 18%, transparent); color: color-mix(in srgb, #a46ee0 70%, var(--ink)); }
+.pill { border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--warnbg); color: var(--warnfg); }
+.pill.bad { background: var(--badbg); color: var(--bad); }
+.loadingline { color: var(--muted); padding: 14px 16px; }
+.hfoot { font-size: 13px; color: var(--muted); display: flex; gap: 6px 12px; flex-wrap: wrap; }
+.hfoot a { color: var(--accent); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 </head>
 <body>
-
 <!-- Signed out -->
 <main class="gate" id="signin" hidden>
   <form class="card" id="signinForm" autocomplete="on">
-    <div><span class="eyebrow">Reliant Distribution</span><h1>Workspace</h1></div>
+    <div class="brandmark"><span class="logo">R</span>Reliant Distribution</div><h1>Workspace</h1>
     <p id="signinIntro">Sign in with your work email, or the username you were given (like Brooklyn.Smith), and your password.</p>
     <div class="fld"><label for="email" id="emailLbl">Email or username</label><input id="email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required></div>
     <div class="fld"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" minlength="8" required></div>
@@ -102,7 +174,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 <!-- Setting a new password after a reset email -->
 <main class="gate" id="newpw" hidden>
   <form class="card" id="newpwForm">
-    <div><span class="eyebrow">Reliant Distribution</span><h2>Choose a new password</h2></div>
+    <div class="brandmark"><span class="logo">R</span>Reliant Distribution</div><div><h2>Choose a new password</h2></div>
     <p id="newpwWhy" hidden>Your account was set up with a starting password. Choose your own now (at least 8 characters).</p>
     <div class="fld"><label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></div>
     <div class="msg" id="newpwMsg" role="status"></div>
@@ -113,38 +185,75 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 <!-- Signed in but not given a role yet -->
 <main class="gate" id="pending" hidden>
   <div class="card">
-    <div><span class="eyebrow">Reliant Distribution</span><h2>Almost there</h2></div>
+    <div class="brandmark"><span class="logo">R</span>Reliant Distribution</div><div><h2>Almost there</h2></div>
     <p>You're signed in as <b id="pendingEmail"></b>, but this account hasn't been approved yet. Ask an owner or manager to approve it in Settings, then press Check again.</p>
     <button class="btn primary" type="button" id="pendingRetry">Check again</button>
     <button class="btn" type="button" data-signout>Sign out</button>
   </div>
 </main>
 
-<!-- Home -->
-<div id="home" hidden>
-  <main class="home">
-    <div class="home-in">
-      <div class="home-head">
-        <div><span class="eyebrow">Reliant Distribution</span><h1>Workspace</h1></div>
-        <div class="acct"><span class="who" id="who"></span><button class="btn" type="button" id="switchBtn">Switch person</button><button class="btn" type="button" id="pinBtn">My PIN</button><button class="btn" type="button" id="settingsBtn" hidden>Settings</button><button class="btn" type="button" data-signout>Sign out</button></div>
-      </div>
-      <div class="secs" id="secs"></div>
-      <div class="sub">
-        <span>TV screen:</span><a href="live.html#display" target="_blank" rel="noopener">open the TV window</a>
-        <span>· This is the new Workspace on the Reliant database. Until a section is switched over, keep using the current Workspace for it.</span>
+<!-- Signed in: top bar, sidebar menu, and the open screen -->
+<div class="app" id="app" hidden>
+  <header class="topbar">
+    <button class="iconbtn menuBtn" type="button" id="menuBtn" aria-label="Menu" aria-controls="side" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <a class="brand" href="#" id="brandHome"><span class="logo">R</span><span>Reliant Distribution</span></a>
+    <form class="search" id="searchForm" role="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="searchBox" type="search" placeholder="Search books by title, author or ISBN…" aria-label="Search books" autocomplete="off">
+    </form>
+    <div class="topright">
+      <label class="colors"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.5-.8 1.5-1.6 0-.5-.2-.8-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H16a6 6 0 0 0 6-6c0-4.6-4.5-8.4-10-8.4z"/></svg><span class="lab">Colors</span>
+        <select id="themeSel" aria-label="Colors"></select></label>
+      <details class="user" id="userMenu">
+        <summary><span class="avatar" id="avatar">?</span><span class="uname" id="who"></span></summary>
+        <div class="usermenu">
+          <div class="who"><b id="whoName"></b><span id="whoRole"></span></div>
+          <button type="button" id="switchBtn">Switch person</button>
+          <button type="button" id="pinBtn">My PIN</button>
+          <button type="button" id="settingsBtn" hidden>Settings</button>
+          <button type="button" data-signout>Sign out</button>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <nav class="side" id="side" aria-label="Main menu">
+    <div id="nav"></div>
+    <div class="sidefoot" id="sidefoot"></div>
+  </nav>
+  <div class="scrim" id="scrim"></div>
+
+  <main class="content">
+    <div class="homeview" id="homeView">
+      <div class="home">
+        <div class="hhead">
+          <div><div class="date" id="hDate"></div><h1 id="hHello">Welcome</h1></div>
+          <span class="note" id="hNote"></span>
+        </div>
+        <section class="pane" id="todayPane" hidden>
+          <div class="ph"><h2>Today</h2><span class="sub" id="todaySub"></span><button type="button" class="more" data-go="executive:Calendar">Open calendar ›</button></div>
+          <div class="today" id="today"></div>
+        </section>
+        <div class="hk" id="hKpis"></div>
+        <div class="cols">
+          <section class="pane"><div class="ph"><h2>Needs attention</h2></div><div id="attention"><div class="loadingline">Loading…</div></div></section>
+          <section class="pane"><div class="ph"><h2>Recent shows</h2><button type="button" class="more" data-go="shows:All shows">All shows ›</button></div><div class="tbl" id="recent"><div class="loadingline">Loading…</div></div></section>
+        </div>
+        <section class="pane" id="ordersPane" hidden>
+          <div class="ph"><h2>Orders on the way</h2><span class="sub" id="ordersSub"></span><button type="button" class="more" data-go="buying:Waiting to arrive">All waiting ›</button></div>
+          <div class="tbl" id="orders"></div>
+        </section>
+        <div class="hfoot"><span>TV screen:</span><a href="live.html#display" target="_blank" rel="noopener">open the TV window</a></div>
       </div>
     </div>
+    <iframe id="sectionFrame" title="Section" allow="clipboard-write; camera" hidden></iframe>
   </main>
 </div>
 
-<!-- A section opened full screen -->
-<div class="section" id="section" hidden>
-  <div class="bar"><button class="btn" type="button" id="homeBtn">⌂ Home</button><span class="ttl" id="sectionTitle"></span></div>
-  <iframe id="sectionFrame" title="Section" allow="clipboard-write; camera"></iframe>
-</div>
-
 <!-- Quick switch on a shared device: pick a person, type their PIN -->
-<main class="gate" id="pinGate" hidden style="position:fixed;inset:0;z-index:50;background:rgba(5,12,10,.85)">
+<main class="gate" id="pinGate" hidden style="position:fixed;inset:0;z-index:50;background:rgba(5,12,10,.6)">
   <form class="card" id="pinForm" autocomplete="off">
     <div><span class="eyebrow">Shared device</span><h2 id="pinTitle">Switch person</h2></div>
     <div id="pinPeople" class="fld"></div>
@@ -167,37 +276,318 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 
   const MANAGER = ["owner", "manager"];
   const SHOW_CREW = ["owner", "manager", "operator"];
-  // Grouped and ordered like the Workspace home: what to do first, on show day, and after.
-  const GROUPS = [
-    { title: "Executive", desc: "Owners only", roles: ["owner"], items: [
-      { id: "executive", title: "Executive", desc: "Shared calendar and day notes, financial days and promos, alerts, and a quick review of recent shows.", url: "executive.html", roles: ["owner"] }
-    ] },
-    { title: "Buy & stock", desc: "Get books in the door", items: [
-      { id: "purchasing", title: "Purchasing", desc: "Build buy lists from sales, stock, price, ratings and profit, and keep the lists you send.", url: "purchasing.html", roles: MANAGER },
-      { id: "orders", title: "Orders & Receiving", desc: "Add supplier orders from their files, see what’s on the way, and receive boxes when they arrive.", url: "orders.html", roles: ["owner", "manager", "scanner"] },
-      { id: "inventory", title: "Inventory", desc: "What’s on hand and on order, counts, adjustments, damaged copies, and records to review.", url: "inventory.html" },
-      { id: "books", title: "Book Info", desc: "Titles, authors, Goodreads, spice, genres, tropes and the synopsis shown on the TV. Add new books.", url: "books.html" }
-    ] },
-    { title: "Show day", desc: "Get books ready, then sell them live", items: [
-      { id: "prep", title: "Show Prep", desc: "Scan books into an upcoming show and group them into sets, on a tablet or computer.", page: "prep.html", roles: SHOW_CREW },
-      { id: "live", title: "Book Spotlight", desc: "Run the show: playlist, the TV screen, sales and customer requests.", page: "live.html", roles: SHOW_CREW, status: "Real and practice shows" },
-      { id: "station", title: "Ticket System", desc: "Live sales with buyer numbers, chit printing and scan-to-sale.", page: "station.html", roles: SHOW_CREW, status: "Practice sales for testing" }
-    ] },
-    { title: "After the show", desc: "See the money and how it went", items: [
-      { id: "analytics", title: "Sales Analytics", desc: "Sales, titles, shows and side-by-side comparisons.", url: "analytics.html", roles: MANAGER },
-      { id: "fulfillment", title: "Fulfillment", desc: "Cancellations and giveaways after a new-book show, giveaways outside a show, and closing the show.", url: "fulfillment.html", roles: SHOW_CREW },
-      { id: "shows", title: "Shows", desc: "Every show’s results, customer events and requests.", url: "shows.html" }
-    ] },
-    { title: "Used books", desc: "Loads, check-ins and used shows", items: [
-      { id: "used", title: "Used Books", desc: "Load results, check-ins, and used and vintage shows.", url: "used.html", roles: MANAGER }
-    ] },
-    { title: "Setup", desc: "Programs for the store's computers", items: [
-      { id: "tools", title: "Computer tools", desc: "Download the Chit Printer, Page Reader and Scan Helper, and see if this computer's copy is up to date.", url: "tools.html" }
-    ] }
+  const RT = window.RELIANT_THEME;
+
+  // ---------- the sidebar: general categories, each with a dropdown of screens ----------
+  // A kid opens a section page in the content area and picks its tab (click) or scrolls to a panel (scroll).
+  // "page" kids (Show Prep, Book Spotlight, Ticket System) take over the whole window, as before.
+  const I = {
+    home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+    exec: "M4 5h16v15H4zM4 10h16M9 3v4M15 3v4",
+    buy: "M6 7h15l-2 9H8zM6 7 5 3H2M9 20h.01M18 20h.01",
+    inv: "M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10",
+    books: "M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z",
+    shows: "M3 6h13v12H3zM16 10l5-3v10l-5-3",
+    ful: "M3 7h13v10H3zM16 10h3l2 3v4h-5M7 20a1.5 1.5 0 1 0 0-.01M18 20a1.5 1.5 0 1 0 0-.01",
+    ana: "M4 20V10M10 20V4M16 20v-7M22 20H2",
+    used: "M5 4h14v4H5zM6 8v12h12V8M10 12h4",
+    gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
+    tv: "M3 5h18v12H3zM8 21h8M12 17v4"
+  };
+  const NAV = [
+    { id: "home", label: "Home", icon: I.home },
+    { id: "executive", label: "Executive", icon: I.exec, roles: ["owner"], kids: [
+      { label: "Calendar", url: "executive.html" },
+      { label: "Alerts", url: "executive.html", scroll: "#alertsPanel" },
+      { label: "Quick show review", url: "executive.html", scroll: ".review" } ] },
+    { id: "buying", label: "Buying", icon: I.buy, kids: [
+      { label: "Build a buy list", url: "purchasing.html", click: '[data-t="build"]', roles: MANAGER },
+      { label: "Saved buy lists", url: "purchasing.html", click: '[data-t="saved"]', roles: MANAGER },
+      { label: "Waiting to arrive", url: "orders.html", click: '[data-t="open"]', roles: ["owner", "manager", "scanner"] },
+      { label: "Shortages", url: "orders.html", click: '[data-t="short"]', roles: ["owner", "manager", "scanner"] },
+      { label: "All orders", url: "orders.html", click: '[data-t="all"]', roles: ["owner", "manager", "scanner"] },
+      { label: "New order", url: "orders.html", click: '[data-t="new"]', roles: MANAGER } ] },
+    { id: "inventory", label: "Inventory", icon: I.inv, kids: [
+      { label: "On hand", url: "inventory.html", click: '[data-t="hand"]' },
+      { label: "En route", url: "inventory.html", click: '[data-t="route"]' },
+      { label: "Records review", url: "inventory.html", click: '[data-t="review"]' },
+      { label: "Count", url: "inventory.html", click: '[data-t="count"]', roles: ["owner", "manager", "operator", "scanner"] },
+      { label: "Adjust & damage", url: "inventory.html", click: '[data-t="adjust"]', roles: ["owner", "manager", "scanner"] } ] },
+    { id: "books", label: "Books", icon: I.books, kids: [
+      { label: "Book Info", url: "books.html" },
+      { label: "Info needed", url: "books.html", click: '[data-f="need"]' } ] },
+    { id: "shows", label: "Shows", icon: I.shows, kids: [
+      { label: "Show Prep", page: "prep.html", roles: SHOW_CREW },
+      { label: "Book Spotlight", page: "live.html", roles: SHOW_CREW },
+      { label: "Ticket System", page: "station.html", roles: SHOW_CREW },
+      { label: "All shows", url: "shows.html", click: '[data-t="shows"]' },
+      { label: "Customer events", url: "shows.html", click: '[data-t="events"]' },
+      { label: "Requests", url: "shows.html", click: '[data-t="requests"]' } ] },
+    { id: "fulfillment", label: "Fulfillment", icon: I.ful, roles: SHOW_CREW, kids: [
+      { label: "New-book show", url: "fulfillment.html", click: '[data-t="show"]' },
+      { label: "Giveaways outside a show", url: "fulfillment.html", click: '[data-t="off"]' },
+      { label: "Cancellations by customer", url: "fulfillment.html", click: '[data-t="cust"]' } ] },
+    { id: "analytics", label: "Analytics", icon: I.ana, roles: MANAGER, kids: [
+      { label: "Overview", url: "analytics.html", click: '[data-t="overview"]' },
+      { label: "Titles", url: "analytics.html", click: '[data-t="titles"]' },
+      { label: "Shows", url: "analytics.html", click: '[data-t="shows"]' },
+      { label: "Compare", url: "analytics.html", click: '[data-t="compare"]' },
+      { label: "Cancels & giveaways", url: "analytics.html", click: '[data-t="events"]' },
+      { label: "More", url: "analytics.html", click: '[data-t="more"]' } ] },
+    { id: "used", label: "Used books", icon: I.used, roles: MANAGER, kids: [
+      { label: "Loads", url: "used.html", scroll: "section.panel" },
+      { label: "Check-ins due", url: "used.html", scroll: "#duePanel" },
+      { label: "Used & vintage shows", url: "used.html", scroll: "section.panel:nth-of-type(4)" },
+      { label: "Consignors", url: "used.html", scroll: "#consPanel" } ] }
   ];
-  const SECTIONS = GROUPS.flatMap(g => g.items);
-  const views = ["signin", "newpw", "pending", "home", "section"];
-  const show = id => views.forEach(v => { $(v).hidden = v !== id && !(id === "section" && v === "home"); });
+  const svg = d => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+  const CHEV = `<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+  const EXT = `<svg class="ext" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>`;
+  const allowed = (x, role) => !x.roles || x.roles.includes(role);
+  let navFor = [];                       // the menu for this person's role
+  let here = { grp: "home", kid: null }; // what's open
+  const OPEN_KEY = "reliant.navOpen";
+  let openGrps = new Set(); try { openGrps = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || "[]")); } catch {}
+
+  function drawNav(me) {
+    navFor = NAV.filter(g => allowed(g, me.role)).map(g => ({ ...g, kids: (g.kids || []).filter(k => allowed(k, me.role)) }))
+      .filter(g => g.id === "home" || g.kids.length);
+    $("nav").innerHTML = navFor.map(g => g.id === "home"
+      ? `<div class="navgrp" data-g="home"><button type="button" class="navbtn" data-home>${svg(g.icon)}<span class="lab">Home</span></button></div>`
+      : `<div class="navgrp" data-g="${g.id}"><button type="button" class="navbtn" data-toggle="${g.id}" aria-expanded="false">${svg(g.icon)}<span class="lab"></span>${CHEV}</button>
+         <div class="kids">${g.kids.map((k, i) => `<button type="button" class="kid" data-k="${g.id}:${i}"><span></span>${k.page ? EXT : ""}</button>`).join("")}</div></div>`).join("");
+    navFor.forEach(g => {
+      const el = $("nav").querySelector(`[data-g="${g.id}"]`);
+      if (g.id !== "home") el.querySelector(".lab").textContent = g.label;
+      g.kids.forEach((k, i) => { el.querySelector(`[data-k="${g.id}:${i}"] span`).textContent = k.label; });
+    });
+    $("sidefoot").innerHTML = (MANAGER.includes(me.role) ? `<button type="button" class="navbtn" data-settings>${svg(I.gear)}<span class="lab">Settings</span></button>` : "")
+      + `<a class="navbtn" href="live.html#display" target="_blank" rel="noopener">${svg(I.tv)}<span class="lab">TV window</span>${EXT}</a>`;
+    markNav();
+  }
+  function markNav() {
+    $("nav").querySelectorAll(".navgrp").forEach(el => {
+      const g = el.dataset.g, isOpen = openGrps.has(g) || here.grp === g;
+      el.classList.toggle("open", g !== "home" && isOpen);
+      const t = el.querySelector("[data-toggle]"); if (t) t.setAttribute("aria-expanded", String(isOpen));
+      el.querySelector(".navbtn").classList.toggle("here", here.grp === g);
+    });
+    $("nav").querySelectorAll(".kid").forEach(b => b.classList.toggle("here", b.dataset.k === here.kid));
+    const sBtn = $("sidefoot").querySelector("[data-settings]"); if (sBtn) sBtn.classList.toggle("here", here.grp === "settings");
+  }
+  $("nav").addEventListener("click", e => {
+    const t = e.target.closest("[data-toggle]"), k = e.target.closest("[data-k]"), h = e.target.closest("[data-home]");
+    if (h) { goHome(true); return; }
+    if (t) { const g = t.dataset.toggle; openGrps.has(g) ? openGrps.delete(g) : openGrps.add(g);
+      try { localStorage.setItem(OPEN_KEY, JSON.stringify([...openGrps])); } catch {} markNav(); return; }
+    if (k) { const [g, i] = k.dataset.k.split(":"); openKid(g, +i, true); }
+  });
+  $("sidefoot").addEventListener("click", e => { if (e.target.closest("[data-settings]")) openSettings(true); });
+
+  // ---------- opening screens ----------
+  let frameUrl = "";
+  function closeNav() { $("app").classList.remove("navopen"); $("menuBtn").setAttribute("aria-expanded", "false"); }
+  function setFrame(url) {
+    $("homeView").hidden = true; $("sectionFrame").hidden = false;
+    if (frameUrl !== url) { frameUrl = url; $("sectionFrame").src = url; return true; }
+    return false;
+  }
+  // wait for an element inside the open section (tabs are there at once; filters appear after the data loads)
+  function inFrame(sel, fn, tries = 60) {
+    let doc; try { doc = $("sectionFrame").contentDocument; } catch { return; }
+    const el = doc && doc.readyState !== "loading" && doc.querySelector(sel);
+    if (el && !el.hidden) { fn(el); return; }
+    if (tries > 0) setTimeout(() => inFrame(sel, fn, tries - 1), 150);
+  }
+  function act(kid, fresh) {
+    const run = () => {
+      if (kid.click) inFrame(kid.click, el => el.click());
+      if (kid.scroll) inFrame(kid.scroll, el => el.scrollIntoView({ behavior: fresh ? "auto" : "smooth", block: "start" }));
+      if (kid.after) kid.after();
+    };
+    if (fresh) $("sectionFrame").addEventListener("load", run, { once: true }); else run();
+  }
+  function openKid(gid, i, push) {
+    const g = navFor.find(x => x.id === gid); if (!g) return;
+    const kid = g.kids[i]; if (!kid) return;
+    if (kid.page) { location.href = kid.page; return; }
+    here = { grp: gid, kid: `${gid}:${i}` }; markNav(); closeNav();
+    document.title = `${kid.label} · Reliant Workspace`;
+    act(kid, setFrame(kid.url));
+    if (push) history.pushState({ k: here.kid }, "", "#" + gid + "/" + encodeURIComponent(kid.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")));
+  }
+  function goKid(spec, extra) {       // "group:Kid label" from the Home page and search
+    const [gid, label] = spec.split(":");
+    const g = navFor.find(x => x.id === gid); if (!g) return;
+    const i = g.kids.findIndex(k => k.label === label); if (i < 0) return;
+    if (extra) g.kids[i] = { ...g.kids[i], after: extra };
+    openKid(gid, i, true);
+    if (extra) delete g.kids[i].after;
+  }
+  function openSettings(push) {
+    here = { grp: "settings", kid: null }; markNav(); closeNav();
+    document.title = "Settings · Reliant Workspace";
+    setFrame("settings.html");
+    if (push) history.pushState({ k: "settings" }, "", "#settings");
+  }
+  function goHome(push) {
+    here = { grp: "home", kid: null }; markNav(); closeNav();
+    document.title = "Reliant Workspace";
+    $("sectionFrame").hidden = true; $("homeView").hidden = false;
+    if (push && location.hash) history.pushState({ k: "home" }, "", location.pathname);
+    loadHome();
+  }
+  function closeSection() { frameUrl = ""; $("sectionFrame").src = "about:blank"; goHome(false); }
+  function fromHash() {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (!h) { goHome(false); return; }
+    if (h === "settings") { openSettings(false); return; }
+    const [gid, slug] = h.split("/");
+    const g = navFor.find(x => x.id === gid);
+    const i = g ? g.kids.findIndex(k => k.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") === slug) : -1;
+    if (i >= 0) openKid(gid, i, false); else goHome(false);
+  }
+  addEventListener("popstate", () => { if (window.RELIANT.staff) fromHash(); });
+  $("brandHome").onclick = e => { e.preventDefault(); goHome(true); };
+  $("menuBtn").onclick = () => { const o = $("app").classList.toggle("navopen"); $("menuBtn").setAttribute("aria-expanded", String(o)); };
+  $("scrim").onclick = closeNav;
+  document.addEventListener("click", e => { const d = $("userMenu"); if (d.open && !d.contains(e.target)) d.open = false; });
+  $("userMenu").addEventListener("click", e => { if (e.target.closest(".usermenu button")) $("userMenu").open = false; });
+  $("homeView").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) goKid(b.dataset.go); });
+
+  // search: opens Inventory › On hand with every title, filtered to what was typed
+  $("searchForm").onsubmit = e => {
+    e.preventDefault();
+    const q = $("searchBox").value.trim(); if (!q) return;
+    goKid("inventory:On hand", () => {
+      inFrame('[data-f="all"]', el => el.click());
+      inFrame('#q', el => { el.value = q; el.dispatchEvent(new Event("input", { bubbles: true })); });
+    });
+  };
+
+  // ---------- colors: saved with each person's sign-in, mirrored to this device ----------
+  $("themeSel").innerHTML = RT.list.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+  $("themeSel").value = RT.current();
+  $("themeSel").onchange = async e => {
+    const id = e.target.value; RT.save(id);
+    try { $("sectionFrame").contentWindow.RELIANT_THEME && $("sectionFrame").contentWindow.RELIANT_THEME.apply(id); } catch {}
+    try { await sb.auth.updateUser({ data: { theme: id } }); } catch {}
+  };
+  function themeFromSession(session) {
+    const id = session && session.user && session.user.user_metadata && session.user.user_metadata.theme;
+    if (id && RT.list.some(t => t.id === id) && id !== RT.current()) RT.save(id);
+    $("themeSel").value = RT.current();
+  }
+
+  const views = ["signin", "newpw", "pending", "app"];
+  const show = id => views.forEach(v => { $(v).hidden = v !== id; });
+
+  // ---------- Home: today, the last 30 days, what needs attention ----------
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const int = n => Math.round(+n || 0).toLocaleString("en-US");
+  const money = n => (+n || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const PLAT = { tiktok: "TikTok", whatnot: "Whatnot", ebay: "eBay", TT: "TikTok", WN: "Whatnot", EB: "eBay" };
+  const ymdLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parseD = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate() + n); return ymdLocal(d); };
+  const fmtTime = t => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return new Date(2000, 0, 1, h, m).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); };
+  const dShort = s => s ? parseD(s).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "";
+  // same repeat rules as Executive's calendar
+  function occursOn(ev, day) {
+    const len = ev.end_date ? Math.round((parseD(ev.end_date) - parseD(ev.start_date)) / 864e5) : 0;
+    const hit = s => s <= day && addDays(s, len) >= day;
+    if (ev.repeat === "none" || !ev.repeat) return hit(ev.start_date);
+    if (ev.repeat_until && ev.repeat_until < addDays(day, -len)) return false;
+    const base = parseD(ev.start_date);
+    for (let i = 0; i < 2000; i++) {
+      let s;
+      if (ev.repeat === "weekly") s = addDays(ev.start_date, 7 * i);
+      else if (ev.repeat === "monthly") { const y = base.getFullYear(), m = base.getMonth() + i; const last = new Date(y, m + 1, 0).getDate(); s = ymdLocal(new Date(y, m, Math.min(base.getDate(), last))); }
+      else { const y = base.getFullYear() + i, last = new Date(y, base.getMonth() + 1, 0).getDate(); s = ymdLocal(new Date(y, base.getMonth(), Math.min(base.getDate(), last))); }
+      if (s > day || (ev.repeat_until && s > ev.repeat_until)) return false;
+      if (hit(s)) return true;
+    }
+    return false;
+  }
+  let homeAt = 0, homeBusy = false;
+  async function loadHome(force) {
+    const me = window.RELIANT.staff; if (!me) return;
+    const now = new Date(), hr = now.getHours();
+    $("hDate").textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    $("hHello").textContent = `${hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening"}, ${String(me.name || "").split(/[ .]/)[0]}`;
+    if (homeBusy || (!force && Date.now() - homeAt < 60000)) return;
+    homeBusy = true;
+    const canOrders = ["owner", "manager", "scanner"].includes(me.role), isOwner = me.role === "owner";
+    const today = ymdLocal(now);
+    const [sh, inv, ord, evs, done, cats] = await Promise.all([
+      sb.rpc("shows_export"), sb.rpc("inventory_export"),
+      canOrders ? sb.rpc("orders_export") : Promise.resolve({}),
+      isOwner ? sb.from("exec_events").select("*") : Promise.resolve({}),
+      isOwner ? sb.from("exec_event_done").select("event_id,occ_date").eq("occ_date", today) : Promise.resolve({}),
+      isOwner ? sb.from("exec_categories").select("*") : Promise.resolve({})
+    ].map(p => Promise.resolve(p).catch(err => ({ error: err }))));
+    homeBusy = false; homeAt = Date.now();
+
+    // today (owners: the Executive calendar)
+    if (isOwner && evs.data) {
+      const doneSet = new Set((done.data || []).map(d => d.event_id));
+      const catColor = Object.fromEntries((cats.data || []).map(c => [c.code, c.color]));
+      const list = evs.data.filter(e => occursOn(e, today) && !doneSet.has(e.id)).sort((a, b) => String(a.start_time || "").localeCompare(String(b.start_time || "")));
+      $("todayPane").hidden = !list.length;
+      $("todaySub").textContent = list.length ? `${list.length} on the calendar` : "";
+      $("today").innerHTML = list.map(e => `<div class="ev"><span class="dotc" style="background:${esc(e.color || catColor[e.category] || "#8d978f")}"></span><span class="t">${esc(e.title)}</span>
+        <span class="d">${e.start_time ? esc(fmtTime(e.start_time) + (e.end_time ? "–" + fmtTime(e.end_time) : "")) : "All day"}${e.platform_code ? " · " + esc(PLAT[e.platform_code] || e.platform_code) : ""}${e.notes ? " · " + esc(String(e.notes).split("\n")[0].slice(0, 80)) : ""}</span></div>`).join("");
+    } else $("todayPane").hidden = true;
+
+    // shows: last 30 days (same numbers as Shows), recent shows, shows not closed
+    const att = [];
+    if (sh.data) {
+      const D = sh.data;
+      const shows = D.shows.map(r => ({ id: r[0], name: r[1], date: r[2], plat: r[3], type: r[4], status: r[5], sold: +r[6] || 0, rev: +r[7] || 0, after: r[14], closed: !!r[15], test: !!r[18] }))
+        .filter(s => !s.test);
+      const last30 = shows.filter(s => (Date.now() - parseD(s.date)) / 864e5 <= 30);
+      const sold = last30.reduce((a, s) => a + s.sold, 0), rev = last30.reduce((a, s) => a + s.rev, 0);
+      const k = [
+        ["Revenue", money(rev), `${int(last30.length)} shows · ${last30.length ? money(rev / last30.length) : "–"} per show`],
+        ...(D.costs ? [["Profit", money(last30.reduce((a, s) => a + (+s.after || 0), 0)), "after giveaways"]] : []),
+        ["Books sold", int(sold), last30.length ? `${(sold / last30.length).toFixed(1)} per show` : ""],
+        ["Average sale", sold ? money(rev / sold) : "–", "per book"]
+      ];
+      $("hKpis").innerHTML = k.map(([a, b, c]) => `<div class="kpi"><span class="k">${a}</span><span class="v">${b}</span><span class="d">${esc(c)}</span></div>`).join("");
+      $("hNote").textContent = "Shows in the last 30 days";
+      const recent = [...shows].sort((a, b) => b.date.localeCompare(a.date) || b.name.localeCompare(a.name)).slice(0, 6);
+      const tag = t => `<span class="tag ${t === "new" ? "" : esc(t)}">${t === "new" ? "New" : t === "used" ? "Used" : "Vintage"}</span>`;
+      $("recent").innerHTML = recent.length ? `<table><tbody>${recent.map(s => `<tr class="click" data-go="shows:All shows"><td><div class="t">${esc(s.name)} ${tag(s.type)}</div><div class="a">${esc(dShort(s.date))} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
+        <td class="num">${int(s.sold)} sold<div class="a">${money(s.rev)}</div></td>${D.costs ? `<td class="num"><b>${money(s.after)}</b><div class="a">profit</div></td>` : ""}</tr>`).join("")}</tbody></table>`
+        : `<div class="ok-line">No shows yet.</div>`;
+      const open = shows.filter(s => !s.closed && s.status === "live");
+      if (open.length) att.push(["warn", open.length, `Show${open.length === 1 ? "" : "s"} not closed yet`, "shows:All shows"]);
+    } else $("recent").innerHTML = `<div class="ok-line">Couldn’t load shows.</div>`;
+
+    // inventory
+    if (inv.data) {
+      const neg = (inv.data.titles || []).filter(r => +r[11] < 0).length, rev = (inv.data.review || []).length;
+      if (neg) att.push(["bad", neg, `Title${neg === 1 ? "" : "s"} below zero to check`, "inventory:On hand"]);
+      if (rev) att.push(["warn", rev, `Inventory record${rev === 1 ? "" : "s"} to review`, "inventory:Records review"]);
+    }
+
+    // orders on the way
+    if (canOrders && ord.data) {
+      const D = ord.data, byId = new Map();
+      for (const [id, num, sup, date] of D.orders) byId.set(id, { id, num, sup, date, route: 0, late: false, value: 0 });
+      for (const l of D.lines) { const o = byId.get(l[0]); if (!o) continue; o.route += +l[7] || 0; o.late = o.late || !!l[11]; o.value += (+l[3] || 0) * (+l[12] || 0); }
+      const waiting = [...byId.values()].filter(o => o.route > 0).sort((a, b) => (b.late - a.late) || String(a.date).localeCompare(String(b.date)));
+      const late = waiting.filter(o => o.late).length;
+      if (late) att.push(["bad", late, `Order${late === 1 ? "" : "s"} late from the supplier`, "buying:Waiting to arrive"]);
+      $("ordersPane").hidden = !waiting.length;
+      $("ordersSub").textContent = `${int(waiting.length)} order${waiting.length === 1 ? "" : "s"} · ${int(waiting.reduce((a, o) => a + o.route, 0))} books${D.costs ? " · " + money(waiting.reduce((a, o) => a + o.value, 0)) : ""}`;
+      $("orders").innerHTML = `<table><tbody>${waiting.slice(0, 6).map(o => `<tr class="click" data-go="buying:Waiting to arrive"><td><div class="t">${esc(o.num)}</div><div class="a">${esc((D.suppliers && D.suppliers[o.sup] && D.suppliers[o.sup][0]) || o.sup)} · ordered ${esc(dShort(o.date))}</div></td>
+        <td><span class="pill${o.late ? " bad" : ""}">${o.late ? "Late · on the way" : "On the way"}</span></td><td class="num">${int(o.route)} books</td>${D.costs ? `<td class="num"><b>${money(o.value)}</b></td>` : ""}</tr>`).join("")}</tbody></table>`;
+    } else $("ordersPane").hidden = true;
+
+    $("attention").innerHTML = att.length ? att.map(([c, n, t, go]) => `<button type="button" class="att" data-go="${go}"><span class="n ${c}">${int(n)}</span><span class="tx">${esc(t)}</span><span class="go">›</span></button>`).join("")
+      : `<div class="ok-line">Nothing needs attention right now.</div>`;
+  }
 
   // ---------- signed-in state ----------
   let signup = false;
@@ -211,49 +601,16 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     if (error) { $("signinMsg").textContent = "Couldn't check your account: " + error.message; $("signinMsg").classList.add("bad"); show("signin"); return; }
     if (!me) { $("pendingEmail").textContent = session.user.email || ""; show("pending"); return; }
     window.RELIANT.staff = me;
-    $("who").innerHTML = `<b></b> · ${me.role[0].toUpperCase() + me.role.slice(1)}`;
-    $("who").querySelector("b").textContent = me.name;
-    drawTiles(me);
+    const roleName = me.role[0].toUpperCase() + me.role.slice(1);
+    $("who").textContent = `${me.name} · ${roleName}`;
+    $("whoName").textContent = me.name; $("whoRole").textContent = roleName;
+    $("avatar").textContent = String(me.name || "?").trim()[0].toUpperCase();
+    themeFromSession(session);
+    drawNav(me);
     $("settingsBtn").hidden = !MANAGER.includes(me.role);
-    if ($("section").hidden) show("home");
-  }
-  function drawTiles(me) {
-    const box = $("secs"); box.innerHTML = "";
-    let gn = 0;
-    GROUPS.forEach(g => {
-      if (g.roles && !g.roles.includes(me.role)) return;   // whole group hidden (Executive is owners only)
-      const gi = gn++;
-      const sec = document.createElement("section"); sec.className = "sec";
-      sec.innerHTML = `<div class="sech"><span class="secn">${gi + 1}</span><h3></h3><span class="secd"></span></div><div class="tiles"></div>`;
-      sec.querySelector("h3").textContent = g.title;
-      sec.querySelector(".secd").textContent = g.desc;
-      const tiles = sec.querySelector(".tiles");
-      for (const s of g.items) {
-        const allowed = !s.roles || s.roles.includes(me.role);
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "tile";
-        if (!allowed) b.setAttribute("aria-disabled", "true");
-        b.innerHTML = `<h2></h2><p></p><span class="st"></span>`;
-        b.querySelector("h2").textContent = s.title;
-        b.querySelector("p").textContent = s.desc;
-        const st = b.querySelector(".st");
-        st.textContent = !allowed ? "Not for your role" : s.status || "Open →";
-        st.classList.toggle("dim", !allowed || !!s.status);
-        if (allowed) b.onclick = () => { if (s.page) location.href = s.page; else openSection(s); };
-        tiles.appendChild(b);
-      }
-      box.appendChild(sec);
-    });
-  }
-  function openSection(s) {
-    $("sectionTitle").textContent = s.title;
-    $("sectionFrame").src = s.url;
-    show("section");
-    history.pushState({ section: s.id }, "", "#" + s.id);
-  }
-  function closeSection() {
-    $("sectionFrame").src = "about:blank";
-    show("home");
+    const first = $("app").hidden;
+    show("app");
+    if (first) { homeAt = 0; fromHash(); } else loadHome(true);
   }
   // ---------- quick PIN switch (shared devices) and setting your own PIN ----------
   let pinMode = "switch", pinPick = null;
@@ -306,16 +663,14 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
       }
       const { data: v, error: vErr } = await sb.auth.verifyOtp({ token_hash: data.token_hash, type: "magiclink" });
       if (vErr) { pinMsg(vErr.message, true); return; }
-      $("pinGate").hidden = true; closeSection();
+      $("pinGate").hidden = true; homeAt = 0; closeSection();
       await refresh(v.session);
     } finally { $("pinGo").disabled = false; }
   };
 
-  $("settingsBtn").onclick = () => openSection({ id: "settings", title: "Settings", url: "settings.html" });
+  $("settingsBtn").onclick = () => openSettings(true);
   window.RELIANT.onStaffChanged = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };
   $("pendingRetry").onclick = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };
-  $("homeBtn").onclick = () => { if (location.hash) history.back(); else closeSection(); };
-  addEventListener("popstate", () => { if (!$("section").hidden) closeSection(); });
 
   // ---------- sign in / create account / reset ----------
   const setMsg = (t, bad) => { const m = $("signinMsg"); m.textContent = t; m.classList.toggle("bad", !!bad); };
@@ -368,7 +723,8 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   async function signOut() {
     await sb.auth.signOut();
     try { indexedDB.deleteDatabase("reliant-analytics"); } catch {}   // drop the saved Analytics copy on this device
-    $("sectionFrame").src = "about:blank";
+    frameUrl = ""; $("sectionFrame").src = "about:blank";
+    history.replaceState(null, "", location.pathname);
     show("signin");
   }
   document.querySelectorAll("[data-signout]").forEach(b => b.onclick = signOut);
