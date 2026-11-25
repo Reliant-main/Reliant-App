@@ -1,0 +1,64 @@
+{
+  "note": "The list behind the App's Computer tools page. The Chit Printer and the Page Reader read it to see if they're out of date, so raise a tool's version here whenever its download changes.",
+  "tools": [
+    {
+      "id": "chit-printer",
+      "name": "Reliant Chit Printer",
+      "version": "1.1.0",
+      "kind": "windows",
+      "file": "chit-printer/reliant-chit-printer.zip",
+      "where": "The Windows computer connected to the chit printer (Star TSP700II).",
+      "what": "Prints Ticket System chits straight to the chit printer, with no print window.",
+      "updates": "Updates itself. It checks for a new version when the computer starts and every 6 hours, and only swaps it in after no chit has printed for 15 minutes.",
+      "steps": [
+        "Download it and open the zip.",
+        "Double-click Install Reliant Chit Printer. If Windows warns about an unknown program, choose More info, then Run anyway.",
+        "Press Enter to keep the printer it finds, or type the number of the chit printer.",
+        "In the Ticket System, tick This computer prints chits. The note “no print window” appears within 30 seconds."
+      ],
+      "changes": [
+        "1.1.0 (Nov 25): updates itself from the App.",
+        "1.0.0 (Nov 21): first version."
+      ]
+    },
+    {
+      "id": "page-reader",
+      "name": "Reliant Page Reader",
+      "version": "0.4.1",
+      "kind": "chrome",
+      "file": "extension/reliant-page-reader.zip",
+      "where": "The computer that runs the live show page (TikTok, Whatnot or eBay) in Chrome.",
+      "what": "Reads sales off the live page and sends them to the Ticket System. Its menu opens the Reliant Tickets sidebar.",
+      "updates": "Chrome can't update it by itself yet. Its menu says “Update available” when there's a newer one; then follow the update steps.",
+      "steps": [
+        "Download it and unzip it into a folder you'll keep (for example Documents\\Reliant Page Reader).",
+        "In Chrome, go to chrome://extensions and turn on Developer mode (top right).",
+        "Click Load unpacked and pick that folder.",
+        "Click the puzzle piece in Chrome's toolbar and pin Reliant Page Reader.",
+        "Open its menu and paste the connection code from the Ticket System's Sale sources."
+      ],
+      "update_steps": [
+        "Download it and unzip it into the same folder, replacing the old files.",
+        "In Chrome, go to chrome://extensions and click the round arrow on Reliant Page Reader. Its connection stays."
+      ],
+      "changes": [
+        "0.4.1 (Nov 25): shows its version and “Update available” in its menu.",
+        "0.4.0 (Nov 20): Reliant Tickets sidebar."
+      ]
+    },
+    {
+      "id": "scan-helper",
+      "name": "Reliant Scan Helper",
+      "version": "0.6.3",
+      "kind": "chrome",
+      "file": null,
+      "where": "The CashMonkey scanning computers (Scanning station 1 and 2) in Chrome.",
+      "what": "Reads each CashMonkey scan, shows the colored station banner, and adds stream and accept books to inventory.",
+      "updates": "Its banner rules come from the App every 20 minutes, so most changes need no download.",
+      "missing": "Its download isn't in the App yet. Ask Claude to add it.",
+      "changes": [
+        "0.6.3 (Nov 20): Amazon sticker barcodes; Show this computer's code."
+      ]
+    }
+  ]
+}

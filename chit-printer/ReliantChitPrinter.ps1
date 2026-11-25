@@ -6,10 +6,12 @@
 #   Install (and start):  double-click "Install Reliant Chit Printer.bat"
 #   Remove:               powershell -ExecutionPolicy Bypass -File ReliantChitPrinter.ps1 -Uninstall
 #   Check it is running:  open http://127.0.0.1:17861 in a browser on this computer
+#   Updates:              it checks the Reliant App for a newer version when it starts and every 6 hours,
+#                         and swaps itself in when no chit has printed for 15 minutes (never mid-show).
 
 param([switch]$Install, [switch]$Uninstall)
 
-$Version = '1.0.0'
+$Version = '1.1.0'
 $Port = 17861
 $AllowedOrigins = @('https://reliant-main.github.io')
 $AppDir = Join-Path $env:LOCALAPPDATA 'ReliantChitPrinter'
@@ -17,6 +19,9 @@ $ScriptName = 'ReliantChitPrinter.ps1'
 $ShortcutPath = Join-Path ([Environment]::GetFolderPath('Startup')) 'Reliant Chit Printer.lnk'
 $SettingsPath = Join-Path $AppDir 'settings.json'
 $LogPath = Join-Path $AppDir 'chit-printer.log'
+$UpdateBase = 'https://reliant-main.github.io/Reliant-App'
+$UpdateEvery = [TimeSpan]::FromHours(6)
+$QuietFor = [TimeSpan]::FromMinutes(15)
 
 Add-Type -AssemblyName System.Drawing
 
@@ -152,6 +157,67 @@ function Send-ChitToPrinter([byte[]]$png, [double]$wIn, [double]$hIn, [string]$p
   }
 }
 
+# ------------------------------------------------------------------ updates (from the Reliant App's Computer tools list)
+$script:lastPrint = [datetime]::MinValue
+$script:nextCheck = [datetime]::Now.AddSeconds(30)
+$script:pendingUpdate = $null
+
+function Find-Update {
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $list = Invoke-RestMethod -UseBasicParsing -Uri "$UpdateBase/tools.json?t=$([datetime]::Now.Ticks)" -TimeoutSec 20
+    $t = $list.tools | Where-Object { $_.id -eq 'chit-printer' } | Select-Object -First 1
+    if ($t -and ([version]$t.version -gt [version]$Version)) { return [string]$t.version }
+  } catch { Write-Log "Update check failed: $($_.Exception.Message)" }
+  return $null
+}
+
+function Install-Update([string]$newVersion) {
+  $installed = Join-Path $AppDir $ScriptName
+  # only the installed copy updates itself (not a copy run straight from the download)
+  if ($PSCommandPath -ne $installed) { return $false }
+  $tmp = Join-Path $AppDir 'update.ps1'
+  try {
+    Invoke-WebRequest -UseBasicParsing -Uri "$UpdateBase/chit-printer/${ScriptName}?t=$([datetime]::Now.Ticks)" -OutFile $tmp -TimeoutSec 60
+    $text = Get-Content $tmp -Raw
+    $errs = $null
+    [System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$null, [ref]$errs) | Out-Null
+    if ($errs.Count -gt 0) { throw "the download has errors" }
+    if ($text -notmatch [regex]::Escape("`$Version = '$newVersion'") -or $text -notmatch 'reliant-chit-printer') { throw "the download isn't version $newVersion" }
+    Copy-Item $installed (Join-Path $AppDir 'previous.ps1') -Force
+    Move-Item $tmp $installed -Force
+    Unblock-File -Path $installed -ErrorAction SilentlyContinue
+    Write-Log "Updated from $Version to $newVersion. Restarting."
+    return $true
+  } catch {
+    Write-Log "Update to $newVersion failed: $($_.Exception.Message)"
+    Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    return $false
+  }
+}
+
+function Restart-Self {
+  $target = Join-Path $AppDir $ScriptName
+  $runArgs = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$target`""
+  $listener.Stop()
+  Start-Process -FilePath 'powershell.exe' -ArgumentList $runArgs -WindowStyle Hidden
+  exit
+}
+
+function Check-Updates {
+  $now = [datetime]::Now
+  # the check itself only runs when the printer has been quiet, so it never holds up a chit during a show
+  if ($now -ge $script:nextCheck -and ($now - $script:lastPrint) -ge $QuietFor) {
+    $script:nextCheck = $now.Add($UpdateEvery)
+    $v = Find-Update
+    if ($v) { $script:pendingUpdate = $v; Write-Log "Version $v is available; it will go in once no chit has printed for 15 minutes." }
+  }
+  if ($script:pendingUpdate -and ($now - $script:lastPrint) -ge $QuietFor) {
+    $v = $script:pendingUpdate; $script:pendingUpdate = $null
+    if (Install-Update $v) { Restart-Self }
+  }
+}
+
 # ------------------------------------------------------------------ tiny web server (this computer only)
 function Send-Response($stream, [int]$code, [string]$type, [string]$text, [string]$origin) {
   $reason = @{ 200 = 'OK'; 204 = 'No Content'; 400 = 'Bad Request'; 403 = 'Forbidden'; 404 = 'Not Found'; 413 = 'Too Large'; 500 = 'Error' }[$code]
@@ -221,7 +287,7 @@ function Handle-Request($req) {
   }
   if ($origin -and -not $okOrigin) { Send-Response $st 403 'text/plain' 'Not allowed' $null; return }
   if ($req.Method -eq 'GET' -and $path -eq '/status') {
-    $j = @{ ok = $true; app = 'reliant-chit-printer'; version = $Version; printer = (Get-ChitPrinter) } | ConvertTo-Json -Compress
+    $j = @{ ok = $true; app = 'reliant-chit-printer'; version = $Version; printer = (Get-ChitPrinter); updating = $script:pendingUpdate } | ConvertTo-Json -Compress
     Send-Response $st 200 'application/json' $j $replyTo
     return
   }
@@ -232,7 +298,9 @@ function Handle-Request($req) {
       $j = $req.Body | ConvertFrom-Json
       $png = [Convert]::FromBase64String([string]$j.png)
       $printer = Get-ChitPrinter
+      $script:lastPrint = [datetime]::Now
       Send-ChitToPrinter $png ([double]$j.width) ([double]$j.height) $printer
+      $script:lastPrint = [datetime]::Now
       Send-Response $st 200 'application/json' (@{ ok = $true; printer = $printer } | ConvertTo-Json -Compress) $replyTo
     } catch {
       $msg = $_.Exception.Message
@@ -250,6 +318,11 @@ try { $listener.Start() } catch { Write-Log "Port $Port is busy (another copy is
 Write-Log "Started version $Version. Chit printer: $(Get-ChitPrinter)"
 
 while ($true) {
+  if (-not $listener.Pending()) {
+    try { Check-Updates } catch { Write-Log "Update error: $($_.Exception.Message)" }
+    Start-Sleep -Milliseconds 50
+    continue
+  }
   $client = $null
   try {
     $client = $listener.AcceptTcpClient()

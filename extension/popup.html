@@ -15,7 +15,8 @@
   .stats { display:grid; grid-template-columns:1fr auto; gap:2px 8px; }
 </style></head>
 <body><main>
-  <h1>Reliant Page Reader</h1>
+  <h1>Reliant Page Reader <span id="ver" class="dim" style="font:400 11px system-ui"></span></h1>
+  <section id="upd" hidden style="border-color:var(--gold)"><div id="updText"></div></section>
   <button id="openPanel" title="Opens the Reliant Tickets sidebar beside this page: sales, buyer history, payments, Print another chit">Open the Reliant Tickets sidebar</button>
   <section>
     <div class="lbl">Connection</div>
@@ -45,4 +46,5 @@
   </section>
 </main>
 <script src="popup.js"></script>
+<script src="update-check.js"></script>
 </body></html>
