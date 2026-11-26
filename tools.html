@@ -103,8 +103,10 @@ ol, ul { margin: 8px 0 0; padding-left: 22px; font-size: 14px; display: flex; fl
       }
       return { v: h.version, d: "Up to date. " + (h.note || ""), cls: "ok" };
     }
-    if (t.id === "page-reader") {
-      if (!h) return { v: "Not seen", d: "Not installed in this browser, or older than 0.4.1 (open its menu: 0.4.0 and older show no version). Only the computer running the live page needs it.", cls: "dim" };
+    if (t.id === "page-reader" || t.id === "scan-helper") {
+      if (!h) return t.id === "page-reader"
+        ? { v: "Not seen", d: "Not installed in this browser, or older than 0.4.1 (open its menu: 0.4.0 and older show no version). Only the computer running the live page needs it.", cls: "dim" }
+        : { v: "Not seen", d: "Not installed in this browser, or older than 0.6.6 (open its menu: older ones show no version). Only the CashMonkey scanning computers need it.", cls: "dim" };
       if (newer(t.version, h.version)) return { v: h.version, d: "Update available. Follow the update steps below.", cls: "bad", behind: true };
       return { v: h.version, d: "Up to date.", cls: "ok" };
     }

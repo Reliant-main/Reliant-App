@@ -71,15 +71,29 @@
     {
       "id": "scan-helper",
       "name": "Reliant Scan Helper",
-      "version": "0.6.3",
+      "version": "0.6.6",
       "kind": "chrome",
-      "file": null,
+      "file": "scan-helper/reliant-scan-helper.zip",
       "where": "The CashMonkey scanning computers (Scanning station 1 and 2) in Chrome.",
       "what": "Reads each CashMonkey scan, shows the colored station banner, and adds stream and accept books to inventory.",
-      "updates": "Its banner rules come from the App every 20 minutes, so most changes need no download.",
-      "missing": "Its download isn't in the App yet. Ask Claude to add it.",
+      "updates": "Its banner rules come from the App every 20 minutes, so most changes need no download. Chrome can't update the helper itself yet; its menu says “Update available” when there's a newer one, then follow the update steps.",
       "changes": [
+        "0.6.6 (Nov 25): shows its version and “Update available” in its menu.",
+        "0.6.5: the version in use on Nov 25.",
         "0.6.3 (Nov 20): Amazon sticker barcodes; Show this computer's code."
+      ],
+      "steps": [
+        "Download it and unzip it into a folder you'll keep (for example Documents\\Reliant Scan Helper). Don't delete it later: Chrome runs the helper from there.",
+        "In Chrome, go to chrome://extensions and turn on Developer mode (top right).",
+        "Click Load unpacked and pick that folder.",
+        "Click the puzzle piece in Chrome's toolbar and pin Reliant Scan Helper.",
+        "Click the Reliant icon, paste this computer's station code, and click Connect.",
+        "Open the CashMonkey scan screen, click the Reliant icon, click Use Scan Helper on this site, and choose Allow."
+      ],
+      "update_steps": [
+        "Download it and unzip it into the same folder, replacing the old files.",
+        "In Chrome, go to chrome://extensions and click the round arrow on Reliant Scan Helper. Its station code and CashMonkey setting stay.",
+        "Reload the CashMonkey scan screen."
       ]
     }
   ]
