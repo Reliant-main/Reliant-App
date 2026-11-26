@@ -589,6 +589,9 @@ body.mode-operator[data-optheme^="clean-"] .onair .a { font-style: normal; }
 /* ===== Phone view (narrow screens): stats only — nobody runs a show from a phone ===== */
 .phoneonly { display: none !important; }
 body.phoneview .phoneonly { display: revert !important; }
+body.phoneview .tile.phoneonly { display: flex !important; }
+body.phoneview .tile .k .phoneonly { display: inline !important; }
+body.phoneview .tiles .tile .v { font-size: 28px; }
 body.phoneview .pconly { display: none !important; }
 body.phoneview .ops-top, body.phoneview .ops-left, body.phoneview #entry, body.phoneview .oprail,
 body.phoneview #salesBanner, body.phoneview #tabReqs, body.phoneview #tabEvents, body.phoneview #tabDmg,
