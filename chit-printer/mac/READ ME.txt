@@ -1,0 +1,21 @@
+Reliant Chit Printer for Mac (backup to the Windows one)
+
+Prints Ticket System chits straight to the chit printer, with no print window.
+Use Google Chrome on the Mac for the Ticket System (Safari can't talk to the helper).
+
+Before you start: the Star chit printer must be added to the Mac
+(Apple menu > System Settings > Printers & Scanners > Add Printer). Install Star's Mac driver if asked.
+
+Install (one time):
+1. Double-click "Install Reliant Chit Printer.command".
+   If the Mac says it can't be opened because it's from an unidentified developer:
+   Apple menu > System Settings > Privacy & Security, scroll down, click "Open Anyway" next to
+   "Install Reliant Chit Printer", then confirm. (On older macOS: right-click the file > Open > Open.)
+2. A Terminal window lists the printers. Press Return to keep the Star printer, or type its number.
+3. When it says Done, press Return and close the window.
+4. In Chrome, open the Ticket System, tick "This computer prints chits", and print a test chit.
+
+It starts by itself when you log in and updates itself from the Reliant App
+(only after no chit has printed for 1 hour).
+
+To take it off: double-click "Remove Reliant Chit Printer.command".
