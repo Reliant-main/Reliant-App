@@ -586,6 +586,27 @@ body.mode-operator[data-optheme="clean-light"] .slist li:nth-child(odd) { backgr
 body.mode-operator[data-optheme="clean-light"] .search { box-shadow: 0 0 0 100vmax rgba(20, 30, 25, .35), 0 20px 50px rgba(0,0,0,.25); }
 body.mode-operator[data-optheme^="clean-"] .ops-top .brand, body.mode-operator[data-optheme^="clean-"] .onair .t, body.mode-operator[data-optheme^="clean-"] .tile .v { font-weight: 700; letter-spacing: -.01em; }
 body.mode-operator[data-optheme^="clean-"] .onair .a { font-style: normal; }
+/* ===== Phone view (narrow screens): stats only — nobody runs a show from a phone ===== */
+.phoneonly { display: none !important; }
+body.phoneview .phoneonly { display: revert !important; }
+body.phoneview .pconly { display: none !important; }
+body.phoneview .ops-top, body.phoneview .ops-left, body.phoneview #entry, body.phoneview .oprail,
+body.phoneview #salesBanner, body.phoneview #tabReqs, body.phoneview #tabEvents, body.phoneview #tabDmg,
+body.phoneview .search, body.phoneview .slist button { display: none !important; }
+body.phoneview .ops { margin-left: 0; display: flex !important; flex-direction: column; height: auto; padding: 12px; gap: 12px; }
+body.phoneview { overflow: auto; }
+body.phoneview .phonehead { display: flex !important; flex-direction: column; gap: 4px; }
+body.phoneview .ph-brand { display: flex; align-items: center; gap: 10px; font: 600 14px var(--f-ui); color: var(--paper-dim); }
+body.phoneview .ph-brand .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--gilt); color: var(--on-accent); display: grid; place-items: center; font: 700 14px var(--f-ui); text-decoration: none; }
+body.phoneview .ph-show { font: 700 22px/1.2 var(--f-ui); color: var(--paper); margin-top: 6px; }
+body.phoneview .ph-sub { font: 13px var(--f-ui); color: var(--paper-dim); }
+body.phoneview .tiles { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+body.phoneview .tiles .tile.main { grid-column: 1 / -1; }
+body.phoneview:not(.phonemore) .tiles .tile:not(.main):not(.phoneonly):not([data-hide="tAvgSale"]) { display: none !important; }
+body.phoneview:not(.phonemore) .saletabs, body.phoneview:not(.phonemore) #saleList, body.phoneview:not(.phonemore) #pacePane { display: none !important; }
+body.phoneview #phMore { min-height: 44px; }
+body.phoneview .saletabs .tab { min-height: 40px; }
+body.phoneview .pace-grid { font-size: 13px; }
 /* quick menu on the left of the operator screen (same as the Ticket System and Show Prep); links open in a new tab so the show keeps running here */
 .oprail { display: none; }
 body.mode-operator .oprail { display: flex; position: fixed; left: 0; top: 0; bottom: 0; z-index: 600; width: 56px; padding: 10px 8px; flex-direction: column; gap: 4px; align-items: center; background: var(--cloth-2); border-right: 1px solid var(--rule); }
@@ -980,11 +1001,17 @@ body.mode-display #btnHome2 { display: none !important; }
   </section>
   <section class="ops-main">
     <div class="banner" id="salesBanner" hidden></div>
+    <div class="phonehead phoneonly">
+      <div class="ph-brand"><a class="logo" href="index.html" aria-label="Reliant Workspace">R</a><span>Book Spotlight · stats</span></div>
+      <div class="ph-show" id="phShow">No show running</div>
+      <div class="ph-sub" id="phSub">Viewing only. Shows are run from the studio computer.</div>
+    </div>
     <div class="tiles">
       <div class="tile main" data-hide="tAvgBook"><span class="k">Avg per book</span><span class="v" id="stAvgBook">—</span></div>
+      <div class="tile phoneonly"><span class="k">Orders</span><span class="v" id="stOrders">0</span></div>
       <div class="tile" data-hide="tBooks"><span class="k">Books sold</span><span class="v" id="stBooks">0</span></div>
       <div class="tile" data-hide="tRevenue"><span class="k">Revenue</span><span class="v" id="stRevenue">$0.00</span></div>
-      <div class="tile" data-hide="tAvgSale"><span class="k">Avg per sale</span><span class="v" id="stAvgSale">—</span></div>
+      <div class="tile" data-hide="tAvgSale"><span class="k"><span class="pconly">Avg per sale</span><span class="phoneonly">Avg per order</span></span><span class="v" id="stAvgSale">—</span></div>
     </div>
     <div class="entry" id="entry">
       <div class="modeseg" role="group" aria-label="How sales are recorded">
@@ -1033,6 +1060,7 @@ body.mode-display #btnHome2 { display: none !important; }
         <label class="check" id="tsPickRow" hidden><input type="checkbox" id="tsPick"> Table rounds: ask which lot each Ticket System sale bought (off: the lot with the book on the TV)</label>
       </div>
     </div>
+    <button class="btn phoneonly" id="phMore" type="button" aria-expanded="false">More stats ▾</button>
     <div class="saletabs" role="tablist">
       <button class="tab on" id="tabSales" type="button" role="tab" aria-selected="true">Sales <span id="salesCount">0</span></button>
       <button class="tab" id="tabReqs" type="button" role="tab" aria-selected="false" data-hide="reqs">Customer requests <span id="reqCount">0</span></button>
@@ -4196,6 +4224,7 @@ body.mode-display #btnHome2 { display: none !important; }
     $("stBooks").textContent = st.books; $("stRevenue").textContent = money(st.revenue);
     $("stAvgBook").textContent = st.books ? money(st.avgBook) : "—";
     $("stAvgSale").textContent = st.sales ? money(st.avgSale) : "—";
+    $("stOrders").textContent = st.sales;
     $("salesCount").textContent = st.books;
     try { drawPL(); } catch {}
     if (isUsedShow()) drawUsedStats();
@@ -4406,6 +4435,27 @@ body.mode-display #btnHome2 { display: none !important; }
   setTimeout(() => { if (events.some(e => !e.sentAt)) sendEvents(); }, 4000);
   $("tabSales").onclick = () => setSalesTab("sales");
   $("tabPace").onclick = () => setSalesTab("pace");
+  // ---------- phone view: stats only (a phone is for watching numbers, not running the show) ----------
+  {
+    const mq = window.matchMedia("(max-width: 700px)");
+    const applyPhone = () => {
+      const on = mq.matches && document.body.classList.contains("mode-operator");
+      document.body.classList.toggle("phoneview", on);
+      if (!on) document.body.classList.remove("phonemore");
+    };
+    $("phMore").onclick = () => {
+      const o = document.body.classList.toggle("phonemore");
+      $("phMore").setAttribute("aria-expanded", String(o));
+      $("phMore").textContent = o ? "Fewer stats ▴" : "More stats ▾";
+      if (o) setSalesTab("pace");
+    };
+    const syncShow = () => { const n = $("showName"); if (n) $("phShow").textContent = n.textContent; };
+    new MutationObserver(syncShow).observe($("showName"), { childList: true, characterData: true, subtree: true });
+    syncShow();
+    (mq.addEventListener ? mq.addEventListener("change", applyPhone) : mq.addListener(applyPhone));
+    new MutationObserver(applyPhone).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    applyPhone();
+  }
 
   // ---------- Pace: how the show is going, by time frame ----------
   // A lot = one sale record (one book, a bundle, or a table lot) or one R. Rejected (struck-out) sales are left out.
@@ -4433,7 +4483,8 @@ body.mode-display #btnHome2 { display: none !important; }
       + row("Average price per book", isFinite(last.avg) ? money(last.avg) : "–", isFinite(all.avg) ? money(all.avg) : "–")
       + row("Revenue", money(last.rev), money(per(all.rev)))
       + row("Lots shown", `${last.lots}<small>${last.sold} sold · ${last.r} R</small>`, `${fmtN(per(all.lots))}<small>${fmtN(per(all.sold))} sold · ${fmtN(per(all.r))} R</small>`)
-      + row("Books sold", String(last.books), fmtN(per(all.books)));
+      + row("Books sold", String(last.books), fmtN(per(all.books)))
+      + row("Books per minute", fmtN(last.books / paceMin), fmtN(all.books / Math.max(1, (end - start) / 60000)));
     // chart: one group per period, oldest on the left (the last 24 periods)
     const B = buckets.slice(-24), off = buckets.length - B.length;
     const cw = 640, ch = 220, pl = 46, pr = 64, pt = 10, pb = 26, iw = cw - pl - pr, ih = ch - pt - pb, gw = iw / B.length;
