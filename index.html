@@ -304,7 +304,8 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
     used: "M5 4h14v4H5zM6 8v12h12V8M10 12h4",
     gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
     tv: "M3 5h18v12H3zM8 21h8M12 17v4",
-    scan: "M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M16 8v8"
+    scan: "M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M16 8v8",
+    tools: "M3 5h18v11H3zM8 20h8M12 16v4M9 11l2 2 4-4"
   };
   const NAV = [
     { id: "home", label: "Home", icon: I.home },
@@ -354,7 +355,9 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
       { label: "Loads", url: "used.html", scroll: "section.panel" },
       { label: "Check-ins due", url: "used.html", scroll: "#duePanel" },
       { label: "Used & vintage shows", url: "used.html", scroll: "section.panel:nth-of-type(4)" },
-      { label: "Consignors", url: "used.html", scroll: "#consPanel" } ] }
+      { label: "Consignors", url: "used.html", scroll: "#consPanel" } ] },
+    { id: "setup", label: "Setup", icon: I.tools, kids: [
+      { label: "Computer tools", url: "tools.html" } ] }
   ];
   const svg = d => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
   const CHEV = `<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
