@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Reliant Scan Helper</title>
+<style>
+  :root { --bg:#10261f; --panel:#173329; --line:#2f5348; --fg:#efe7d4; --dim:#b9b29f; --gold:#d2a54a; --bad:#ef8a6f; --ok:#8fc27a; }
+  body { margin:0; width:320px; background:var(--bg); color:var(--fg); font:13px system-ui, "Segoe UI", sans-serif; }
+  main { padding:14px; display:grid; gap:12px; }
+  h1 { font:600 15px system-ui; margin:0; color:var(--gold); }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; display:grid; gap:8px; }
+  .lbl { font:600 11px system-ui; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); }
+  input { width:100%; box-sizing:border-box; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px; font:12px ui-monospace, monospace; }
+  button { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px 10px; font:600 12px system-ui; cursor:pointer; }
+  button.go { background:var(--gold); color:var(--bg); border-color:var(--gold); }
+  .dim { color:var(--dim); } .ok { color:var(--ok); } .bad { color:var(--bad); }
+  ul { margin:0; padding-left:16px; } li { margin:2px 0; } li button { padding:1px 6px; margin-left:6px; }
+</style></head>
+<body><main>
+  <h1>Reliant Scan Helper <span id="ver" class="dim" style="font:400 11px system-ui"></span></h1>
+  <section id="upd" hidden style="border-color:var(--gold)"><div id="updText"></div></section>
+  <section>
+    <button id="panel" class="go">Hide panel</button>
+    <div class="dim" style="font-size:12px">Hidden, the helper keeps working (scans, F9, cards). Shortcut: Alt+Shift+R.</div>
+  </section>
+  <section>
+    <div class="lbl">Shift</div>
+    <div id="shiftNow" class="dim">No shift started</div>
+    <input id="pStaff" placeholder="Who's scanning?" autocomplete="off" style="font-family: system-ui">
+    <select id="pLoad" style="width:100%;box-sizing:border-box;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:7px;font:12px system-ui"></select>
+    <div style="display:flex;gap:6px"><button id="pStart" class="go" style="flex:1">Start shift</button><button id="pEnd">End shift</button></div>
+    <div id="pMsg" class="dim" style="font-size:12px"></div>
+  </section>
+  <section>
+    <div class="lbl">1 · Connect this computer</div>
+    <div id="conn" class="dim">Not connected</div>
+    <div class="row" id="showRow" style="display:none"><button id="show" type="button">Show this computer's code</button></div>
+    <div id="shown" style="display:none;font:600 12px ui-monospace,Consolas,monospace;user-select:all;word-break:break-all;padding:4px 0"></div>
+    <input id="code" placeholder="Paste this computer's station code (rss_…)" autocomplete="off">
+    <button id="connect">Connect</button>
+  </section>
+  <section>
+    <div class="lbl">2 · Turn on for CashMonkey</div>
+    <div id="here" class="dim">Open the CashMonkey scan screen in this tab, then click below.</div>
+    <button id="enable" class="go">Use Scan Helper on this site</button>
+    <ul id="sites"></ul>
+  </section>
+  <section class="dim" style="font-size:12px">
+    The helper only reads the CashMonkey screen. It never types into it or sends anything to CashMonkey.
+  </section>
+</main>
+<script src="popup.js"></script>
+<script src="update-check.js"></script>
+</body></html>
