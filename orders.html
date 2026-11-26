@@ -231,7 +231,7 @@ tr.off td { opacity: .4; } tr.flag td { background: rgba(239,107,107,.10); }
       return { ...o, units, rec, route, short, shortOpen, value, last, status, late: o.lines.some(l => l.late), waiting: route ? daysAgo(o.date) : null, est: o.lines.some(l => l.est) };
     });
     const at = D.synced_at ? new Date(D.synced_at) : null;
-    setStatus("live", `${int(orders.length)} orders · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+    setStatus("live", `${int(orders.length)} orders · loaded ${new Date().toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`);
     const sups = [...new Set(orders.map(o => o.sup))].sort((a, b) => SUPNAME(a).localeCompare(SUPNAME(b)));
     $("sup").innerHTML = `<option value="">All suppliers</option>` + sups.map(c => `<option value="${esc(c)}">${esc(SUPNAME(c))}</option>`).join("");
     $("sup").value = sups.includes(S.sup) ? S.sup : "";
