@@ -255,7 +255,7 @@ tr:last-child td { border-bottom: 0; }
     rows.forEach(r => { const h = held[r.isbn]; r.held = h ? +h[0] || 0 : 0; r.heldShows = h ? h[1] || [] : []; r.avail = Math.max(0, (+r.good || 0) - r.held); });
     const at = D.synced_at ? new Date(D.synced_at) : null;
     afterLoad();
-    setStatus("live", `${int(rows.length)} titles · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"} · full count ${dfmt(D.full_count_date)}`);
+    setStatus("live", `${int(rows.length)} titles · loaded ${new Date().toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · full count ${dfmt(D.full_count_date)}`);
     render();
   }
 

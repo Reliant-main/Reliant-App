@@ -109,7 +109,7 @@ a.btn { text-decoration: none; display: inline-block; }
     <button class="btn" id="btnRefresh" type="button">Refresh</button>
   </header>
   <div class="notice bad" id="err" hidden></div>
-  <p class="soon"><b>Running a live show</b> (playlists, the TV display, logging sales and R’s, table shows and celeb shots) still happens in the current Workspace. It moves here as its own step closer to switch day. Shows logged there appear here after the nightly copy. Open a show to close it, or to go to its Fulfillment.</p>
+  <p class="soon"><b>Running a live show:</b> use <b>Shows → Book Spotlight</b> and pick <b>Real show</b>. Every sale, R, request and damaged copy is saved here as it happens. Open a show to close it, or to go to its Fulfillment.</p>
 
   <section class="kpis" id="kpis" aria-label="Show totals"></section>
 
@@ -171,7 +171,7 @@ a.btn { text-decoration: none; display: inline-block; }
       canceled: +r[8] || 0, rejects: +r[9] || 0, speed: +r[10] || 0, net: r[11], profit: r[12], gcost: r[13], after: r[14],
       closed: !!r[15], closer: r[16] || "", closedAt: r[17], test: !!r[18] }));
     const at = D.synced_at ? new Date(D.synced_at) : null;
-    setStatus("live", `${int(shows.length)} shows · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+    setStatus("live", `${int(shows.length)} shows · loaded ${new Date().toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`);
     render();
   }
   const typeTag = t => `<span class="tag ${t === "new" ? "" : t}">${t === "new" ? "New" : t === "used" ? "Used" : "Vintage"}</span>`;

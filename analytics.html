@@ -1949,7 +1949,7 @@ tr.inr td { background: var(--accent-wash); }
       setStatus(connFailed ? "err" : "busy", `Showing saved copy from ${when}${connFailed ? " · couldn’t get fresh data" : " · getting fresh data…"}`);
       return;
     }
-    setStatus("live", `${parts.join(" · ")} · copied from the sheets ${agoTxt}${missing.length ? " · " + missing.join(", ") + " not loaded" : ""}`);
+    setStatus("live", `${parts.join(" · ")} · updated ${agoTxt}${missing.length ? " · " + missing.join(", ") + " not loaded" : ""}`);
   }
   let connFailed = false;
   setInterval(liveStatus, 30000);

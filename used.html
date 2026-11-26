@@ -172,7 +172,7 @@ tr:last-child td { border-bottom: 0; }
     if (error) { setStatus("err", "Couldn’t load"); $("err").hidden = false; $("err").textContent = error.message; return; }
     $("err").hidden = true; D = data;
     const at = D.synced_at ? new Date(D.synced_at) : null;
-    setStatus("live", `${int(D.loads.length)} load${D.loads.length === 1 ? "" : "s"} · ${int(D.shows.length)} shows · copied from the sheets ${at ? at.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+    setStatus("live", `${int(D.loads.length)} load${D.loads.length === 1 ? "" : "s"} · ${int(D.shows.length)} shows · loaded ${new Date().toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`);
     render(); consRefresh();
   }
 
@@ -197,7 +197,7 @@ tr:last-child td { border-bottom: 0; }
         const key = r.code + "|" + r.month, open = consOpen === key;
         const row = `<tr><td>${esc(mLabel(r.month))}</td><td>${esc(r.name)} <span class="sub">${Math.round((+r.share || 0) * 100)}%</span></td><td class="num hm">${int(r.books)}</td><td class="num hm">${money(r.gross)}</td><td class="num">${money(r.after_fees)}</td><td class="num">${money(r.owed)}</td><td class="num">${money(r.paid)}</td><td class="num ${r.balance > 0.004 ? "due" : "ok"}">${r.balance > 0.004 ? money(r.balance) : "Paid"}</td><td>${r.balance > 0.004 ? `<button class="btn sm" type="button" data-cpay="${esc(key)}">Record payment</button>` : ""}</td></tr>`;
         return row + (open ? `<tr class="payrow"><td colspan="9"><div class="grow">Paid ${esc(r.name)} for ${esc(mLabel(r.month))}: $<input type="number" step="0.01" min="0" id="cAmt" value="${r.balance.toFixed(2)}" style="width:110px"> <input type="text" id="cNote" placeholder="Note (check #, etc.)" style="width:200px"> <button class="btn sm pri" type="button" data-csave="${esc(key)}">Save payment</button> <button class="btn sm" type="button" data-ccancel="1">Cancel</button> <span class="sub" id="cMsg"></span></div></td></tr>` : "");
-      }).join("")}</tbody></table>` : `<p class="sub">No consignment books sold yet (${sh}). Sales show up here once a vintage show’s rows reach the Used Books workbook and the nightly copy runs.</p>`)
+      }).join("")}</tbody></table>` : `<p class="sub">No consignment books sold yet (${sh}). Sales show up here as soon as a vintage show sells one.</p>`)
       + (ms.length ? `<p class="sub" style="margin:10px 0 0">${due > 0.004 ? `<b>${money(due)}</b> still owed in total.` : "Everyone is paid up."} Rates: ${sh} of the after-fees amount.</p>` : "");
   }
   $("consBody").addEventListener("click", async e => {

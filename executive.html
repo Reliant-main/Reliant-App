@@ -257,7 +257,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
       </div>
       <div class="kpis" id="kpis"></div>
       <div style="overflow-x:auto"><table id="revTable"></table></div>
-      <p class="sub" style="margin:10px 0 0">Avg sale = sales ÷ books sold. Avg profit = profit ÷ books sold. Profit is after platform fees and book cost (before giveaways). Numbers come from the nightly copy of the sheets.</p>
+      <p class="sub" style="margin:10px 0 0">Avg sale = sales ÷ books sold. Avg profit = profit ÷ books sold. Profit is after platform fees and book cost (before giveaways). Numbers come straight from the App’s records.</p>
     </section>
   </div>
 </div>
@@ -390,7 +390,7 @@ dialog form, dialog .dlg { padding: 18px 20px 20px; display: flex; flex-directio
       // shows_export rows: [id, name, date, platform, type, status, books, sales, canceled, R's, speed round, net, profit, giveaways, profit after giveaways]
       D.showRows = (showsData.shows || []).map(a => ({ show_id: a[0], name: a[1], show_date: String(a[2]).slice(0, 10), platform_code: a[3], platform_name: platName(a[3]), show_type: a[4] || "new", books_sold: num(a[6]), revenue: num(a[7]), profit: num(a[12]) })).filter(r => r.books_sold > 0);
       showMsg("");
-      setStatus("live", `Signed in as ${D.me.name} · show numbers copied from the sheets ${D.syncedAt ? D.syncedAt.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "–"}`);
+      setStatus("live", `Signed in as ${D.me.name} · loaded ${new Date().toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`);
       $("loading").hidden = true; $("app").hidden = false;
       fillSelects(); renderAll();
     } catch (err) {
