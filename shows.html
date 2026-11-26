@@ -75,11 +75,13 @@ tr:last-child td { border-bottom: 0; }
 .calc { width: 100%; font-size: 14px; }
 .calc td { padding: 6px 4px; }
 .calc tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+.sm-only { display: none; }
 @media (max-width: 700px) {
   .wrap { padding-inline: 12px; }
   input, .search { font-size: 16px !important; }
   .search { width: 100%; }
   .hide-sm { display: none; }
+  .sm-only { display: block; }
 }
 </style>
 <style>
@@ -197,9 +199,9 @@ a.btn { text-decoration: none; display: inline-block; }
     const list = shows.filter(s => (!S.type || s.type === S.type) && (!S.plat || s.plat === S.plat) && (!q || (s.name + " " + (PLAT[s.plat] || s.plat) + " " + s.date).toLowerCase().includes(q)));
     $("showsSub").textContent = `${int(list.length)} show${list.length === 1 ? "" : "s"} · ${int(list.reduce((a, s) => a + s.sold, 0))} books · ${money(list.reduce((a, s) => a + s.rev, 0))}`;
     const page = list.slice(0, S.shown);
-    $("showsTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Show</th><th class="plain num">Sold</th><th class="plain num">Revenue</th><th class="plain num hide-sm">Avg</th><th class="plain num hide-sm">R’s</th><th class="plain num hide-sm">Canceled</th>${D.costs ? '<th class="plain num">Profit</th>' : ""}</tr></thead><tbody>${
+    $("showsTbl").innerHTML = list.length ? `<table><thead><tr><th class="plain">Show</th><th class="plain num">Sold</th><th class="plain num">Revenue</th><th class="plain num hide-sm">Avg per book</th><th class="plain num hide-sm">R’s</th><th class="plain num hide-sm">Canceled</th>${D.costs ? '<th class="plain num">Profit</th>' : ""}</tr></thead><tbody>${
       page.map(s => `<tr class="trow" tabindex="0" data-id="${s.id}"><td><div class="t">${esc(s.name)} ${typeTag(s.type)}${s.closed ? ' <span class="pill ok">Closed</span>' : s.test ? ' <span class="pill">Open</span>' : s.status === "live" ? ' <span class="pill">in Staging</span>' : ""}${s.test ? ' <span class="pill bad">Test</span>' : ""}</div><div class="a">${dfmt(s.date)} · ${esc(PLAT[s.plat] || s.plat)}</div></td>
-        <td class="num">${int(s.sold)}${s.speed ? `<div class="a">${int(s.speed)} speed</div>` : ""}</td><td class="num">${money(s.rev)}</td><td class="num hide-sm">${s.sold ? money(s.rev / s.sold) : "–"}</td>
+        <td class="num">${int(s.sold)}${s.speed ? `<div class="a">${int(s.speed)} speed</div>` : ""}</td><td class="num">${money(s.rev)}<div class="a sm-only">${s.sold ? money(s.rev / s.sold) + " per book" : ""}</div></td><td class="num hide-sm">${s.sold ? money(s.rev / s.sold) : "–"}</td>
         <td class="num hide-sm">${s.rejects ? int(s.rejects) : "–"}</td><td class="num hide-sm">${s.canceled ? int(s.canceled) : "–"}</td>${D.costs ? `<td class="num">${money(s.after)}</td>` : ""}</tr>`).join("")}</tbody></table>`
       : `<p class="empty">No shows match.</p>`;
     $("more").innerHTML = list.length > S.shown ? `<button type="button" class="btn" id="moreBtn">Show ${int(Math.min(40, list.length - S.shown))} more</button>` : "";
@@ -233,7 +235,8 @@ a.btn { text-decoration: none; display: inline-block; }
       ${closeBar(s)}
       <div class="kpis">
         <div class="kpi"><span class="k">Books sold</span><span class="v">${int(s.sold)}</span><span class="d">${s.speed ? int(s.speed) + " in the speed round" : "&nbsp;"}</span></div>
-        <div class="kpi"><span class="k">Revenue</span><span class="v">${money(s.rev)}</span><span class="d">${s.sold ? money(s.rev / s.sold) + " average" : "&nbsp;"}</span></div>
+        <div class="kpi"><span class="k">Revenue</span><span class="v">${money(s.rev)}</span><span class="d">${s.canceled ? int(s.canceled) + " canceled" : "&nbsp;"}</span></div>
+        <div class="kpi"><span class="k">Avg per book</span><span class="v">${s.sold ? money(s.rev / s.sold) : "–"}</span><span class="d">revenue ÷ books sold</span></div>
         <div class="kpi"><span class="k">R’s</span><span class="v">${int(s.rejects)}</span><span class="d">${s.sold + s.rejects ? Math.round(100 * s.sold / (s.sold + s.rejects)) + "% sold when shown" : "&nbsp;"}</span></div>
         ${D.costs ? `<div class="kpi"><span class="k">Profit</span><span class="v">${money(s.after)}</span><span class="d">${s.gcost ? money(s.gcost) + " in giveaways" : "after fees and cost"}</span></div>` : ""}
       </div>
