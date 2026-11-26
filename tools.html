@@ -81,8 +81,9 @@ code { font: 13px var(--f-mono); background: var(--bg); padding: 1px 5px; border
     try {
       const r = await fetch("http://127.0.0.1:17861/status", { cache: "no-store", signal: AbortSignal.timeout(2500) });
       const j = await r.json();
-      if (j && j.app === "reliant-chit-printer") here["chit-printer"] = { version: j.version || "1.0.0", note: j.printer ? "Printing on " + j.printer : "", updating: j.updating };
-    } catch { here["chit-printer"] = { none: true }; }
+      if (j && j.app === "reliant-chit-printer") here[j.platform === "mac" ? "chit-printer-mac" : "chit-printer"] = { version: j.version || "1.0.0", note: j.printer ? "Printing on " + j.printer : "", updating: j.updating };
+    } catch {}
+    for (const id of ["chit-printer", "chit-printer-mac"]) if (!here[id]) here[id] = { none: true };
   }
   // The Page Reader (0.4.1 and later) announces its version on App pages.
   window.addEventListener("message", e => {
@@ -93,11 +94,11 @@ code { font: 13px var(--f-mono); background: var(--bg); padding: 1px 5px; border
 
   function stateFor(t) {
     const h = here[t.id];
-    if (t.id === "chit-printer") {
+    if (t.id === "chit-printer" || t.id === "chit-printer-mac") {
       if (!h) return { v: "Checking…", d: "", cls: "dim" };
       if (h.none) return { v: "Not running here", d: "Not installed on this computer, or switched off. Only the computer that prints chits needs it.", cls: "dim" };
       if (newer(t.version, h.version)) {
-        if (h.version === "1.0.0") return { v: h.version, d: "Update available. Download and run the installer once more; from 1.1.0 on it updates itself.", cls: "bad", behind: true };
+        if (t.id === "chit-printer" && h.version === "1.0.0") return { v: h.version, d: "Update available. Download and run the installer once more; from 1.1.0 on it updates itself.", cls: "bad", behind: true };
         return { v: h.version, d: h.updating ? `Version ${h.updating} is downloaded and goes in once no chit has printed for 1 hour.` : "It will update itself within 6 hours (or restart the computer).", cls: "bad", behind: true };
       }
       return { v: h.version, d: "Up to date. " + (h.note || ""), cls: "ok" };
@@ -119,7 +120,7 @@ code { font: 13px var(--f-mono); background: var(--bg); padding: 1px 5px; border
       const dl = t.file
         ? `<a class="btn primary" href="${esc(t.file)}" download>Download ${esc(t.version)}</a>`
         : `<span class="d">${esc(t.missing || "No download yet.")}</span>`;
-      const kind = t.kind === "windows" ? "Windows program" : t.kind === "chrome" ? "Chrome extension" : "";
+      const kind = t.kind === "windows" ? "Windows program" : t.kind === "mac" ? "Mac program" : t.kind === "chrome" ? "Chrome extension" : "";
       const steps = (t.steps || []).length ? `<details><summary>How to install</summary><ol>${t.steps.map(s => `<li>${esc(s)}</li>`).join("")}</ol></details>` : "";
       const usteps = (t.update_steps || []).length ? `<details ${st.behind ? "open" : ""}><summary>How to update</summary><ol>${t.update_steps.map(s => `<li>${esc(s)}</li>`).join("")}</ol></details>` : "";
       const changes = (t.changes || []).length ? `<details><summary>What changed</summary><ul>${t.changes.map(s => `<li>${esc(s)}</li>`).join("")}</ul></details>` : "";
@@ -145,7 +146,7 @@ code { font: 13px var(--f-mono); background: var(--bg); padding: 1px 5px; border
       const r = await fetch("tools.json", { cache: "no-store" });
       tools = (await r.json()).tools || [];
     } catch (e) { $("err").textContent = "Couldn't load the tools list. Check the internet connection and try again."; $("err").hidden = false; return; }
-    delete here["chit-printer"];
+    delete here["chit-printer"]; delete here["chit-printer-mac"];
     draw();
     window.postMessage({ __reliantToolsAsk: true }, location.origin);
     await checkChitPrinter();

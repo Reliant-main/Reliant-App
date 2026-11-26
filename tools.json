@@ -3,7 +3,7 @@
   "tools": [
     {
       "id": "chit-printer",
-      "name": "Reliant Chit Printer",
+      "name": "Reliant Chit Printer (Windows)",
       "version": "1.1.0",
       "kind": "windows",
       "file": "chit-printer/reliant-chit-printer.zip",
@@ -19,6 +19,27 @@
       "changes": [
         "1.1.0 (Nov 25): updates itself from the App.",
         "1.0.0 (Nov 21): first version."
+      ]
+    },
+    {
+      "id": "chit-printer-mac",
+      "name": "Reliant Chit Printer (Mac)",
+      "version": "1.0.0",
+      "kind": "mac",
+      "file": "chit-printer/reliant-chit-printer-mac.zip",
+      "where": "A Mac connected to the chit printer, as a backup to the Windows computer. Use Google Chrome for the Ticket System on it.",
+      "what": "Prints Ticket System chits straight to the chit printer, with no print window.",
+      "updates": "Updates itself. It checks for a new version when you log in and every 6 hours, and only swaps it in after no chit has printed for 1 hour.",
+      "steps": [
+        "Make sure the Star chit printer is added to the Mac: Apple menu → System Settings → Printers & Scanners.",
+        "Download it. The Mac unzips it into a folder in Downloads.",
+        "Double-click Install Reliant Chit Printer. If the Mac says it can't be opened, go to Apple menu → System Settings → Privacy & Security, scroll down and click Open Anyway, then confirm. (Older macOS: right-click the file → Open → Open.)",
+        "In the window that opens, press Return to keep the Star printer, or type its number.",
+        "When it says Done, press Return and close the window.",
+        "Open the Ticket System in Google Chrome, tick This computer prints chits, and print a test chit."
+      ],
+      "changes": [
+        "1.0.0 (Nov 25): first Mac version."
       ]
     },
     {
