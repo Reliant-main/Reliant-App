@@ -4442,9 +4442,10 @@ body.mode-display #btnHome2 { display: none !important; }
   {
     const mq = window.matchMedia("(max-width: 700px)");
     const applyPhone = () => {
-      const on = mq.matches && document.body.classList.contains("mode-operator");
-      document.body.classList.toggle("phoneview", on);
-      if (!on) document.body.classList.remove("phonemore");
+      const cl = document.body.classList, on = mq.matches && cl.contains("mode-operator");
+      // only touch the class list when something changes (each change wakes the watcher below)
+      if (cl.contains("phoneview") !== on) cl.toggle("phoneview", on);
+      if (!on && cl.contains("phonemore")) cl.remove("phonemore");
     };
     $("phMore").onclick = () => {
       const o = document.body.classList.toggle("phonemore");
