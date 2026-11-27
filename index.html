@@ -228,6 +228,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
           <div class="who"><b id="whoName"></b><span id="whoRole"></span></div>
           <button type="button" id="switchBtn">Switch person</button>
           <button type="button" id="pinBtn">My PIN</button>
+          <button type="button" id="pwBtn">My password</button>
           <button type="button" id="settingsBtn" hidden>Settings</button>
           <button type="button" data-signout>Sign out</button>
         </div>
@@ -703,6 +704,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   };
 
   $("settingsBtn").onclick = () => openSettings(true);
+  $("pwBtn").onclick = () => { $("userMenu").open = false; openSettings(true); };   // My password sits at the top of Settings
   window.RELIANT.onStaffChanged = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };
   $("pendingRetry").onclick = async () => { const { data } = await sb.auth.getSession(); await refresh(data.session); };
 
