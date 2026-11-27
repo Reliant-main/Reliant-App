@@ -684,6 +684,17 @@ body.usedShow .modeseg, body.usedShow #tableBox, body.usedShow [data-hide="autoN
 body.usedShow.speedOn .speedflag { display: block; }
 .utag { font: 600 10px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; margin-left: 6px; color: var(--paper-dim); }
 .utag.sp { border-color: #c25a1c; color: #f08a4b; }
+/* last show: where a used stream book goes when it doesn't sell */
+.lctag { font: 600 10px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; border-radius: 4px; padding: 1px 5px; margin-right: 4px; white-space: nowrap; }
+.lctag.be { color: var(--on-accent); background: var(--gilt); }
+.lctag.sbyb { color: #2b1d08; background: #e3c86a; }
+.lctag.last { color: #fff; background: #8a3a2c; }
+.lcwhere { font: 600 12px var(--f-mono); color: var(--gilt); }
+.lcwhere.rec { color: var(--warn-ink); }
+.ib.lcb { width: auto; padding: 0 7px; font: 600 11px var(--f-ui); }
+.ib.lcb.on { background: #8a3a2c; border-color: #b4523f; color: #fff2ec; }
+body:not(.usedShow) .ib.lcb, body:not(.usedShow) #uLastFld { display: none; }
+#uLast.on { background: #8a3a2c; border-color: #b4523f; color: #fff2ec; }
 .entry-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr) auto auto; gap: 10px; align-items: end; }
 body.tableMode .entry-row { grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr) auto; }
 .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -1040,6 +1051,7 @@ body.mode-display #btnHome2 { display: none !important; }
         <div class="fld"><label for="uGenre">Genre · this book</label><select id="uGenre"><option value="">Not set</option><option>Fiction</option><option>Mystery/Thriller</option><option>Romance</option><option>Sci-Fi/Fantasy</option><option>Horror</option><option>Young Adult</option><option>Children's</option><option>Nonfiction</option><option>Biography/Memoir</option><option>Religion/Spirituality</option></select></div>
         <div class="fld"><label for="uSrc">Source · stays set</label><select id="uSrc"><option value="HPB">HPB</option></select></div>
         <div class="fld"><label>Round</label><button class="btn" id="uSpeed" type="button">Start speed round</button></div>
+        <div class="fld" id="uLastFld"><label>Last showing</label><button class="btn" id="uLast" type="button" title="Every book in this show is on its last showing: unsold books go to the back end, the SBYB gaylord or recycling when the show is closed">Last show for all</button></div>
         <div class="ustats" id="uStats"></div>
       </div>
       <div class="entry-row">
@@ -2047,9 +2059,10 @@ body.mode-display #btnHome2 { display: none !important; }
       const sb = plBadgeFor ? plBadgeFor(e) : null;
       const seen = plSeenFor ? plSeenFor(e) : null;
       const cls = [e.id === curId ? "cur" : "", e.id === returnId ? "ret" : "", shownIds.has(e.id) ? "shown" : "", b ? "" : "missing", sb ? (sb.r ? "nosale" : "sold") : "", seen === "seen" ? "seen" : "", seen === "fresh" ? "fresh" : ""].filter(Boolean).join(" ");
-      const meta = (lotTag ? `<b class="lottag">Lot ${lotTag}</b> · ` : "") + (sb ? `<b class="sb">${esc(sb.text)}</b> · ` : "") + (seen === "seen" && !sb ? `<b class="seentag">Seen</b> · ` : "") + (seen === "fresh" ? `<b class="seentag fresh">Unseen</b> · ` : "") + (b ? [fixAuthor(b.author), b.isbn].filter(Boolean).map(esc).join(" · ") : esc(e.key));
+      const lcc = isUsedShow() ? lcCode(e.key) : "";
+      const meta = (lcc ? lcChip(lcc) : "") + (lotTag ? `<b class="lottag">Lot ${lotTag}</b> · ` : "") + (sb ? `<b class="sb">${esc(sb.text)}</b> · ` : "") + (seen === "seen" && !sb ? `<b class="seentag">Seen</b> · ` : "") + (seen === "fresh" ? `<b class="seentag fresh">Unseen</b> · ` : "") + (b ? [fixAuthor(b.author), b.isbn].filter(Boolean).map(esc).join(" · ") : esc(e.key));
       return `${head}<li class="${cls}${selMode && plSel.has(e.id) ? " picked" : ""}${selMode ? " picking" : ""}" data-i="${i}"><span class="n">${selMode && plSel.has(e.id) ? "✓" : i + 1}</span><span class="t">${esc(entryTitle(e))}</span><span class="m">${meta}</span>
-        <span class="acts"><button class="ib" type="button" data-act="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button><button class="ib" type="button" data-act="down" title="Move down" ${i === playlist.length - 1 ? "disabled" : ""}>↓</button><button class="ib tbadd" type="button" data-act="table" title="Put this book on the table">+ Table</button>${seen && seen !== "table" ? `<button class="ib tbadd" type="button" data-act="seen" title="${seen === "seen" ? "Mark unseen: Load next round will pick this book up again, in playlist order" : "Mark seen: Load next round will skip this book"}">${seen === "seen" ? "Unseen" : "Seen"}</button>` : ""}${on && e.g != null && !SPECIAL[e.g] && firstOf.has(i) ? `<button class="ib split" type="button" data-act="split" title="Start a new set from this book">✂</button>` : ""}<button class="ib" type="button" data-act="del" title="Remove from playlist">✕</button></span></li>`;
+        <span class="acts"><button class="ib" type="button" data-act="up" title="Move up" ${i === 0 ? "disabled" : ""}>↑</button><button class="ib" type="button" data-act="down" title="Move down" ${i === playlist.length - 1 ? "disabled" : ""}>↓</button><button class="ib tbadd" type="button" data-act="table" title="Put this book on the table">+ Table</button>${seen && seen !== "table" ? `<button class="ib tbadd" type="button" data-act="seen" title="${seen === "seen" ? "Mark unseen: Load next round will pick this book up again, in playlist order" : "Mark seen: Load next round will skip this book"}">${seen === "seen" ? "Unseen" : "Seen"}</button>` : ""}${on && e.g != null && !SPECIAL[e.g] && firstOf.has(i) ? `<button class="ib split" type="button" data-act="split" title="Start a new set from this book">✂</button>` : ""}${lcc && lcOf(lcc) && lcOf(lcc).on_hand ? `<button class="ib lcb${lcOf(lcc).last ? " on" : ""}" type="button" data-act="last" title="${lcOf(lcc).last ? "This book is on its last showing. Click to take the mark off." : "Mark this book's last showing: if it doesn't sell it goes to its next stop when the show is closed."}">${lcOf(lcc).last ? "Last ✓" : "Last"}</button>` : ""}<button class="ib" type="button" data-act="del" title="Remove from playlist">✕</button></span></li>`;
     }).join("");
     const focusId = curId != null ? curId : (detourFrom !== START ? detourFrom : null);
     if (!hits && focusId != null && focusId !== lastScrolledId) {
@@ -2083,6 +2096,7 @@ body.mode-display #btnHome2 { display: none !important; }
       else if (btn.dataset.act === "del") removeEntry(i);
       else if (btn.dataset.act === "table" && plToTable) plToTable(i);
       else if (btn.dataset.act === "seen" && plToggleSeen) plToggleSeen(i);
+      else if (btn.dataset.act === "last") { const c = lcCode(playlist[i] && playlist[i].key); if (c) lcMark(c, !(lcOf(c) && lcOf(c).last)); }
       return;
     }
     if (playlist[i].id === returnId) backToReturn(); else gotoEntry(i, true);
@@ -3747,7 +3761,14 @@ body.mode-display #btnHome2 { display: none !important; }
       setPending(`${tsWho(TSX.cur)} · scan or type the book they bought${tv ? `, or press Enter for <span class="chip tv">${esc((tv.pos ? "#" + tv.pos + " · " : "") + itemLabel(tv))}</span>` : ""}${moreTxt}${skip}`);
       return;
     }
-    if (S.pending) { setPending(`<span class="chip">${esc(itemLabel(S.pending[0]))}</span>${isUsedShow() ? usedHistory(S.pending[0]) : ""} type the price and press Enter (or R for no sale) · Esc cancels${tsWaitNote()}`); return; }
+    if (S.pending) {
+      const pc = isUsedShow() ? lcCode(S.pending[0] && S.pending[0].isbn) : "";
+      const pt = pc ? lcOf(pc) : null;
+      setPending(`<span class="chip">${esc(itemLabel(S.pending[0]))}</span>${isUsedShow() ? usedHistory(S.pending[0]) : ""} type the price and press Enter (or R for no sale) · Esc cancels${tsWaitNote()}${pc ? lcLine(pc) : ""}${pt && pt.on_hand ? ` <button class="btn" type="button" id="lcPend">${pt.last ? "Not its last show" : "Last show for this book"}</button>` : ""}`);
+      if ($("lcPend")) $("lcPend").onclick = () => { lcMark(pc, !(pt && pt.last)); $("salePrice").focus(); };
+      if (pc && !LC.asked.has(pc)) lcSoon();
+      return;
+    }
     if (S.show) setPending((isUsedShow() && !tvItem() ? (S.show.speed ? "Speed round: scan the book, then type its price, or R if it doesn't sell again." : "Scan the book, then type its price, or R for no sale.") : tvLine()) + tsWaitNote());
   }
   function recentlyLogged(isbn) {
@@ -3842,6 +3863,84 @@ body.mode-display #btnHome2 { display: none !important; }
   // ---- Used-book shows: books are scanned live; condition and source stay set, genre is per book ----
   const USED_ID = "1ao9jMIgayKPlpQ1nXqqOI7bUXo6SJ9hZOk2WYpUzuIk";
   const USED_NAME = "Reliant Used Books Information";
+  // ---------- last showing: where an unsold used stream book goes next ----------
+  // BE ACCEPT books go to the back end after one full show. SBYB and untagged books stay in the
+  // stream until someone marks their last showing: one ISBN at a time, or the whole show at once.
+  // Nothing moves during the show; closing the show takes the unsold books out of stream inventory.
+  const LC = { tags: {}, asked: new Set(), t: null };
+  const lcCode = v => { const d = digits(v || "").toUpperCase(); return d.length >= 10 ? d : ""; };
+  const lcShowOn = () => !!(S.show && S.show.lastChance);
+  const lcOf = code => (code && LC.tags[code]) || null;
+  function lcSoon() {   // ask the database about every book we might show a tag for
+    if (!isUsedShow() || !window.RELIANT || !window.RELIANT.sb) return;
+    clearTimeout(LC.t);
+    LC.t = setTimeout(async () => {
+      const want = new Set();
+      playlist.forEach(e => { const c = lcCode(e.key); if (c && !LC.asked.has(c)) want.add(c); });
+      (S.sales || []).forEach(x => (x.items || []).forEach(it => { const c = lcCode(it.isbn); if (c && !LC.asked.has(c)) want.add(c); }));
+      (S.pending || []).forEach(it => { const c = lcCode(it.isbn); if (c && !LC.asked.has(c)) want.add(c); });
+      if (!want.size) return;
+      const codes = [...want]; codes.forEach(c => LC.asked.add(c));
+      try {
+        const { data, error } = await window.RELIANT.sb.rpc("spot_tags", { p_codes: codes });
+        if (error) throw error;
+        codes.forEach(c => { LC.tags[c] = (data && data[c]) || null; });
+      } catch { codes.forEach(c => LC.asked.delete(c)); return; }
+      try { drawPL(); } catch {}
+      drawPendingLine(); drawSalesSoft();
+    }, 400);
+  }
+  let lcDrawing = false;
+  function drawSalesSoft() { if (lcDrawing) return; lcDrawing = true; try { drawSales(); } finally { lcDrawing = false; } }
+  // what happens to this book if it doesn't sell
+  function lcWhere(code) {
+    const t = lcOf(code); if (!t || !t.on_hand) return null;
+    const last = !!t.last || lcShowOn();
+    if (t.tag === "BE ACCEPT") return { pile: "back end", txt: "→ back-end tote", why: "BE ACCEPT · one full show" };
+    if (t.tag === "SBYB") return last ? { pile: "sbyb", txt: "→ SBYB gaylord", why: "SBYB · last showing" } : null;
+    if (last) return { pile: "recycle", txt: "→ recycle", why: "last showing" };
+    return null;
+  }
+  function lcChip(code) {
+    const t = lcOf(code); if (!t) return "";
+    return (t.tag ? `<b class="lctag ${t.tag === "SBYB" ? "sbyb" : "be"}">${t.tag}</b>` : "")
+         + (t.last ? `<b class="lctag last">Last show</b>` : "");
+  }
+  function lcLine(code) {   // the line under the book being priced
+    const t = lcOf(code); if (!t) return "";
+    const w = lcWhere(code);
+    return ` ${lcChip(code)}${w ? `<span class="lcwhere${w.pile === "recycle" ? " rec" : ""}">If it doesn't sell: ${esc(w.txt)}</span>` : ""}`;
+  }
+  async function lcMark(code, on) {
+    if (!code) return;
+    const t = LC.tags[code] || { tag: null, on_hand: 0, last: false };
+    LC.tags[code] = { ...t, last: on };                    // show it at once; put it back if the save fails
+    try { drawPL(); } catch {}
+    drawPendingLine(); drawSalesSoft();
+    try {
+      const { data, error } = await window.RELIANT.sb.rpc("spot_last_chance",
+        { p_code: code, p_on: on, p_sid: S.show ? S.show.id : null, p_by: "Book Spotlight" });
+      if (error) throw error;
+      if (data && data.on_hand != null) LC.tags[code] = { ...LC.tags[code], on_hand: data.on_hand, code: data.code };
+      const w = lcWhere(code);
+      toast(on ? `Marked as its last showing${w ? ` · if it doesn't sell ${w.txt}` : ""}` : "Last-showing mark removed");
+    } catch (err) {
+      LC.tags[code] = t;
+      toast("Couldn't save that mark: " + ((err && err.message) || "no connection"));
+    }
+    try { drawPL(); } catch {}
+    drawPendingLine(); drawSalesSoft();
+  }
+  async function lcShowMark(on) {
+    if (!S.show) return;
+    S.show.lastChance = on;
+    try { if (S.db) await S.db.doc("shows/" + S.show.id).update({ lastChance: on }); } catch {}
+    backup();
+    if (S.show.real) { try { await window.RELIANT.sb.rpc("spot_show_last_chance", { p_sid: S.show.id, p_on: on }); } catch {} }
+    drawUsedBar(); try { drawPL(); } catch {} drawPendingLine(); drawSalesSoft();
+    toast(on ? "Last showing for every book in this show: unsold books go to their next stop when the show is closed"
+             : "Back to normal: only books marked one by one are on their last showing");
+  }
   function isUsedKind(k) { return k === "used" || k === "vintage"; }
   function isUsedShow() { return !!(S.show && isUsedKind(S.show.kind)); }
   let usedSources = [{ name: "HPB", cost: 0.49 }];
@@ -3944,8 +4043,22 @@ body.mode-display #btnHome2 { display: none !important; }
     document.body.classList.toggle("speedOn", sp);
     $("uSpeed").classList.toggle("on", sp);
     $("uSpeed").textContent = sp ? "Back to main round" : "Start speed round";
+    const lc = lcShowOn();
+    $("uLast").classList.toggle("on", lc);
+    $("uLast").textContent = lc ? "Last show: on" : "Last show for all";
     drawUsedStats();
   }
+  let uLastArm = null;
+  $("uLast").onclick = () => {
+    if (!isUsedShow()) return;
+    if (lcShowOn()) { clearTimeout(uLastArm); uLastArm = null; return lcShowMark(false); }
+    if (!uLastArm) {   // turning it on covers every book in the show, so ask twice
+      $("uLast").textContent = "Click again: all books";
+      uLastArm = setTimeout(() => { uLastArm = null; drawUsedBar(); }, 4000);
+      return;
+    }
+    clearTimeout(uLastArm); uLastArm = null; lcShowMark(true);
+  };
   $("uSpeed").onclick = async () => {
     if (!isUsedShow()) return;
     const sp = !S.show.speed;
@@ -3975,7 +4088,13 @@ body.mode-display #btnHome2 { display: none !important; }
       if (r === "taken") { tsDone(ts.id); toast(`Buyer ${ts.buyerNo ?? "?"}'s sale was already logged on another screen`); return null; }
       if (r === "offline") rec.ts.unsynced = true;
     }
-    toast(noSale ? `No sale (R) · ${label}` : `Logged ${money(total)} · ${label}${ts ? ` · Buyer ${ts.buyerNo ?? "?"}` : ""}`);
+    let lcMsg = "";
+    if (noSale && isUsedShow()) {
+      const ws = items.map(it => ({ it, w: lcWhere(lcCode(it.isbn)) })).filter(x => x.w);
+      if (ws.length === 1) lcMsg = ` · ${ws[0].w.why} ${ws[0].w.txt}`;
+      else if (ws.length > 1) lcMsg = " · " + ws.map(x => `${itemLabel(x.it)} ${x.w.txt}`).join(" · ");
+    }
+    toast(noSale ? `No sale (R) · ${label}${lcMsg}` : `Logged ${money(total)} · ${label}${ts ? ` · Buyer ${ts.buyerNo ?? "?"}` : ""}`, null, lcMsg ? 8000 : undefined);
     if (ts) tsDone(ts.id);
     if (S.db) {
       rec.id = ref.id;
@@ -4230,7 +4349,7 @@ body.mode-display #btnHome2 { display: none !important; }
     $("stOrders").textContent = st.sales;
     $("salesCount").textContent = st.books;
     try { drawPL(); } catch {}
-    if (isUsedShow()) drawUsedStats();
+    if (isUsedShow()) { drawUsedStats(); lcSoon(); }
     if (S.show && !S.pending && !S.bundle && !S.dup && !S.confirmAgain) drawPendingLine();
     if (saleMode === "table") drawTable();
     try { drawPace(); } catch {}
@@ -4244,7 +4363,7 @@ body.mode-display #btnHome2 { display: none !important; }
       const tsTag = s.ts ? `<span class="tstag" title="From the Ticket System${s.ts.user ? ": " + esc(s.ts.user) : ""}${s.ts.gift ? " · giveaway, saved to Fulfillment giveaways" : ""}${s.ts.unsynced ? " · not yet sent to the Ticket System" : ""}">${s.ts.gift ? "GIVEAWAY · " : ""}Buyer ${esc(String(s.ts.buyer ?? "?"))}${s.ts.unsynced ? " ⚠" : ""}</span>` : "";
       const ttl = tsTag + (items.length > 1
         ? `${items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}<b>${s.noSale ? "Lot" : "Bundle"} of ${items.length}</b><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copies</span> ` : ""}${items.map((it, i) => `${esc((it.pos ? "#" + it.pos + " " : "") + itemLabel(it))}${per ? " " + per[i] : ""}`).join(" · ")}</span>`
-        : `${items[0] && items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}${items[0] && items[0].pos ? `<span class="pos">#${items[0].pos}</span>` : ""}<span class="${items[0] && !items[0].found && !items[0].used ? "miss" : ""}">${esc(itemLabel(items[0] || {}))}</span><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copy</span> ` : ""}${esc([fixAuthor(items[0]?.author || ""), items[0]?.isbn].filter(Boolean).join(" · "))}${s.note ? " · " + esc(s.note) : ""}${items[0] && items[0].used ? usedTags(items[0]) : ""}</span>`);
+        : `${items[0] && items[0].round ? `<span class="pos">Rnd ${items[0].round}</span>` : ""}${items[0] && items[0].pos ? `<span class="pos">#${items[0].pos}</span>` : ""}<span class="${items[0] && !items[0].found && !items[0].used ? "miss" : ""}">${esc(itemLabel(items[0] || {}))}</span><span class="sub">${s.dmg ? `<span class="dmgtag">Damaged copy</span> ` : ""}${esc([fixAuthor(items[0]?.author || ""), items[0]?.isbn].filter(Boolean).join(" · "))}${s.note ? " · " + esc(s.note) : ""}${items[0] && items[0].used ? usedTags(items[0]) : ""}${isUsedShow() && items[0] && lcChip(lcCode(items[0].isbn)) ? " " + lcChip(lcCode(items[0].isbn)) : ""}</span>`);
       if (S.editing && S.editing.id === s.id) {
         return `<li data-id="${esc(s.id)}"><span class="n">#${n}</span><span class="tm">${timeOf(s.loggedAt)}</span><span class="ttl">${ttl}</span><span></span><span></span>
           <div class="edit"><input id="editInput" value="${esc(S.editing.kind === "price" ? (s.noSale ? "R" : String(s.total)) : (s.note || ""))}" placeholder="${S.editing.kind === "price" ? "New price or R" : "Note"}" aria-label="${S.editing.kind === "price" ? "New price" : "Note"}"><button class="btn primary" type="button" data-a="save">Save</button><button class="btn" type="button" data-a="cancel">Cancel</button></div></li>`;
@@ -4252,7 +4371,7 @@ body.mode-display #btnHome2 { display: none !important; }
       const del = S.delArm === s.id ? "Confirm delete" : "Delete";
       return `<li data-id="${esc(s.id)}" class="${s.noSale ? "nosale" : s.rejected ? "rej" : ""} ${s.unsynced ? "unsynced" : ""}"><span class="n">#${n}</span><span class="tm">${timeOf(s.loggedAt)}</span><span class="ttl">${ttl}</span>
         <span class="pr">${s.noSale ? "R<small>no sale</small>" : money(s.total) + (per ? `<small>${money(s.total / items.length)}/book</small>` : "")}</span>
-        <span class="acts">${s.unsynced ? "" : `<button class="btn" type="button" data-a="price">Price</button><button class="btn" type="button" data-a="note">Note</button>${s.noSale || isUsedShow() ? "" : `<button class="btn${s.dmg ? " on" : ""}" type="button" data-a="dmg" title="This sale was a damaged copy (sold at a lower price)">Damaged</button>`}${(items[0] && items[0].round) ? `<button class="btn" type="button" data-a="ret" title="Remove this sale and put the book(s) back on the table">Back to table</button>` : ""}${s.noSale ? "" : `<button class="btn" type="button" data-a="rej">${s.rejected ? "Un-reject" : "Reject"}</button>`}<button class="btn warn" type="button" data-a="del">${del}</button>`}</span></li>`;
+        <span class="acts">${s.unsynced ? "" : `<button class="btn" type="button" data-a="price">Price</button><button class="btn" type="button" data-a="note">Note</button>${s.noSale || isUsedShow() ? "" : `<button class="btn${s.dmg ? " on" : ""}" type="button" data-a="dmg" title="This sale was a damaged copy (sold at a lower price)">Damaged</button>`}${(items[0] && items[0].round) ? `<button class="btn" type="button" data-a="ret" title="Remove this sale and put the book(s) back on the table">Back to table</button>` : ""}${s.noSale && isUsedShow() && items.length === 1 && lcOf(lcCode(items[0].isbn)) && lcOf(lcCode(items[0].isbn)).on_hand ? `<button class="btn${lcOf(lcCode(items[0].isbn)).last ? " on" : ""}" type="button" data-a="last" title="Mark this book's last showing">${lcOf(lcCode(items[0].isbn)).last ? "Last show ✓" : "Last show"}</button>` : ""}${s.noSale ? "" : `<button class="btn" type="button" data-a="rej">${s.rejected ? "Un-reject" : "Reject"}</button>`}<button class="btn warn" type="button" data-a="del">${del}</button>`}</span></li>`;
     }).join("");
     const ei = $("editInput"); if (ei) { ei.focus(); ei.select(); }
   }
@@ -4261,6 +4380,7 @@ body.mode-display #btnHome2 { display: none !important; }
     const b = e.target.closest("button[data-a]"); if (!b) return;
     const id = b.closest("li").dataset.id, s = S.sales.find(x => x.id === id); if (!s) return;
     const a = b.dataset.a;
+    if (a === "last") { const it = (s.items || [])[0], c = lcCode(it && it.isbn); if (c) lcMark(c, !(lcOf(c) && lcOf(c).last)); return; }
     if (a === "price" || a === "note") { S.editing = { id, kind: a }; drawSales(); }
     else if (a === "cancel") { S.editing = null; drawSales(); }
     else if (a === "save") commitEdit(s);
