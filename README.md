@@ -24,7 +24,7 @@ The Reliant Distribution Workspace, rebuilt on the Reliant database (Supabase), 
 - `scan-helper/`: the Reliant Scan Helper (Chrome extension for the CashMonkey scanning stations). `reliant-scan-helper.zip` is the download; rebuild it when the files change.
 - `chit-printer/mac/`: the Mac version of the Chit Printer (Perl, uses macOS's own printing; starts at login through a LaunchAgent; same 127.0.0.1:17861 connection, so the Ticket System needs no changes). `chit-printer/reliant-chit-printer-mac.zip` is the download; rebuild it when the files change and raise `chit-printer-mac` in `tools.json`.
 - `chit-printer/`: the Reliant Chit Printer (Windows) that prints Ticket System chits with no print window. `reliant-chit-printer.zip` is the download; rebuild it when the files change.
-- `settings.html`: Settings (owners and managers). Add or remove people by email, set their name and access level, and approve their sign-up. Each person sets their own password.
+- `settings.html`: Settings (owners and managers). **My password** at the top changes your own password (type it twice). Add or remove people by email, set their name and access level, and approve their sign-up. Each person sets their own password. A reset-password email link opens the home screen's **Choose a new password** screen (noted before the sign-in client reads the link, so the home screen doesn't load over it).
 - `live-bridge.js`: connects the show screen to the database (shared show store with live updates, and the book list).
 - `config.js`: the database address and its public key. What each person can see or change is enforced inside the database by their sign-in and role.
 
