@@ -287,6 +287,9 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   const $ = id => document.getElementById(id);
   const cfg = window.RELIANT_CONFIG;
   if (!window.supabase || !cfg) { document.body.textContent = "The Workspace couldn't load. Check the internet connection and reload."; return; }
+  // a reset-password link opens the App signed in; note it before the client reads the link, so the
+  // "Choose a new password" screen stays up instead of the home screen loading over it
+  let recovering = /(^|[#&?])type=recovery(&|$)/.test(location.hash + "&" + location.search.slice(1));
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: true, autoRefreshToken: true } });
   window.RELIANT = { sb, staff: null };
 
@@ -626,6 +629,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   const toLogin = v => { v = v.trim(); return v.includes("@") ? v : `${v.toLowerCase()}@${NAME_DOMAIN}`; };
   async function refresh(session) {
     if (!session) { window.RELIANT.staff = null; show("signin"); return; }
+    if (recovering) { $("newpwWhy").hidden = true; show("newpw"); return; }
     if (session.user && session.user.user_metadata && session.user.user_metadata.must_change) { $("newpwWhy").hidden = false; show("newpw"); return; }
     const { data: me, error } = await sb.rpc("my_staff");
     if (error) { $("signinMsg").textContent = "Couldn't check your account: " + error.message; $("signinMsg").classList.add("bad"); show("signin"); return; }
@@ -746,7 +750,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   $("newpwForm").onsubmit = async e => {
     e.preventDefault();
     const { error } = await sb.auth.updateUser({ password: $("newPassword").value, data: { must_change: false } });
-    if (!error) $("newpwWhy").hidden = true;
+    if (!error) { $("newpwWhy").hidden = true; recovering = false; $("newPassword").value = ""; history.replaceState(null, "", location.pathname); }
     $("newpwMsg").textContent = error ? error.message : "Saved. Opening the Workspace…";
     if (!error) { const { data } = await sb.auth.getSession(); await refresh(data.session); }
   };
@@ -760,8 +764,8 @@ button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible
   document.querySelectorAll("[data-signout]").forEach(b => b.onclick = signOut);
 
   sb.auth.onAuthStateChange((event, session) => {
-    if (event === "PASSWORD_RECOVERY") { show("newpw"); return; }
-    if (event === "SIGNED_OUT") { window.RELIANT.staff = null; show("signin"); }
+    if (event === "PASSWORD_RECOVERY") { recovering = true; show("newpw"); return; }
+    if (event === "SIGNED_OUT") { recovering = false; window.RELIANT.staff = null; show("signin"); }
   });
   sb.auth.getSession().then(({ data }) => refresh(data.session));
 })();

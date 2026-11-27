@@ -41,6 +41,7 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
 #loadMsg:empty { display: none; }
 
 .add { display: grid; grid-template-columns: 1fr 1.4fr 1fr auto; gap: 10px; align-items: end; background: var(--cloth-2); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; }
+.add.pw { grid-template-columns: 1fr 1fr auto auto; }
 .steps { margin: 10px 0 0; padding-left: 20px; color: var(--paper-dim); font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
 .steps b { color: var(--paper); }
 
@@ -63,7 +64,7 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
 .others li .w { font: 13px var(--f-mono); color: var(--paper-dim); }
 
 @media (max-width: 720px) {
-  .add, .person { grid-template-columns: 1fr; }
+  .add, .add.pw, .person { grid-template-columns: 1fr; }
   .levels { grid-template-columns: 1fr; }
   .add .btn { width: 100%; }
 }
@@ -74,8 +75,19 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
   <header>
     <span class="eyebrow">Workspace</span>
     <h1>Settings</h1>
-    <p class="sub">Who can open the Workspace, the name it shows for them, and what they can get into. Passwords stay private: each person chooses their own (username accounts start with one you set).</p>
+    <p class="sub">Your own password, plus who can open the Workspace, the name it shows for them, and what they can get into. Passwords stay private: each person chooses their own (username accounts start with one you set).</p>
   </header>
+
+  <section id="pwSec">
+    <div class="sech"><h2>My password</h2><span class="d" id="pwWho">Change the password you sign in with</span></div>
+    <form class="add pw" id="pwForm" autocomplete="off">
+      <label class="f">New password<input id="pwNew" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="At least 8 characters"></label>
+      <label class="f">Type it again<input id="pwAgain" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label>
+      <label class="f" style="flex-direction:row;align-items:center;gap:8px;padding-bottom:9px"><input type="checkbox" id="pwShow" style="width:auto">Show</label>
+      <button class="btn primary" type="submit" id="pwGo">Change password</button>
+    </form>
+    <div class="msg" id="pwMsg" role="status"></div>
+  </section>
 
   <div class="msg bad" id="loadMsg" role="status"></div>
 
@@ -316,6 +328,31 @@ label.f { display: flex; flex-direction: column; gap: 5px; font: 500 11px var(--
     setMsg($("addMsg"), added && added.signup_at
       ? `${name} is on the list and has already signed up. Press Approve on their row below.`
       : `${name} is on the list. Send them the Workspace link and ask them to choose "First time? Create your account" with ${email}.`, "ok");
+  };
+
+  // ---------- my own password ----------
+  $("pwShow").onchange = () => { const t = $("pwShow").checked ? "text" : "password"; $("pwNew").type = t; $("pwAgain").type = t; };
+  sb.auth.getUser().then(({ data }) => {
+    const e = data && data.user && data.user.email || "";
+    if (e) $("pwWho").textContent = "Signed in as " + (e.endsWith(NAME_DOMAIN) ? e.slice(0, -NAME_DOMAIN.length) : e);
+  });
+  $("pwForm").onsubmit = async e => {
+    e.preventDefault();
+    const pw = $("pwNew").value, again = $("pwAgain").value, msg = $("pwMsg");
+    if (pw.length < 8) { setMsg(msg, "The new password needs at least 8 characters.", "bad"); $("pwNew").focus(); return; }
+    if (pw !== again) { setMsg(msg, "The two passwords don't match.", "bad"); $("pwAgain").focus(); return; }
+    $("pwGo").disabled = true; setMsg(msg, "Saving…");
+    const { error } = await sb.auth.updateUser({ password: pw, data: { must_change: false } });
+    $("pwGo").disabled = false;
+    if (error) {
+      const m = errText(error);
+      setMsg(msg, /different from the old/i.test(m) ? "That's already your password. Choose a different one."
+        : /reauthenticat|recent/i.test(m) ? "For safety, sign out and sign back in, then change your password here."
+        : /weak|pwned|leaked/i.test(m) ? "That password is too easy to guess. Try a longer one." : m, "bad");
+      return;
+    }
+    $("pwNew").value = ""; $("pwAgain").value = "";
+    setMsg(msg, "Password changed. Use the new one next time you sign in.", "ok");
   };
 
   // let the home screen update the name shown at the top
