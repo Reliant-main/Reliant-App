@@ -24,7 +24,13 @@
   .rc-how { margin: 0; font-size: 13px; color: var(--muted); }
   .rc-msg { font-size: 13.5px; } .rc-msg.no { color: var(--bad); } .rc-msg.ok { color: var(--good); }
   .rc-card input { font: 14px var(--f-ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
-  .rc-card .btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }`;
+  .rc-card .btn.pri { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+  .rc-piles { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .rc-piles li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+  .rc-piles .n { font: 600 18px var(--f-ui); grid-row: 1 / span 2; align-self: center; min-width: 1.6em; text-align: right; }
+  .rc-piles .w { font-weight: 600; }
+  .rc-piles .sm { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .rc-piles li.keep { opacity: .75; }`;
   function ensureCss() { if (document.getElementById("rc-css")) return; const s = document.createElement("style"); s.id = "rc-css"; s.textContent = css; document.head.appendChild(s); }
 
   function modal(html) {
@@ -42,6 +48,8 @@
   async function open({ sb, show, onDone }) {
     const m = modal(`<p class="rc-how">Checking ${esc(show.name)}…</p>`);
     const { data: p, error } = await sb.rpc("close_preview", { p_show: show.id });
+    let route = null;
+    try { const r = await sb.rpc("used_route_preview", { p_show: show.id }); if (!r.error) route = r.data; } catch {}
     if (error) { m.el.innerHTML = `<p class="rc-msg no">${esc(error.message)}</p><div class="rc-row"><button class="btn" type="button" data-x>Back</button></div>`; m.el.querySelector("[data-x]").onclick = m.close; return; }
     const checks = [];
     if (p.no_cost.length) checks.push(`${int(p.no_cost.length)} sale${p.no_cost.length === 1 ? " has" : "s have"} no cost, so profit is overstated<span class="sm">${esc(p.no_cost.slice(0, 8).join(" · "))}${p.no_cost.length > 8 ? ` · and ${int(p.no_cost.length - 8)} more` : ""}</span>`);
@@ -60,6 +68,7 @@
       </div>
       <div><div class="rc-how" style="margin-bottom:6px">Check before closing</div>
         <ul class="rc-checks">${checks.length ? checks.map(c => `<li>${c}</li>`).join("") : `<li class="ok">Nothing looks off.</li>`}</ul></div>
+      ${routeHtml(route)}
       <p class="rc-how">Closing makes the show final: no more cancellations, giveaways or changes unless an owner reopens it. This summary is saved with the show.</p>
       ${p.request && p.request.status === "pending" ? `<p class="rc-msg ok">${p.manager ? `${esc(p.request.by || "Staff")} asked for this show to be closed.` : `Sent for approval${p.request.by ? " by " + esc(p.request.by) : ""}. A manager or owner will review and close it.`}</p>` : ""}
       ${p.request && p.request.status === "sent back" ? `<p class="rc-msg no">Sent back: ${esc(p.request.answer)}</p>` : ""}
@@ -83,10 +92,38 @@
       const { error: e2 } = await sb.rpc("close_show", { p_show: show.id });
       const msg = m.el.querySelector("[data-msg]");
       if (e2) { go.disabled = false; msg.className = "rc-msg no"; msg.textContent = e2.message; return; }
-      msg.className = "rc-msg ok"; msg.textContent = "Closed."; go.remove();
+      msg.className = "rc-msg ok"; msg.textContent = "Closed." + routeDone(route); go.remove();
       m.el.querySelector("[data-x]").textContent = "Done";
       if (onDone) onDone();
     };
+  }
+
+  // Used shows: where the books that didn't sell go when the show is closed.
+  const PILES = {
+    back_end: { w: "Back-end tote", d: "BE ACCEPT · one full show on the stream" },
+    sbyb: { w: "SBYB gaylord", d: "SBYB · marked as its last showing" },
+    recycle: { w: "Recycling", d: "no tag · marked as its last showing" },
+    keep: { w: "Stay in stream inventory", d: "not on their last showing yet" }
+  };
+  function routeHtml(route) {
+    if (!route || !(route.books || []).length) return "";
+    const by = {};
+    route.books.forEach(b => { (by[b.route] = by[b.route] || []).push(b); });
+    const line = (k) => {
+      const list = by[k]; if (!list || !list.length) return "";
+      const names = list.map(b => b.title || ("ISBN " + b.isbn));
+      return `<li class="${k === "keep" ? "keep" : ""}"><span class="n">${int(list.length)}</span><span class="w">${esc(PILES[k].w)}</span>
+        <span class="sm">${esc(PILES[k].d)} · ${esc(names.slice(0, 4).join(" · "))}${names.length > 4 ? ` · and ${int(names.length - 4)} more` : ""}</span></li>`;
+    };
+    const moving = ["back_end", "sbyb", "recycle"].reduce((n, k) => n + ((by[k] || []).length), 0);
+    return `<div><div class="rc-how" style="margin-bottom:6px">Books that didn’t sell${route.last_chance_show ? " · last showing is on for the whole show" : ""}</div>
+      <ul class="rc-piles">${["back_end", "sbyb", "recycle", "keep"].map(line).join("")}</ul>
+      <p class="rc-how" style="margin-top:6px">${moving ? `Closing takes ${int(moving)} book${moving === 1 ? "" : "s"} out of stream inventory and marks where ${moving === 1 ? "it goes" : "they go"}. Sort the physical books the same way.` : "Nothing leaves stream inventory."}</p></div>`;
+  }
+  function routeDone(route) {
+    if (!route) return "";
+    const n = (route.books || []).filter(b => b.route !== "keep").length;
+    return n ? ` ${int(n)} book${n === 1 ? "" : "s"} left stream inventory.` : "";
   }
 
   function reopen({ sb, show, onDone }) {
